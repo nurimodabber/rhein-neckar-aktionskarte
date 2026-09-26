@@ -442,11 +442,11 @@ function renderGeographicLandmarks() {
   }).addTo(AppState.map);
 }
 
-// --- Focused Stadtteil Drill-Down ---
+// --- Focused Stadtteil Drill-Down & Automatic Zoom ---
 function focusTownDistricts(townId) {
   const feat = AppState.townFeaturesById[townId];
   const layer = AppState.townLayersById[townId];
-  if (!feat || !layer) return;
+  if (!feat || !layer || !AppState.map) return;
 
   AppState.focusedTownId = townId;
   AppState.selectedTownId = townId;
@@ -458,7 +458,7 @@ function focusTownDistricts(townId) {
     maxZoom: 14,
     paddingTopLeft: [50, 40],
     paddingBottomRight: [drawerWidth + 30, 40],
-    animate: false
+    animate: true
   });
 
   const banner = document.getElementById('focus-banner');
@@ -472,11 +472,42 @@ function focusTownDistricts(townId) {
     bannerText.textContent = `Gemeinde: ${feat.properties.name} (Einheitliche Kommune)`;
   }
 
-  selectTown(townId);
+  selectTown(townId, false);
   if (distCount > 0) {
     switchDrawerTab('districts');
   }
 
+  refreshAllStyles();
+  refreshMarkers();
+}
+
+function focusDistrictOnMap(districtId) {
+  const feat = AppState.districtFeaturesById[districtId];
+  const layer = AppState.districtLayersById[districtId];
+  if (!feat || !layer || !AppState.map) return;
+
+  AppState.focusedTownId = feat.properties.townId;
+  AppState.selectedTownId = feat.properties.townId;
+  AppState.selectedDistrictId = districtId;
+
+  const drawer = document.getElementById('details-drawer');
+  const drawerWidth = drawer && !drawer.classList.contains('collapsed') ? Math.min(window.innerWidth * 0.45, 420) : 40;
+
+  AppState.map.fitBounds(layer.getBounds(), {
+    maxZoom: 15,
+    paddingTopLeft: [50, 40],
+    paddingBottomRight: [drawerWidth + 30, 40],
+    animate: true
+  });
+
+  const banner = document.getElementById('focus-banner');
+  const bannerText = document.getElementById('focus-banner-text');
+  if (banner && bannerText) {
+    bannerText.textContent = `${feat.properties.townName} › ${feat.properties.name}`;
+    banner.style.display = 'flex';
+  }
+
+  selectDistrict(districtId, false);
   refreshAllStyles();
   refreshMarkers();
 }
@@ -488,11 +519,11 @@ function exitDistrictFocus() {
   document.getElementById('focus-banner').style.display = 'none';
 
   if (AppState.map) {
-    AppState.map.setView([49.38, 8.75], 10, { animate: false });
+    AppState.map.setView([49.38, 8.75], 10, { animate: true });
   }
 
   if (AppState.selectedTownId) {
-    selectTown(AppState.selectedTownId);
+    selectTown(AppState.selectedTownId, false);
     switchDrawerTab('overview');
   }
 
@@ -1226,15 +1257,7 @@ function deleteQuickArrow() {
 // --- Interaction Handlers ---
 function handleTownClick(townId) {
   if (AppState.currentMode === 'inspect') {
-    const wasInDistrictFocus = !!AppState.focusedTownId;
-    const hasDistricts = Object.values(AppState.districtFeaturesById).some(df => df.properties.townId === townId);
-
-    selectTown(townId);
-
-    // If the user was already focused on a town's districts, seamlessly transition focus to the new town!
-    if (hasDistricts && wasInDistrictFocus) {
-      focusTownDistricts(townId);
-    }
+    selectTown(townId, true);
   } else if (AppState.currentMode === 'paint') {
     applyPaintToTown(townId);
   } else if (AppState.currentMode === 'arrow') {
@@ -1244,7 +1267,7 @@ function handleTownClick(townId) {
 
 function handleDistrictClick(districtId) {
   if (AppState.currentMode === 'inspect') {
-    selectDistrict(districtId);
+    selectDistrict(districtId, true);
   } else if (AppState.currentMode === 'paint') {
     applyPaintToDistrict(districtId);
   } else if (AppState.currentMode === 'arrow') {
@@ -1253,7 +1276,7 @@ function handleDistrictClick(districtId) {
 }
 
 // --- Selection & Drawer Sync ---
-function selectTown(townId) {
+function selectTown(townId, shouldZoom = true) {
   // If we were focused on a different town's districts, exit that previous town's district mode
   if (AppState.focusedTownId && AppState.focusedTownId !== townId) {
     AppState.focusedTownId = null;
@@ -1317,12 +1340,38 @@ function selectTown(townId) {
   renderDeploymentsList(townId);
   document.getElementById('drawer-notes').value = town.notes || '';
 
+  // AUTOMATIC ZOOM TO TOWN ON SELECTION
+  if (shouldZoom && AppState.map) {
+    if (distCount > 0) {
+      focusTownDistricts(townId);
+      return;
+    } else {
+      const layer = AppState.townLayersById[townId];
+      if (layer) {
+        const drawerWidth = drawer && !drawer.classList.contains('collapsed') ? Math.min(window.innerWidth * 0.45, 420) : 40;
+        AppState.map.fitBounds(layer.getBounds(), {
+          maxZoom: 13,
+          paddingTopLeft: [50, 40],
+          paddingBottomRight: [drawerWidth + 30, 40],
+          animate: true
+        });
+
+        const banner = document.getElementById('focus-banner');
+        const bannerText = document.getElementById('focus-banner-text');
+        if (banner && bannerText) {
+          bannerText.textContent = `Gemeinde: ${feature.properties.name}`;
+          banner.style.display = 'flex';
+        }
+      }
+    }
+  }
+
   refreshAllStyles();
   refreshMarkers();
   updateNavigationHUD();
 }
 
-function selectDistrict(districtId) {
+function selectDistrict(districtId, shouldZoom = false) {
   AppState.selectedDistrictId = districtId;
   const feature = AppState.districtFeaturesById[districtId];
   const dist = AppState.districts[districtId];
@@ -1363,6 +1412,11 @@ function selectDistrict(districtId) {
 
   renderDeploymentsList(districtId);
   document.getElementById('drawer-notes').value = dist.notes || '';
+
+  if (shouldZoom) {
+    focusDistrictOnMap(districtId);
+    return;
+  }
 
   refreshAllStyles();
 }
@@ -2055,8 +2109,7 @@ function initUIEventListeners() {
       item.addEventListener('click', () => {
         searchResults.classList.remove('visible');
         searchInput.value = f.properties.name;
-        focusTownDistricts(f.properties.id);
-        selectTown(f.properties.id);
+        selectTown(f.properties.id, true);
       });
       searchResults.appendChild(item);
     });
@@ -2074,8 +2127,7 @@ function initUIEventListeners() {
       item.addEventListener('click', () => {
         searchResults.classList.remove('visible');
         searchInput.value = `${df.properties.townName} › ${df.properties.name}`;
-        focusTownDistricts(df.properties.townId);
-        selectDistrict(df.properties.id);
+        focusDistrictOnMap(df.properties.id);
       });
       searchResults.appendChild(item);
     });
@@ -2286,14 +2338,12 @@ window.toggleReportSubpoints = function(townId, btn) {
 
 window.jumpToTownFromReport = function(townId) {
   document.getElementById('report-modal').classList.remove('visible');
-  focusTownDistricts(townId);
-  selectTown(townId);
+  selectTown(townId, true);
 };
 
 window.jumpToDistrictFromReport = function(townId, districtId) {
   document.getElementById('report-modal').classList.remove('visible');
-  focusTownDistricts(townId);
-  selectDistrict(districtId);
+  focusDistrictOnMap(districtId);
 };
 
 function exportDataJson() {

@@ -224,6 +224,14 @@
     <aside class="inspector-panel collapsed" id="details-drawer">
       <div class="inspector-header">
         <div class="inspector-titles">
+          <div class="inspector-hierarchy-bar" id="drawer-hierarchy-bar" style="display: none;">
+            <button class="breadcrumb-back-btn" id="btn-back-to-parent-town" title="Zurück zur Gesamtgemeinde">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+              <span id="drawer-breadcrumb-parent">Ortschaft</span>
+            </button>
+            <span class="breadcrumb-sep">›</span>
+            <span class="breadcrumb-current" id="drawer-breadcrumb-current">Nachbarschaft</span>
+          </div>
           <h2 id="drawer-town-name">Ortschaft</h2>
           <div class="type-badge" id="drawer-town-type">Gemeinde</div>
         </div>
@@ -234,8 +242,8 @@
         
         <!-- Segmented Tab Control -->
         <div class="segmented-control" style="width: 100%;">
-          <button class="segmented-btn active" id="tab-btn-overview" style="flex: 1; justify-content: center;">Aktivitäten</button>
-          <button class="segmented-btn" id="tab-btn-districts" style="flex: 1; justify-content: center;">Stadtteile (<span id="drawer-districts-count">0</span>)</button>
+          <button class="segmented-btn active" id="tab-btn-overview" style="flex: 1; justify-content: center;">Gesamtgemeinde</button>
+          <button class="segmented-btn" id="tab-btn-districts" style="flex: 1; justify-content: center;">Nachbarschaften (<span id="drawer-districts-count">0</span>)</button>
         </div>
 
         <!-- Zoom to town button -->
@@ -249,9 +257,15 @@
 
         <!-- Container for Stadtteile Tab -->
         <div id="drawer-districts-view" style="display: none;">
-          <div class="group-header">Amtliche Stadtbezirke</div>
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
+            <div class="group-header" style="margin: 0;">Unterpunkte der Ortschaft</div>
+            <span style="font-size: 11px; color: var(--text-tertiary);" id="drawer-districts-summary-count">0 Nachbarschaften</span>
+          </div>
+          <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; line-height: 1.35;">
+            Nachbarschaften als Unterpunkte dieser Ortschaft verwalten und aufklappen:
+          </div>
           <div class="district-list" id="drawer-districts-list">
-            <!-- Dynamically populated -->
+            <!-- Dynamically populated with accordion subcards -->
           </div>
         </div>
 

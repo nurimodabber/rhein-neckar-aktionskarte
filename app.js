@@ -232,7 +232,7 @@ function focusTownDistricts(townId) {
   AppState.selectedTownId = townId;
   AppState.selectedDistrictId = null;
 
-  AppState.map.fitBounds(layer.getBounds(), { maxZoom: 14, padding: [40, 40] });
+  AppState.map.fitBounds(layer.getBounds(), { maxZoom: 14, padding: [40, 40], animate: false });
 
   const banner = document.getElementById('focus-banner');
   const bannerText = document.getElementById('focus-banner-text');
@@ -259,8 +259,8 @@ function exitDistrictFocus() {
 
   document.getElementById('focus-banner').style.display = 'none';
 
-  if (AppState.geoJsonLayer) {
-    AppState.map.fitBounds(AppState.geoJsonLayer.getBounds(), { padding: [25, 25] });
+  if (AppState.map) {
+    AppState.map.setView([49.38, 8.75], 10, { animate: false });
   }
 
   if (AppState.selectedTownId) {
@@ -564,8 +564,8 @@ function updateDistrictTooltip(districtId) {
   const milestoneLabel = getMilestoneLabel(dist.milestone);
 
   const tooltipContent = `
-    <div class="tt-title">${escapeHtml(feature.properties.name)}</div>
-    <div style="font-size:10px; color:var(--text-tertiary); margin-bottom:4px;">Stadtteil von ${escapeHtml(feature.properties.townName)}</div>
+    <div style="font-size:10.5px; font-weight:700; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:0.4px;">${escapeHtml(feature.properties.townName)}</div>
+    <div class="tt-title" style="margin-top:2px;"><span style="color:var(--system-blue); font-weight:bold;">↳</span> Unterpunkt: ${escapeHtml(feature.properties.name)}</div>
     <div class="tt-row"><span>Status:</span> <span class="tt-val">${milestoneLabel}</span></div>
     <div class="tt-row"><span>Nuklei:</span> <span class="tt-val">${dist.nuclei || 0}</span></div>
     <div class="tt-row"><span>Kernaktivitäten:</span> <span class="tt-val">${totalActs}</span></div>
@@ -872,8 +872,15 @@ function selectTown(townId) {
   const drawer = document.getElementById('details-drawer');
   drawer.classList.remove('collapsed');
 
+  const hierBar = document.getElementById('drawer-hierarchy-bar');
+  if (hierBar) hierBar.style.display = 'none';
+
   document.getElementById('drawer-town-name').textContent = feature.properties.name;
-  document.getElementById('drawer-town-type').textContent = feature.properties.kreis;
+  
+  const distCount = Object.values(AppState.districtFeaturesById).filter(f => f.properties.townId === townId).length;
+  document.getElementById('drawer-town-type').textContent = distCount > 0 
+    ? `${feature.properties.kreis} • ${distCount} Nachbarschaften` 
+    : `${feature.properties.kreis} • Gesamtgemeinde`;
 
   renderDistrictsListForTown(townId);
 
@@ -909,11 +916,20 @@ function selectDistrict(districtId) {
   const drawer = document.getElementById('details-drawer');
   drawer.classList.remove('collapsed');
 
-  document.getElementById('drawer-town-name').textContent = `${feature.properties.name}`;
-  document.getElementById('drawer-town-type').textContent = `Stadtteil von ${feature.properties.townName}`;
+  const hierBar = document.getElementById('drawer-hierarchy-bar');
+  if (hierBar) {
+    hierBar.style.display = 'flex';
+    document.getElementById('drawer-breadcrumb-parent').textContent = feature.properties.townName;
+    document.getElementById('drawer-breadcrumb-current').textContent = `Unterpunkt: ${feature.properties.name}`;
+  }
+
+  // Explicit parent town title with subpoint context
+  document.getElementById('drawer-town-name').textContent = feature.properties.townName;
+  document.getElementById('drawer-town-type').textContent = `Unterpunkt: ${feature.properties.name} (Nachbarschaft von ${feature.properties.townName})`;
 
   renderDistrictsListForTown(feature.properties.townId);
 
+  // Synchronize inputs with the selected district
   updateMilestoneUISelection(dist.milestone);
   document.getElementById('drawer-custom-color').value = dist.customColor || '#86efac';
 
@@ -937,16 +953,23 @@ function selectDistrict(districtId) {
 function renderDistrictsListForTown(townId) {
   const container = document.getElementById('drawer-districts-list');
   const countSpan = document.getElementById('drawer-districts-count');
+  const summarySpan = document.getElementById('drawer-districts-summary-count');
   container.innerHTML = '';
 
+  const parentTown = AppState.townFeaturesById[townId];
+  const parentName = parentTown ? parentTown.properties.name : 'dieser Ortschaft';
+  const parentHeaderName = document.getElementById('drawer-districts-parent-name');
+  if (parentHeaderName) parentHeaderName.textContent = parentName;
+
   const districts = Object.values(AppState.districtFeaturesById).filter(f => f.properties.townId === townId);
-  countSpan.textContent = districts.length;
+  if (countSpan) countSpan.textContent = districts.length;
+  if (summarySpan) summarySpan.textContent = `${districts.length} Nachbarschaften`;
 
   if (districts.length === 0) {
     container.innerHTML = `
-      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; font-size:12px; color:#64748b;">
-        <div style="font-weight:700; color:#334155; margin-bottom:4px;">Einheitliche Gemeinde</div>
-        Dieser Ort besitzt keine separaten behördlichen Stadtbezirke. Aktivitäten und Nuklei werden direkt für die Gesamt-Kommune gepflegt.
+      <div style="background:rgba(118,118,128,0.06); border:0.5px solid var(--separator); border-radius:var(--radius-sm); padding:12px; font-size:12px; color:var(--text-secondary);">
+        <div style="font-weight:600; color:var(--text-primary); margin-bottom:4px;">Einheitliche Gemeinde</div>
+        Dieser Ort besitzt keine weiteren unterteilten Nachbarschaften. Alle Aktivitäten und Nuklei werden für die Gesamt-Kommune gepflegt.
       </div>
     `;
     return;
@@ -956,26 +979,175 @@ function renderDistrictsListForTown(townId) {
     const dId = df.properties.id;
     const dData = AppState.districts[dId] || { milestone: 'none', nuclei: 0, activities: {} };
     const actsTotal = calculateTotalActivities(dData.activities);
+    const isSelected = AppState.selectedDistrictId === dId;
 
-    const item = document.createElement('div');
-    item.className = `district-item ${AppState.selectedDistrictId === dId ? 'active' : ''}`;
-    item.innerHTML = `
-      <div class="district-item-left">
-        <span style="width:10px; height:10px; border-radius:50%; background:${getMilestoneColor(dData.milestone)};"></span>
-        <span class="district-item-name">${escapeHtml(df.properties.name)}</span>
+    const card = document.createElement('div');
+    card.className = `district-subcard ${isSelected ? 'active expanded' : ''}`;
+    card.id = `subcard-${dId}`;
+
+    card.innerHTML = `
+      <div class="district-subcard-header">
+        <div class="district-subcard-left">
+          <span class="subcard-chevron">${isSelected ? '▼' : '▶'}</span>
+          <span style="width:9px; height:9px; border-radius:50%; background:${getMilestoneColor(dData.milestone)}; flex-shrink:0;"></span>
+          <span class="district-subcard-title">${escapeHtml(df.properties.name)}</span>
+          <span class="subpoint-tag">Unterpunkt</span>
+        </div>
+        <div class="district-subcard-badges">
+          <span class="subcard-badge milestone">${getMilestoneLabel(dData.milestone)}</span>
+          <span class="subcard-badge">${dData.nuclei || 0} Nuklei</span>
+          <span class="subcard-badge">${actsTotal} Akt.</span>
+        </div>
       </div>
-      <div style="display:flex; gap:6px; align-items:center;">
-        <span class="district-item-badge">Nuklei: ${dData.nuclei || 0}</span>
-        <span class="district-item-badge">Akt.: ${actsTotal}</span>
+      <div class="district-subcard-body" style="display: ${isSelected ? 'block' : 'none'};">
+        <div class="subcard-section-label">Meilenstein für ${escapeHtml(df.properties.name)}:</div>
+        <div class="subcard-milestone-grid">
+          <button type="button" class="subcard-m-btn ${dData.milestone==='none'?'active':''}" data-m="none">Keine</button>
+          <button type="button" class="subcard-m-btn ${dData.milestone==='pg'?'active':''}" data-m="pg">PG</button>
+          <button type="button" class="subcard-m-btn ${dData.milestone==='ipg'?'active':''}" data-m="ipg">IPG</button>
+          <button type="button" class="subcard-m-btn ${dData.milestone==='ipg_plus'?'active':''}" data-m="ipg_plus">IPG+</button>
+        </div>
+
+        <div class="subcard-steppers-group">
+          <div class="subcard-row">
+            <span>Aktive Nuklei:</span>
+            <div class="apple-stepper sm">
+              <button type="button" class="stepper-btn btn-dec-sub-nuclei">-</button>
+              <input type="number" class="stepper-val input-sub-nuclei" value="${dData.nuclei || 0}" min="0" />
+              <button type="button" class="stepper-btn btn-inc-sub-nuclei">+</button>
+            </div>
+          </div>
+          <div class="subcard-row">
+            <span>Andachten:</span>
+            <div class="apple-stepper sm">
+              <button type="button" class="stepper-btn btn-dec-sub-dev">-</button>
+              <input type="number" class="stepper-val input-sub-dev" value="${dData.activities?.devotionals || 0}" min="0" />
+              <button type="button" class="stepper-btn btn-inc-sub-dev">+</button>
+            </div>
+          </div>
+          <div class="subcard-row">
+            <span>Studienkreise:</span>
+            <div class="apple-stepper sm">
+              <button type="button" class="stepper-btn btn-dec-sub-study">-</button>
+              <input type="number" class="stepper-val input-sub-study" value="${dData.activities?.studyCircles || 0}" min="0" />
+              <button type="button" class="stepper-btn btn-inc-sub-study">+</button>
+            </div>
+          </div>
+          <div class="subcard-row">
+            <span>Kinderklassen:</span>
+            <div class="apple-stepper sm">
+              <button type="button" class="stepper-btn btn-dec-sub-child">-</button>
+              <input type="number" class="stepper-val input-sub-child" value="${dData.activities?.childrenClasses || 0}" min="0" />
+              <button type="button" class="stepper-btn btn-inc-sub-child">+</button>
+            </div>
+          </div>
+          <div class="subcard-row">
+            <span>Junior-Jugend:</span>
+            <div class="apple-stepper sm">
+              <button type="button" class="stepper-btn btn-dec-sub-youth">-</button>
+              <input type="number" class="stepper-val input-sub-youth" value="${dData.activities?.juniorYouth || 0}" min="0" />
+              <button type="button" class="stepper-btn btn-inc-sub-youth">+</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:6px; margin-top:8px;">
+          <button type="button" class="btn btn-secondary btn-zoom-subcard" style="flex:1; font-size:11px; padding:3px 8px; justify-content:center;">
+            Auf Karte heranzoomen
+          </button>
+        </div>
       </div>
     `;
 
-    item.addEventListener('click', () => {
-      selectDistrict(dId);
-      AppState.map.setView(df.properties.center, 14);
+    // Wire header click to toggle or select
+    const header = card.querySelector('.district-subcard-header');
+    header.addEventListener('click', () => {
+      if (AppState.selectedDistrictId === dId) {
+        const body = card.querySelector('.district-subcard-body');
+        const isExp = body.style.display !== 'none';
+        body.style.display = isExp ? 'none' : 'block';
+        card.classList.toggle('expanded', !isExp);
+        card.querySelector('.subcard-chevron').textContent = isExp ? '▶' : '▼';
+      } else {
+        selectDistrict(dId);
+      }
     });
 
-    container.appendChild(item);
+    // Milestone buttons
+    card.querySelectorAll('.subcard-m-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const m = btn.dataset.m;
+        dData.milestone = m;
+        saveState();
+        refreshAllStyles();
+        renderDistrictsListForTown(townId);
+        if (AppState.selectedDistrictId === dId) {
+          updateMilestoneUISelection(m);
+        }
+      });
+    });
+
+    // Nuclei Stepper
+    const nucleiInput = card.querySelector('.input-sub-nuclei');
+    card.querySelector('.btn-dec-sub-nuclei').addEventListener('click', (e) => {
+      e.stopPropagation();
+      let v = Math.max(0, (parseInt(nucleiInput.value) || 0) - 1);
+      nucleiInput.value = v;
+      dData.nuclei = v;
+      saveState();
+      refreshAllStyles();
+      renderDistrictsListForTown(townId);
+      if (AppState.selectedDistrictId === dId) document.getElementById('drawer-nuclei').value = v;
+    });
+    card.querySelector('.btn-inc-sub-nuclei').addEventListener('click', (e) => {
+      e.stopPropagation();
+      let v = (parseInt(nucleiInput.value) || 0) + 1;
+      nucleiInput.value = v;
+      dData.nuclei = v;
+      saveState();
+      refreshAllStyles();
+      renderDistrictsListForTown(townId);
+      if (AppState.selectedDistrictId === dId) document.getElementById('drawer-nuclei').value = v;
+    });
+
+    // Activities
+    const bindSubAct = (decCls, incCls, inputCls, key) => {
+      const inp = card.querySelector(inputCls);
+      card.querySelector(decCls).addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!dData.activities) dData.activities = {};
+        let v = Math.max(0, (parseInt(inp.value) || 0) - 1);
+        inp.value = v;
+        dData.activities[key] = v;
+        saveState();
+        refreshAllStyles();
+        renderDistrictsListForTown(townId);
+      });
+      card.querySelector(incCls).addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!dData.activities) dData.activities = {};
+        let v = (parseInt(inp.value) || 0) + 1;
+        inp.value = v;
+        dData.activities[key] = v;
+        saveState();
+        refreshAllStyles();
+        renderDistrictsListForTown(townId);
+      });
+    };
+
+    bindSubAct('.btn-dec-sub-dev', '.btn-inc-sub-dev', '.input-sub-dev', 'devotionals');
+    bindSubAct('.btn-dec-sub-study', '.btn-inc-sub-study', '.input-sub-study', 'studyCircles');
+    bindSubAct('.btn-dec-sub-child', '.btn-inc-sub-child', '.input-sub-child', 'childrenClasses');
+    bindSubAct('.btn-dec-sub-youth', '.btn-inc-sub-youth', '.input-sub-youth', 'juniorYouth');
+
+    // Zoom subcard button
+    card.querySelector('.btn-zoom-subcard').addEventListener('click', (e) => {
+      e.stopPropagation();
+      focusDistrictOnMap(dId);
+    });
+
+    container.appendChild(card);
   });
 }
 
@@ -1264,6 +1436,15 @@ function initUIEventListeners() {
     refreshAllStyles();
   });
 
+  const btnBack = document.getElementById('btn-back-to-parent-town');
+  if (btnBack) {
+    btnBack.addEventListener('click', () => {
+      if (AppState.selectedTownId) {
+        selectTown(AppState.selectedTownId);
+      }
+    });
+  }
+
   document.querySelectorAll('.milestone-card').forEach(card => {
     card.addEventListener('click', () => {
       const m = card.dataset.milestone;
@@ -1346,10 +1527,13 @@ function initUIEventListeners() {
     const matchedTowns = Object.values(AppState.townFeaturesById).filter(f =>
       f.properties.name.toLowerCase().includes(q) || f.properties.fullName.toLowerCase().includes(q)
     );
+    const matchedDistricts = Object.values(AppState.districtFeaturesById).filter(df =>
+      df.properties.name.toLowerCase().includes(q)
+    );
 
     searchResults.innerHTML = '';
     
-    matchedTowns.slice(0, 6).forEach(f => {
+    matchedTowns.slice(0, 5).forEach(f => {
       const item = document.createElement('div');
       item.className = 'search-item';
       item.innerHTML = `<span><strong>${escapeHtml(f.properties.name)}</strong></span> <span style="font-size:10px; color:#64748b;">${escapeHtml(f.properties.kreis)}</span>`;
@@ -1357,6 +1541,26 @@ function initUIEventListeners() {
         searchResults.classList.remove('visible');
         searchInput.value = f.properties.name;
         focusTownDistricts(f.properties.id);
+        selectTown(f.properties.id);
+      });
+      searchResults.appendChild(item);
+    });
+
+    matchedDistricts.slice(0, 5).forEach(df => {
+      const item = document.createElement('div');
+      item.className = 'search-item';
+      item.innerHTML = `
+        <div>
+          <strong>${escapeHtml(df.properties.name)}</strong>
+          <span class="search-subpoint-badge">↳ Nachbarschaft von ${escapeHtml(df.properties.townName)}</span>
+        </div>
+        <span style="font-size:10px; color:#64748b;">Stadtteil</span>
+      `;
+      item.addEventListener('click', () => {
+        searchResults.classList.remove('visible');
+        searchInput.value = `${df.properties.townName} › ${df.properties.name}`;
+        focusTownDistricts(df.properties.townId);
+        selectDistrict(df.properties.id);
       });
       searchResults.appendChild(item);
     });
@@ -1490,12 +1694,17 @@ function openClusterReportModal() {
     const town = AppState.towns[id] || { milestone: 'none', nuclei: 0, activities: {} };
     const acts = town.activities || {};
     const totalActs = calculateTotalActivities(acts);
-    const distCount = Object.values(AppState.districtFeaturesById).filter(df => df.properties.townId === id).length;
+    const districts = Object.values(AppState.districtFeaturesById).filter(df => df.properties.townId === id);
+    const distCount = districts.length;
 
     const tr = document.createElement('tr');
+    tr.className = `report-town-row ${distCount > 0 ? 'has-subpoints' : ''}`;
     tr.innerHTML = `
-      <td><strong>${escapeHtml(f.properties.name)}</strong></td>
-      <td><span style="font-size:11px; color:#64748b;">${escapeHtml(f.properties.kreis)} ${distCount > 0 ? `(${distCount} Stadtteile)` : ''}</span></td>
+      <td>
+        <strong>${escapeHtml(f.properties.name)}</strong>
+        ${distCount > 0 ? `<button type="button" class="town-expand-btn" onclick="toggleReportSubpoints('${id}', this)">▼ ${distCount} Unterpunkte</button>` : ''}
+      </td>
+      <td><span style="font-size:11px; color:#64748b;">${escapeHtml(f.properties.kreis)}</span></td>
       <td>
         <span style="display:inline-flex; align-items:center; gap:4px; font-weight:600;">
           <span style="width:10px; height:10px; border-radius:50%; background:${getMilestoneColor(town.milestone)};"></span>
@@ -1507,18 +1716,66 @@ function openClusterReportModal() {
       <td>${town.isCenter ? '<span style="color:var(--system-orange); font-weight:600;">★ Zentrum</span>' : '-'}</td>
       <td>${AppState.deployments.filter(d => d.fromId === id || d.toId === id).length}</td>
       <td>
-        <button class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;" onclick="jumpToTownFromReport('${id}')">${distCount > 0 ? 'Stadtteile anzeigen' : 'Details'}</button>
+        <button class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;" onclick="jumpToTownFromReport('${id}')">Details</button>
       </td>
     `;
     tbody.appendChild(tr);
+
+    if (distCount > 0) {
+      districts.forEach(df => {
+        const dId = df.properties.id;
+        const dist = AppState.districts[dId] || { milestone: 'none', nuclei: 0, activities: {} };
+        const dActs = calculateTotalActivities(dist.activities);
+
+        const subTr = document.createElement('tr');
+        subTr.className = `report-subpoint-row report-sub-${id}`;
+        subTr.innerHTML = `
+          <td style="padding-left: 28px;">
+            <span class="subpoint-branch-icon">↳</span>
+            <span style="font-weight: 500;">${escapeHtml(df.properties.name)}</span>
+            <span class="subpoint-label-badge">Nachbarschaft</span>
+          </td>
+          <td><span style="font-size:11px; color:var(--text-tertiary);">Unterpunkt von ${escapeHtml(f.properties.name)}</span></td>
+          <td>
+            <span style="display:inline-flex; align-items:center; gap:4px; font-size:11px;">
+              <span style="width:8px; height:8px; border-radius:50%; background:${getMilestoneColor(dist.milestone)};"></span>
+              ${getMilestoneLabel(dist.milestone)}
+            </span>
+          </td>
+          <td>${dist.nuclei || 0}</td>
+          <td>${dActs}</td>
+          <td style="color:var(--text-tertiary);">-</td>
+          <td>${AppState.deployments.filter(d => d.fromId === dId || d.toId === dId).length}</td>
+          <td>
+            <button class="btn btn-secondary" style="padding: 2px 7px; font-size: 10px;" onclick="jumpToDistrictFromReport('${id}', '${dId}')">Fokus</button>
+          </td>
+        `;
+        tbody.appendChild(subTr);
+      });
+    }
   });
 
   document.getElementById('report-modal').classList.add('visible');
 }
 
+window.toggleReportSubpoints = function(townId, btn) {
+  const rows = document.querySelectorAll(`.report-sub-${townId}`);
+  const isHidden = rows.length > 0 && rows[0].style.display === 'none';
+  rows.forEach(r => r.style.display = isHidden ? 'table-row' : 'none');
+  const count = rows.length;
+  btn.textContent = isHidden ? `▼ ${count} Unterpunkte` : `▶ ${count} Unterpunkte`;
+};
+
 window.jumpToTownFromReport = function(townId) {
   document.getElementById('report-modal').classList.remove('visible');
   focusTownDistricts(townId);
+  selectTown(townId);
+};
+
+window.jumpToDistrictFromReport = function(townId, districtId) {
+  document.getElementById('report-modal').classList.remove('visible');
+  focusTownDistricts(townId);
+  selectDistrict(districtId);
 };
 
 function exportDataJson() {

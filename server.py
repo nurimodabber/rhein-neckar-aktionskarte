@@ -17,7 +17,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 try:
-    with socketserver.TCPServer(("", PORT), Handler) as httpd:
+    with socketserver.ThreadingTCPServer(("", PORT), Handler) as httpd:
         print(f"Rhein-Neckar Cluster Map Server läuft auf http://localhost:{PORT}")
         print("Drücke Strg+C zum Beenden.")
         # Try to open in default browser
@@ -26,7 +26,7 @@ try:
 except OSError as e:
     # Port might be in use, try 8081
     PORT = 8081
-    with socketserver.TCPServer(("", PORT), Handler) as httpd:
+    with socketserver.ThreadingTCPServer(("", PORT), Handler) as httpd:
         print(f"Rhein-Neckar Cluster Map Server läuft auf http://localhost:{PORT}")
         webbrowser.open(f"http://localhost:{PORT}")
         httpd.serve_forever()

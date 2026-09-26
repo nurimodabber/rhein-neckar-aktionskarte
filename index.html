@@ -154,16 +154,15 @@
     <div id="map-container">
       <div id="map"></div>
 
-      <!-- Top Left Navigation HUD -->
-      <div class="hud-nav-bar apple-hud" id="zoom-nav-bar">
+      <!-- Top Left Apple Navigation Breadcrumb HUD -->
+      <div class="hud-nav-bar apple-hud" id="zoom-nav-bar" style="display: none;">
         <button class="hud-pill-btn" id="btn-zoom-cluster" title="Auf Gesamtansicht zurücksetzen">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="2" y1="12" x2="22" y2="12"></line>
-            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;">
+            <polyline points="15 18 9 12 15 6"></polyline>
           </svg>
-          Gesamtkarte (Rhein-Neckar)
+          Gesamtkarte
         </button>
+        <span class="nav-separator" id="nav-separator" style="display: none;">›</span>
         <div class="focus-crumb" id="focus-banner" style="display: none;">
           <span id="focus-banner-text">Stadtteile</span>
           <button class="focus-dismiss" id="btn-exit-focus" title="Zurück zur Gesamtkarte">✕</button>

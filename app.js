@@ -72,6 +72,17 @@ document.addEventListener('DOMContentLoaded', () => {
   updateClusterStats();
   updateUndoRedoButtons();
   saveAutoBackup("Sitzungsstart", false);
+
+  // Check URL params for direct town focus (e.g. ?focus=heidelberg or #heidelberg)
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const focusParam = urlParams.get('focus') || (window.location.hash ? window.location.hash.substring(1) : null);
+    if (focusParam && AppState.townFeaturesById[focusParam]) {
+      setTimeout(() => focusTownDistricts(focusParam), 150);
+    }
+  } catch (e) {
+    console.warn('URL focus parse error:', e);
+  }
 });
 
 // --- Data Persistence ---
@@ -356,7 +367,7 @@ function initMap() {
     maxZoom: 16
   }).setView([49.38, 8.75], 10);
 
-  L.control.zoom({ position: 'topright' }).addTo(AppState.map);
+  L.control.zoom({ position: 'bottomright' }).addTo(AppState.map);
 
   AppState.map.createPane('townPerimeterPane');
   AppState.map.getPane('townPerimeterPane').style.zIndex = 415;
@@ -458,17 +469,7 @@ function focusTownDistricts(townId) {
     animate: true
   });
 
-  const banner = document.getElementById('focus-banner');
-  const bannerText = document.getElementById('focus-banner-text');
   const distCount = Object.values(AppState.districtFeaturesById).filter(df => df.properties.townId === townId).length;
-
-  banner.style.display = 'flex';
-  if (distCount > 0) {
-    bannerText.textContent = `Stadtteile: ${feat.properties.name} (${distCount} Stadtteile)`;
-  } else {
-    bannerText.textContent = `Gemeinde: ${feat.properties.name} (Einheitliche Kommune)`;
-  }
-
   selectTown(townId, false);
   if (distCount > 0) {
     switchDrawerTab('districts');
@@ -476,6 +477,7 @@ function focusTownDistricts(townId) {
 
   refreshAllStyles();
   refreshMarkers();
+  updateNavigationHUD();
 }
 
 function focusDistrictOnMap(districtId) {
@@ -497,23 +499,22 @@ function focusDistrictOnMap(districtId) {
     animate: true
   });
 
-  const banner = document.getElementById('focus-banner');
-  const bannerText = document.getElementById('focus-banner-text');
-  if (banner && bannerText) {
-    bannerText.textContent = `${feat.properties.townName} › ${feat.properties.name}`;
-    banner.style.display = 'flex';
-  }
-
   selectDistrict(districtId, false);
   refreshAllStyles();
   refreshMarkers();
+  updateNavigationHUD();
 }
 
 function exitDistrictFocus() {
   AppState.focusedTownId = null;
   AppState.selectedDistrictId = null;
 
-  document.getElementById('focus-banner').style.display = 'none';
+  const navBar = document.getElementById('zoom-nav-bar');
+  if (navBar) navBar.style.display = 'none';
+  const banner = document.getElementById('focus-banner');
+  if (banner) banner.style.display = 'none';
+  const separator = document.getElementById('nav-separator');
+  if (separator) separator.style.display = 'none';
 
   if (AppState.map) {
     AppState.map.setView([49.38, 8.75], 10, { animate: true });
@@ -526,6 +527,7 @@ function exitDistrictFocus() {
 
   refreshAllStyles();
   refreshMarkers();
+  updateNavigationHUD();
 }
 
 // --- SVG Arrow Layer ---
@@ -573,20 +575,48 @@ function isTownInDistrictMode(townId) {
 
 // --- Navigation Breadcrumb HUD Sync ---
 function updateNavigationHUD() {
+  const navBar = document.getElementById('zoom-nav-bar');
+  const separator = document.getElementById('nav-separator');
   const banner = document.getElementById('focus-banner');
   const bannerText = document.getElementById('focus-banner-text');
-  if (!banner || !bannerText) return;
+  if (!navBar || !banner || !bannerText) return;
 
   const currentZoom = AppState.map ? AppState.map.getZoom() : 10;
-  if (AppState.focusedTownId) {
+  const isZoomed = currentZoom >= 11;
+
+  if (AppState.selectedDistrictId) {
+    const distFeat = AppState.districtFeaturesById[AppState.selectedDistrictId];
+    const townFeat = AppState.townFeaturesById[AppState.focusedTownId || (distFeat ? distFeat.properties.townId : null)];
+    const townName = townFeat ? townFeat.properties.name : (distFeat ? distFeat.properties.townName : '');
+    const distName = distFeat ? distFeat.properties.name : 'Stadtteil';
+
+    navBar.style.display = 'flex';
+    if (separator) separator.style.display = 'inline-flex';
+    banner.style.display = 'inline-flex';
+    bannerText.textContent = townName ? `${townName} › ${distName}` : distName;
+  } else if (AppState.focusedTownId) {
     const feat = AppState.townFeaturesById[AppState.focusedTownId];
-    const distCount = Object.values(AppState.districtFeaturesById).filter(df => df.properties.townId === AppState.focusedTownId).length;
-    banner.style.display = 'flex';
-    bannerText.textContent = `Stadtteile: ${feat ? feat.properties.name : 'Ortschaft'} (${distCount} Nachbarschaften)`;
-  } else if (currentZoom >= 14) {
-    banner.style.display = 'flex';
-    bannerText.textContent = 'Detailansicht: Stadtteile & Nachbarschaften';
+    const name = feat ? feat.properties.name : 'Ortschaft';
+
+    navBar.style.display = 'flex';
+    if (separator) separator.style.display = 'inline-flex';
+    banner.style.display = 'inline-flex';
+    bannerText.textContent = name;
+  } else if (AppState.selectedTownId && isZoomed) {
+    const feat = AppState.townFeaturesById[AppState.selectedTownId];
+    const name = feat ? feat.properties.name : 'Ortschaft';
+
+    navBar.style.display = 'flex';
+    if (separator) separator.style.display = 'inline-flex';
+    banner.style.display = 'inline-flex';
+    bannerText.textContent = name;
+  } else if (isZoomed) {
+    navBar.style.display = 'flex';
+    if (separator) separator.style.display = 'none';
+    banner.style.display = 'none';
   } else {
+    navBar.style.display = 'none';
+    if (separator) separator.style.display = 'none';
     banner.style.display = 'none';
   }
 }
@@ -1352,13 +1382,6 @@ function selectTown(townId, shouldZoom = true) {
           paddingBottomRight: [drawerWidth + 30, 40],
           animate: true
         });
-
-        const banner = document.getElementById('focus-banner');
-        const bannerText = document.getElementById('focus-banner-text');
-        if (banner && bannerText) {
-          bannerText.textContent = `Gemeinde: ${feature.properties.name}`;
-          banner.style.display = 'flex';
-        }
       }
     }
   }

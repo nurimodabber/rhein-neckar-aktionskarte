@@ -399,9 +399,6 @@ function renderSurroundingRegions() {
     { name: "Darmstadt-Aschaffenburg", coords: [49.65, 8.70], isRegion: true },
     { name: "Heilbronn-Tauber", coords: [49.30, 9.12], isRegion: true },
     { name: "Baden-Nordschwarzwald", coords: [49.12, 8.55], isRegion: true },
-    // Prominent neighboring cities across state & cluster borders
-    { name: "Worms", coords: [49.63, 8.36], isRegion: false },
-    { name: "Frankenthal", coords: [49.53, 8.35], isRegion: false }
   ];
 
   regionalLabels.forEach(item => {
@@ -2209,7 +2206,7 @@ function updateCurrentActivity(actKey, val) {
 
 function updateClusterStats() {
   const towns = Object.values(AppState.towns);
-  const totalTowns = Object.keys(AppState.townFeaturesById).length || 58;
+  const totalTowns = Object.keys(AppState.townFeaturesById).length || 71;
   
   let reachedTowns = 0;
   let totalNuclei = 0;

@@ -237,7 +237,14 @@ function focusTownDistricts(townId) {
   AppState.selectedTownId = townId;
   AppState.selectedDistrictId = null;
 
-  AppState.map.fitBounds(layer.getBounds(), { maxZoom: 14, padding: [40, 40], animate: false });
+  const drawer = document.getElementById('details-drawer');
+  const drawerWidth = drawer && !drawer.classList.contains('collapsed') ? Math.min(window.innerWidth * 0.45, 420) : 40;
+  AppState.map.fitBounds(layer.getBounds(), {
+    maxZoom: 14,
+    paddingTopLeft: [50, 40],
+    paddingBottomRight: [drawerWidth + 30, 40],
+    animate: false
+  });
 
   const banner = document.getElementById('focus-banner');
   const bannerText = document.getElementById('focus-banner-text');
@@ -311,8 +318,13 @@ const MILESTONE_COLORS = {
 function isTownInDistrictMode(townId) {
   const hasDistricts = Object.values(AppState.districtFeaturesById).some(df => df.properties.townId === townId);
   if (!hasDistricts) return false;
+  // When a specific town is focused, ONLY expand that town to maintain a clean, uncluttered map
+  if (AppState.focusedTownId) {
+    return townId === AppState.focusedTownId;
+  }
+  // Otherwise only expand in deep local zoom (level 14+)
   const currentZoom = AppState.map ? AppState.map.getZoom() : 10;
-  return currentZoom >= 12 || AppState.focusedTownId === townId;
+  return currentZoom >= 14;
 }
 
 // --- Navigation Breadcrumb HUD Sync ---
@@ -326,10 +338,10 @@ function updateNavigationHUD() {
     const feat = AppState.townFeaturesById[AppState.focusedTownId];
     const distCount = Object.values(AppState.districtFeaturesById).filter(df => df.properties.townId === AppState.focusedTownId).length;
     banner.style.display = 'flex';
-    bannerText.textContent = `${feat ? feat.properties.name : 'Ortschaft'} (${distCount} Stadtteile)`;
-  } else if (currentZoom >= 12) {
+    bannerText.textContent = `Stadtteile: ${feat ? feat.properties.name : 'Ortschaft'} (${distCount} Nachbarschaften)`;
+  } else if (currentZoom >= 14) {
     banner.style.display = 'flex';
-    bannerText.textContent = 'Stadtteil-Ebene (Detail-Ansicht)';
+    bannerText.textContent = 'Detailansicht: Stadtteile & Nachbarschaften';
   } else {
     banner.style.display = 'none';
   }
@@ -589,6 +601,11 @@ function updateTownTooltip(townId) {
   const town = AppState.towns[townId];
   if (!layer || !feature || !town) return;
 
+  if (isTownInDistrictMode(townId)) {
+    layer.unbindTooltip();
+    return;
+  }
+
   const totalActs = calculateTotalActivities(town.activities);
   const milestoneLabel = getMilestoneLabel(town.milestone);
   const centerBadge = town.isCenter ? '<span style="color:var(--system-orange); margin-left:4px;">★ Zentrum</span>' : '';
@@ -722,8 +739,8 @@ function refreshMarkers() {
       const customIcon = L.divIcon({
         className: 'subtle-marker-container',
         html: markerHtml,
-        iconSize: [130, 32],
-        iconAnchor: [65, 16]
+        iconSize: [80, 18],
+        iconAnchor: [40, 9]
       });
 
       const marker = L.marker(center, { icon: customIcon, interactive: false });

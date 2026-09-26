@@ -30,10 +30,10 @@ Die Anwendung öffnet sich unter `http://localhost:8080`.
 
 ## 🌟 Funktionsumfang
 
-### 1. Interaktive Karte aller 71 Kommunen & 83 Stadtteile
-* Enthält alle **54 Städte & Gemeinden des Rhein-Neckar-Kreises**, die Stadtkreise **Mannheim** und **Heidelberg**, **Speyer**, **Ludwigshafen am Rhein**, **Frankenthal (Pfalz)**, **Worms**, **Viernheim** sowie die rheinland-pfälzischen Nachbarkommunen (**Schifferstadt, Mutterstadt, Limburgerhof, Altrip, Neuhofen, Waldsee, Otterstadt, Römerberg, Böhl-Iggelheim, Bobenheim-Roxheim**).
-* **83 offizielle Nachbarschaften & Stadtteile** (u.a. in Mannheim, Heidelberg, Weinheim, Sinsheim, Wiesloch, Schwetzingen, Leimen, Walldorf, Hockenheim, Ladenburg, Eberbach, Schriesheim, Wiesloch).
-* Subtile, blendfreie typografische Namens-Halos nach Apple Human Interface Guidelines.
+### 1. Interaktive Karte aller 83 Kommunen & 83 Stadtteile
+* Umfasst die vier baden-württembergischen Gebiete: **Stadt Mannheim**, **Stadt Heidelberg**, **Rhein-Neckar-Kreis (54 Gemeinden)** und **Neckar-Odenwald-Kreis (27 Gemeinden)**.
+* **83 offizielle Nachbarschaften & Stadtteile** für detaillierte Innenstadt- und Quartiersplanung.
+* Angrenzende Regionen (Rheinhessen-Pfalz, Hessen, Baden-Nordschwarzwald, Heilbronn-Tauber) dezent im Hintergrund.
 
 ### 2. Arbeitsmodi & Interaktionen
 1. **🔍 Info & Details (Inspektions-Modus)**:
@@ -76,7 +76,7 @@ Die Anwendung öffnet sich unter `http://localhost:8080`.
 ├── sw.js                      # Offline-Service-Worker
 ├── icon.svg                   # Vektor-App-Icon
 ├── DEPLOYMENT.md              # Anleitung für GitHub Pages & Online-Release
-├── rhein_neckar_data.js       # Geometrien der 71 Kommunen
+├── rhein_neckar_data.js       # Geometrien der 83 Kommunen (BW Rhein-Neckar)
 ├── rhein_neckar_districts.js  # Geometrien der 83 Stadtteile
 ├── surrounding_kreise.js      # Umgebende Nachbarkreise
 ├── rivers_data.js             # Rhein, Neckar und Gewässerläufe

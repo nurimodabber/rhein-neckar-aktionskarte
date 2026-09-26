@@ -263,6 +263,7 @@ function focusTownDistricts(townId) {
   }
 
   refreshAllStyles();
+  refreshMarkers();
 }
 
 function exitDistrictFocus() {
@@ -940,9 +941,13 @@ function renderArrows() {
 // --- Interaction Handlers ---
 function handleTownClick(townId) {
   if (AppState.currentMode === 'inspect') {
-    selectTown(townId);
+    const wasInDistrictFocus = !!AppState.focusedTownId;
     const hasDistricts = Object.values(AppState.districtFeaturesById).some(df => df.properties.townId === townId);
-    if (hasDistricts && AppState.map && AppState.map.getZoom() < 12) {
+
+    selectTown(townId);
+
+    // If the user was already focused on a town's districts, seamlessly transition focus to the new town!
+    if (hasDistricts && wasInDistrictFocus) {
       focusTownDistricts(townId);
     }
   } else if (AppState.currentMode === 'paint') {
@@ -964,6 +969,13 @@ function handleDistrictClick(districtId) {
 
 // --- Selection & Drawer Sync ---
 function selectTown(townId) {
+  // If we were focused on a different town's districts, exit that previous town's district mode
+  if (AppState.focusedTownId && AppState.focusedTownId !== townId) {
+    AppState.focusedTownId = null;
+    const banner = document.getElementById('focus-banner');
+    if (banner) banner.style.display = 'none';
+  }
+
   AppState.selectedTownId = townId;
   AppState.selectedDistrictId = null;
 
@@ -986,6 +998,22 @@ function selectTown(townId) {
 
   renderDistrictsListForTown(townId);
 
+  // Sync zoom button in drawer
+  const btnZoomTown = document.getElementById('btn-zoom-to-town');
+  if (btnZoomTown) {
+    if (distCount > 0) {
+      btnZoomTown.style.display = 'flex';
+      const isFocused = AppState.focusedTownId === townId;
+      btnZoomTown.innerHTML = isFocused 
+        ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;margin-right:6px;"><polyline points="20 6 9 17 4 12"></polyline></svg> Stadtteile auf Karte aktiv`
+        : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;margin-right:6px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg> Auf Karte heranzoomen &amp; Stadtteile anzeigen`;
+      btnZoomTown.classList.toggle('btn-primary', isFocused);
+      btnZoomTown.classList.toggle('btn-secondary', !isFocused);
+    } else {
+      btnZoomTown.style.display = 'none';
+    }
+  }
+
   updateMilestoneUISelection(town.milestone);
   document.getElementById('drawer-custom-color').value = town.customColor || '#86efac';
 
@@ -1005,6 +1033,8 @@ function selectTown(townId) {
   document.getElementById('drawer-notes').value = town.notes || '';
 
   refreshAllStyles();
+  refreshMarkers();
+  updateNavigationHUD();
 }
 
 function selectDistrict(districtId) {

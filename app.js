@@ -38,6 +38,7 @@ const AppState = {
   landmarksLayer: null,
   geoJsonLayer: null,
   districtsLayer: null,
+  townPerimeterLayer: null,
   markersLayer: null,
   arrowSvgLayer: null,
   arrowDefs: null,
@@ -59,6 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderGeographicLandmarks();
   renderGeoJson();
   renderDistrictsGeoJson();
+  renderTownPerimeterLayer();
   initUIEventListeners();
   updateClusterStats();
 });
@@ -143,6 +145,10 @@ function initMap() {
   }).setView([49.38, 8.75], 10);
 
   L.control.zoom({ position: 'topright' }).addTo(AppState.map);
+
+  AppState.map.createPane('townPerimeterPane');
+  AppState.map.getPane('townPerimeterPane').style.zIndex = 415;
+  AppState.map.getPane('townPerimeterPane').style.pointerEvents = 'none';
 
   AppState.markersLayer = L.layerGroup().addTo(AppState.map);
 
@@ -336,13 +342,11 @@ function getTownStyle(feature) {
 
   if (isTownInDistrictMode(id)) {
     // When in district mode, this city's interior is rendered by its individual Stadtteile.
-    // The municipality boundary remains as a very subtle reference contour.
+    // The overarching municipal perimeter is rendered sharply on top by townPerimeterLayer.
     return {
       fillOpacity: 0,
-      opacity: 0.3,
-      color: '#007aff',
-      weight: 1.2,
-      dashArray: '3, 4',
+      opacity: 0,
+      weight: 0,
       interactive: false
     };
   }
@@ -394,6 +398,31 @@ function getTownStyle(feature) {
   };
 }
 
+// --- Overarching Municipality Perimeter Style (Zoom-In & Detail Mode) ---
+function getTownPerimeterStyle(feature) {
+  const id = feature.properties.id;
+  const inDistrictMode = isTownInDistrictMode(id);
+
+  if (!inDistrictMode) {
+    return { opacity: 0, fillOpacity: 0, weight: 0 };
+  }
+
+  const isSelected = AppState.selectedTownId === id;
+  const town = AppState.towns[id];
+  const isCenter = town && town.isCenter;
+
+  return {
+    fillOpacity: 0,
+    opacity: 0.95,
+    color: isSelected ? '#007aff' : (isCenter ? '#d97706' : '#1e293b'),
+    weight: isSelected ? 4.0 : 3.0,
+    dashArray: null,
+    lineJoin: 'round',
+    lineCap: 'round',
+    interactive: false
+  };
+}
+
 // --- Polygon Styles (Districts) ---
 function getDistrictStyle(feature) {
   const townId = feature.properties.townId;
@@ -406,8 +435,10 @@ function getDistrictStyle(feature) {
   const dist = AppState.districts[id] || { milestone: 'none', nuclei: 0, activities: {} };
 
   let fillColor = '#ffffff';
-  let borderColor = '#3a3a3c';
-  let fillOpacity = 0.92;
+  let borderColor = '#94a3b8'; // subtle Slate 400 for internal district dividers
+  let fillOpacity = 0.94;
+  let weight = 1.2;
+  let dashArray = null;
 
   if (AppState.visualViewMode === 'milestone') {
     if (dist.milestone === 'custom' && dist.customColor) {
@@ -417,6 +448,8 @@ function getDistrictStyle(feature) {
       const mc = MILESTONE_COLORS[dist.milestone] || MILESTONE_COLORS.none;
       fillColor = mc.fill;
       borderColor = mc.border;
+    } else {
+      dashArray = '2, 3'; // gentle dashed line for unstarted districts
     }
   } else if (AppState.visualViewMode === 'activities') {
     const totalActs = calculateTotalActivities(dist.activities);
@@ -425,6 +458,8 @@ function getDistrictStyle(feature) {
       else if (totalActs <= 3) fillColor = '#4ade80';
       else fillColor = '#15803d';
       borderColor = darkenColor(fillColor, 15);
+    } else {
+      dashArray = '2, 3';
     }
   } else if (AppState.visualViewMode === 'nuclei') {
     const n = dist.nuclei || 0;
@@ -432,19 +467,27 @@ function getDistrictStyle(feature) {
       if (n === 1) fillColor = '#34d399';
       else fillColor = '#047857';
       borderColor = darkenColor(fillColor, 15);
+    } else {
+      dashArray = '2, 3';
     }
   }
 
   const isSelected = AppState.selectedDistrictId === id;
   const isArrowSource = AppState.arrowSourceId === id;
 
+  if (isSelected || isArrowSource) {
+    borderColor = '#007aff';
+    weight = 3;
+    dashArray = isArrowSource ? '3, 3' : null;
+  }
+
   return {
     fillColor: fillColor,
     fillOpacity: isSelected || isArrowSource ? 0.98 : fillOpacity,
-    color: isArrowSource ? '#007aff' : (isSelected ? '#007aff' : borderColor),
-    weight: isSelected || isArrowSource ? 3 : 1.4,
-    dashArray: isArrowSource ? '3, 3' : null,
-    opacity: 0.95,
+    color: borderColor,
+    weight: weight,
+    dashArray: dashArray,
+    opacity: 0.9,
     interactive: true
   };
 }
@@ -526,6 +569,20 @@ function renderDistrictsGeoJson() {
   refreshMarkers();
 }
 
+function renderTownPerimeterLayer() {
+  if (typeof RHEIN_NECKAR_GEOJSON === 'undefined' || !AppState.map) return;
+
+  if (AppState.townPerimeterLayer) {
+    AppState.map.removeLayer(AppState.townPerimeterLayer);
+  }
+
+  AppState.townPerimeterLayer = L.geoJSON(RHEIN_NECKAR_GEOJSON, {
+    pane: 'townPerimeterPane',
+    style: getTownPerimeterStyle,
+    interactive: false
+  }).addTo(AppState.map);
+}
+
 function updateTownTooltip(townId) {
   const layer = AppState.townLayersById[townId];
   const feature = AppState.townFeaturesById[townId];
@@ -593,8 +650,25 @@ function refreshMarkers() {
       const town = AppState.towns[id];
       if (!center || !town) return;
 
-      // If this town is currently resolved into Stadtteile, don't overlap with town label
-      if (isTownInDistrictMode(id)) return;
+      // If this town is currently resolved into Stadtteile, render an overarching watermark label
+      if (isTownInDistrictMode(id)) {
+        const watermarkHtml = `
+          <div class="municipality-watermark-label">
+            ${escapeHtml(f.properties.name)}
+          </div>
+        `;
+
+        const customIcon = L.divIcon({
+          className: 'subtle-marker-container watermark-container',
+          html: watermarkHtml,
+          iconSize: [220, 32],
+          iconAnchor: [110, 16]
+        });
+
+        const marker = L.marker(center, { icon: customIcon, interactive: false, zIndexOffset: -200 });
+        AppState.markersLayer.addLayer(marker);
+        return;
+      }
 
       const totalActs = calculateTotalActivities(town.activities);
       const isCenter = town.isCenter;
@@ -632,20 +706,24 @@ function refreshMarkers() {
       if (!center || !dist) return;
 
       const totalActs = calculateTotalActivities(dist.activities);
+      const parentName = df.properties.townName || (AppState.townFeaturesById[townId] ? AppState.townFeaturesById[townId].properties.name : '');
 
       const markerHtml = `
         <div class="subtle-map-label district">
-          <span>${escapeHtml(df.properties.name)}</span>
-          ${dist.nuclei > 0 ? `<span class="subtle-badge nuclei">${dist.nuclei}</span>` : ''}
-          ${totalActs > 0 ? `<span class="subtle-badge acts">${totalActs}</span>` : ''}
+          <span class="district-parent-kicker">${escapeHtml(parentName)}</span>
+          <div class="district-name-row">
+            <span class="district-name">${escapeHtml(df.properties.name)}</span>
+            ${dist.nuclei > 0 ? `<span class="subtle-badge nuclei">${dist.nuclei}</span>` : ''}
+            ${totalActs > 0 ? `<span class="subtle-badge acts">${totalActs}</span>` : ''}
+          </div>
         </div>
       `;
 
       const customIcon = L.divIcon({
         className: 'subtle-marker-container',
         html: markerHtml,
-        iconSize: [110, 18],
-        iconAnchor: [55, 9]
+        iconSize: [130, 32],
+        iconAnchor: [65, 16]
       });
 
       const marker = L.marker(center, { icon: customIcon, interactive: false });
@@ -671,6 +749,14 @@ function refreshAllStyles() {
       if (layer.feature) {
         layer.setStyle(getDistrictStyle(layer.feature));
         updateDistrictTooltip(layer.feature.properties.id);
+      }
+    });
+  }
+
+  if (AppState.townPerimeterLayer) {
+    AppState.townPerimeterLayer.eachLayer(layer => {
+      if (layer.feature) {
+        layer.setStyle(getTownPerimeterStyle(layer.feature));
       }
     });
   }

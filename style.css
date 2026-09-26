@@ -1,0 +1,1246 @@
+/* ==========================================================================
+   Apple Human Interface Guidelines (HIG) Design System
+   Clean, authentic macOS & iOS design language:
+   - Translucent glassmorphism (Vibrant materials)
+   - Apple system typography (-apple-system / SF Pro)
+   - Apple segmented controls & native switches
+   - Restrained, purposeful color palette
+   - Zero AI tropes or decorative emoji clutter
+   ========================================================================== */
+
+:root {
+  /* Apple System Colors */
+  --system-blue: #007aff;
+  --system-blue-hover: #0062cc;
+  --system-blue-subtle: rgba(0, 122, 255, 0.1);
+  --system-green: #34c759;
+  --system-green-subtle: rgba(52, 199, 89, 0.12);
+  --system-indigo: #5856d6;
+  --system-orange: #ff9500;
+  --system-red: #ff3b30;
+  --system-red-subtle: rgba(255, 59, 48, 0.1);
+  
+  /* Milestone Semantic Colors (PDF Alignment with Apple Tint) */
+  --milestone-pg: #86efac;
+  --milestone-pg-border: #22c55e;
+  --milestone-ipg: #34c759;
+  --milestone-ipg-border: #15803d;
+  --milestone-ipg-plus: #15803d;
+  --milestone-ipg-plus-border: #052e16;
+  --milestone-none: #ffffff;
+  --milestone-none-border: #3a3a3c;
+
+  /* Surfaces & Backgrounds */
+  --bg-canvas: #f5f5f7;
+  --bg-card: rgba(255, 255, 255, 0.85);
+  --bg-card-solid: #ffffff;
+  --bg-grouped: #f2f2f7;
+  
+  /* Text Colors */
+  --text-primary: #1d1d1f;
+  --text-secondary: #6e6e73;
+  --text-tertiary: #86868b;
+  --text-quaternary: #aeaeb2;
+
+  /* Borders & Dividers */
+  --separator: rgba(60, 60, 67, 0.12);
+  --border-subtle: rgba(0, 0, 0, 0.08);
+  --border-focus: rgba(0, 122, 255, 0.4);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.12);
+  --shadow-sheet: 0 24px 48px rgba(0, 0, 0, 0.18);
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-sheet: 18px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+  color: var(--text-primary);
+  background-color: var(--bg-canvas);
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ==========================================================================
+   Header (macOS Unified Window Toolbar)
+   ========================================================================== */
+.app-header {
+  height: 52px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 0.5px solid var(--separator);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  z-index: 1000;
+  flex-shrink: 0;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 240px;
+}
+
+.brand-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: var(--text-primary);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.brand-icon svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+.header-titles {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.header-titles h1 {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  color: var(--text-primary);
+}
+
+.header-titles .subtitle {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+/* Apple Segmented Control (Center Toolbar) */
+.segmented-control {
+  display: inline-flex;
+  background: rgba(118, 118, 128, 0.12);
+  padding: 2px;
+  border-radius: 9px;
+  position: relative;
+}
+
+.segmented-btn {
+  border: none;
+  background: transparent;
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  outline: none;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.segmented-btn:hover {
+  color: var(--text-primary);
+}
+
+.segmented-btn.active {
+  background: #ffffff;
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 0.5px 0.5px rgba(0, 0, 0, 0.04);
+}
+
+.segmented-btn svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0.8;
+}
+
+/* Right Toolbar Controls */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cluster-metrics-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(118, 118, 128, 0.08);
+  padding: 4px 12px;
+  border-radius: 14px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-right: 6px;
+}
+
+.metric-entry {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.metric-entry strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Standard Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 0.5px solid transparent;
+  outline: none;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+.btn-secondary {
+  background: rgba(118, 118, 128, 0.08);
+  color: var(--text-primary);
+  border-color: rgba(0, 0, 0, 0.04);
+}
+
+.btn-secondary:hover {
+  background: rgba(118, 118, 128, 0.15);
+}
+
+.btn-primary {
+  background: var(--system-blue);
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background: var(--system-blue-hover);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.btn-ghost:hover {
+  background: rgba(118, 118, 128, 0.1);
+  color: var(--text-primary);
+}
+
+.btn-destructive {
+  background: var(--system-red-subtle);
+  color: var(--system-red);
+}
+
+.btn-destructive:hover {
+  background: rgba(255, 59, 48, 0.18);
+}
+
+/* ==========================================================================
+   Main Map Area & Apple Floating HUDs
+   ========================================================================== */
+.main-content {
+  flex: 1;
+  position: relative;
+  display: flex;
+  overflow: hidden;
+  background: var(--bg-canvas);
+}
+
+#map-container {
+  flex: 1;
+  height: 100%;
+  position: relative;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+  background: #f5f5f7;
+  z-index: 1;
+}
+
+/* Apple Floating HUD Container */
+.apple-hud {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border: 0.5px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  z-index: 800;
+}
+
+/* Top Left Navigation Bar (Breadcrumb & Reset) */
+.hud-nav-bar {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  padding: 4px 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hud-pill-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.hud-pill-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.hud-pill-btn svg {
+  width: 12px;
+  height: 12px;
+  color: var(--text-secondary);
+}
+
+.focus-crumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  background: var(--system-blue-subtle);
+  color: var(--system-blue);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.focus-dismiss {
+  border: none;
+  background: transparent;
+  color: var(--system-blue);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+.focus-dismiss:hover {
+  background: rgba(0, 122, 255, 0.2);
+}
+
+/* Quick Paint Palette Sub-bar */
+.paint-palette-bar {
+  position: absolute;
+  top: 66px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 10px;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.paint-palette-bar.visible {
+  display: flex;
+}
+
+.color-chip {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  outline: 1.5px solid rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.color-chip:hover {
+  transform: scale(1.15);
+}
+
+.color-chip.selected {
+  outline: 2px solid var(--system-blue);
+  transform: scale(1.15);
+}
+
+/* Arrow Drawing Mode Banner */
+.arrow-instruction-banner {
+  position: absolute;
+  top: 66px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  display: none;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--system-blue);
+  background: rgba(255, 255, 255, 0.94);
+  border: 0.5px solid rgba(0, 122, 255, 0.3);
+}
+
+.arrow-instruction-banner.visible {
+  display: flex;
+}
+
+.pulsing-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--system-blue);
+  border-radius: 50%;
+  animation: applePulse 1.6s infinite ease-in-out;
+}
+
+@keyframes applePulse {
+  0% { transform: scale(0.85); opacity: 0.6; }
+  50% { transform: scale(1.25); opacity: 1; }
+  100% { transform: scale(0.85); opacity: 0.6; }
+}
+
+/* Bottom Left HUD Stack: Search & Legend */
+.bottom-left-stack {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 800;
+}
+
+/* Spotlight-Style Search Box */
+.spotlight-search {
+  width: 240px;
+  padding: 7px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+.spotlight-search svg {
+  width: 14px;
+  height: 14px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.spotlight-search input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 12px;
+  color: var(--text-primary);
+  width: 100%;
+}
+
+.spotlight-search input::placeholder {
+  color: var(--text-quaternary);
+}
+
+.search-results-menu {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(25px);
+  border: 0.5px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  max-height: 220px;
+  overflow-y: auto;
+  display: none;
+}
+
+.search-results-menu.visible {
+  display: block;
+}
+
+.search-result-row {
+  padding: 8px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 0.5px solid var(--separator);
+}
+
+.search-result-row:last-child {
+  border-bottom: none;
+}
+
+.search-result-row:hover {
+  background: rgba(0, 122, 255, 0.08);
+  color: var(--system-blue);
+}
+
+/* Minimalist Apple Legend */
+.legend-hud {
+  width: 220px;
+  padding: 12px 14px;
+}
+
+.legend-header {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-tertiary);
+  margin-bottom: 10px;
+}
+
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  margin-bottom: 6px;
+  color: var(--text-secondary);
+}
+
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.legend-dot.ipg-plus {
+  background: var(--milestone-ipg-plus);
+}
+
+.legend-dot.ipg {
+  background: var(--milestone-ipg);
+}
+
+.legend-dot.pg {
+  background: var(--milestone-pg);
+}
+
+.legend-dot.none {
+  background: #ffffff;
+  border: 1px solid #c7c7cc;
+}
+
+.legend-toggles {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 0.5px solid var(--separator);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.legend-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   macOS Inspector Panel (Right Slide-over Drawer)
+   ========================================================================== */
+.inspector-panel {
+  width: 360px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border-left: 0.5px solid var(--separator);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  z-index: 900;
+  box-shadow: -6px 0 20px rgba(0, 0, 0, 0.04);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.inspector-panel.collapsed {
+  transform: translateX(100%);
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+}
+
+.inspector-header {
+  padding: 14px 18px;
+  border-bottom: 0.5px solid var(--separator);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.inspector-titles h2 {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  color: var(--text-primary);
+}
+
+.inspector-titles .type-badge {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.inspector-close-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(118, 118, 128, 0.12);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.inspector-close-btn:hover {
+  background: rgba(118, 118, 128, 0.22);
+  color: var(--text-primary);
+}
+
+.inspector-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Apple Grouped Container */
+.apple-group {
+  background: #ffffff;
+  border-radius: var(--radius-lg);
+  border: 0.5px solid var(--border-subtle);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.group-header {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-tertiary);
+  margin-bottom: 6px;
+  padding: 0 4px;
+}
+
+/* Milestone Radio Grid */
+.milestone-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 8px;
+}
+
+.milestone-option {
+  border: 0.5px solid var(--border-subtle);
+  background: rgba(118, 118, 128, 0.04);
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.15s ease;
+}
+
+.milestone-option:hover {
+  background: rgba(118, 118, 128, 0.08);
+}
+
+.milestone-option.active {
+  background: #ffffff;
+  border-color: var(--system-blue);
+  color: var(--system-blue);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Native Apple Switch Row */
+.apple-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 0.5px solid var(--separator);
+}
+
+.apple-list-row:last-child {
+  border-bottom: none;
+}
+
+.row-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.row-sublabel {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 1px;
+}
+
+/* Apple iOS Native Switch */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 42px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #e5e5ea;
+  transition: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 24px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+input:checked + .slider {
+  background-color: var(--system-green);
+}
+
+input:checked + .slider:before {
+  transform: translateX(18px);
+}
+
+/* Apple Stepper Control (- [Number] +) */
+.apple-stepper {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(118, 118, 128, 0.12);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.stepper-btn {
+  width: 28px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+
+.stepper-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.stepper-val {
+  width: 32px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  outline: none;
+  color: var(--text-primary);
+}
+
+/* Core Activities List */
+.activity-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  border-bottom: 0.5px solid var(--separator);
+}
+
+.activity-row:last-child {
+  border-bottom: none;
+}
+
+.act-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* Deployments Cards */
+.deployment-row-card {
+  padding: 10px 14px;
+  border-bottom: 0.5px solid var(--separator);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.deployment-row-card:last-child {
+  border-bottom: none;
+}
+
+.dep-route {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dep-status-pill {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.dep-status-pill.planned {
+  background: rgba(255, 149, 0, 0.15);
+  color: var(--system-orange);
+}
+
+.dep-status-pill.active {
+  background: var(--system-blue-subtle);
+  color: var(--system-blue);
+}
+
+.dep-status-pill.established {
+  background: var(--system-green-subtle);
+  color: var(--system-green);
+}
+
+/* Notes Text Area */
+.apple-textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 10px 12px;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text-primary);
+  background: transparent;
+  resize: vertical;
+}
+
+.apple-textarea::placeholder {
+  color: var(--text-quaternary);
+}
+
+/* ==========================================================================
+   Modals & Sheets (Apple HIG Sheet Style)
+   ========================================================================== */
+.modal-backdrop {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  z-index: 2000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-backdrop.visible {
+  display: flex;
+}
+
+.apple-sheet {
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(30px);
+  width: 90%;
+  max-width: 480px;
+  border-radius: var(--radius-sheet);
+  box-shadow: var(--shadow-sheet);
+  border: 0.5px solid var(--border-subtle);
+  overflow: hidden;
+  animation: appleSheetPop 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.apple-sheet.lg {
+  max-width: 820px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes appleSheetPop {
+  from { transform: scale(0.96); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.sheet-header {
+  padding: 16px 20px;
+  border-bottom: 0.5px solid var(--separator);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sheet-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+
+.sheet-body {
+  padding: 18px 20px;
+  overflow-y: auto;
+}
+
+.sheet-footer {
+  padding: 12px 20px;
+  border-top: 0.5px solid var(--separator);
+  background: rgba(242, 242, 247, 0.6);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.form-group {
+  margin-bottom: 14px;
+}
+
+.form-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.form-input, .form-select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 0.5px solid var(--border-subtle);
+  background: rgba(118, 118, 128, 0.08);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text-primary);
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.form-input:focus, .form-select:focus {
+  background: #ffffff;
+  border-color: var(--system-blue);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
+}
+
+/* Report Table */
+.report-table-wrapper {
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  border: 0.5px solid var(--separator);
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  text-align: left;
+}
+
+.report-table th {
+  background: rgba(118, 118, 128, 0.08);
+  padding: 8px 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 0.5px solid var(--separator);
+  white-space: nowrap;
+}
+
+.report-table td {
+  padding: 8px 12px;
+  border-bottom: 0.5px solid var(--separator);
+  color: var(--text-primary);
+}
+
+.report-table tr:last-child td {
+  border-bottom: none;
+}
+
+.report-table tr:hover {
+  background: rgba(0, 122, 255, 0.04);
+}
+
+/* District List Items in Drawer */
+.district-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.district-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: rgba(118, 118, 128, 0.05);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 0.5px solid transparent;
+}
+
+.district-item:hover {
+  background: rgba(0, 122, 255, 0.08);
+}
+
+.district-item.active {
+  background: #ffffff;
+  border-color: var(--system-blue);
+  box-shadow: var(--shadow-sm);
+}
+
+.district-item-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.district-item-badge {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(118, 118, 128, 0.1);
+  color: var(--text-secondary);
+}
+
+/* Custom Color Picker in Drawer */
+.custom-color-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-top: 0.5px solid var(--separator);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.custom-color-row input[type="color"] {
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  background: transparent;
+}
+
+/* Deployment Cards in Drawer */
+.deployment-card {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(118, 118, 128, 0.04);
+  border-left: 3px solid var(--system-blue);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.dep-info-title {
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dep-info-sub {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+.btn-icon-del {
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  transition: all 0.15s ease;
+}
+
+.btn-icon-del:hover {
+  background: var(--system-red-subtle);
+  color: var(--system-red);
+}
+
+/* ==========================================================================
+   Clean Vector Map Markers & Labels
+   ========================================================================== */
+.clean-map-label {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: #1d1d1f;
+  background: rgba(255, 255, 255, 0.92);
+  border: 0.5px solid rgba(0, 0, 0, 0.15);
+  padding: 2px 6px;
+  border-radius: 5px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  pointer-events: none;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.clean-map-label.center {
+  border-color: #d97706;
+  color: #92400e;
+  font-weight: 700;
+}
+
+.clean-map-label.district {
+  border-color: var(--system-blue);
+  color: #004085;
+}
+
+.clean-map-label .nuclei-pill {
+  background: var(--milestone-ipg-plus);
+  color: white;
+  border-radius: 6px;
+  padding: 0 4px;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.surrounding-region-label {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #8e8e93;
+  pointer-events: none;
+  white-space: nowrap;
+  text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff;
+}
+
+/* SVG Arrows */
+.arrow-svg-layer {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 450;
+}
+
+.arrow-path {
+  fill: none;
+  stroke-linecap: round;
+  cursor: pointer;
+  pointer-events: stroke;
+  transition: stroke-width 0.15s ease;
+}
+
+.arrow-path:hover {
+  stroke-width: 5px !important;
+}
+
+.arrow-flow-dash {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 1.5px;
+  stroke-dasharray: 4, 10;
+  stroke-linecap: round;
+  pointer-events: none;
+  animation: appleFlow 2.4s linear infinite;
+}
+
+@keyframes appleFlow {
+  from { stroke-dashoffset: 28; }
+  to { stroke-dashoffset: 0; }
+}
+
+.arrow-midpoint-node {
+  pointer-events: auto;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.arrow-midpoint-node:hover {
+  transform: scale(1.18);
+}

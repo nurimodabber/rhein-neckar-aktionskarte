@@ -400,7 +400,6 @@ function renderSurroundingRegions() {
     { name: "Heilbronn-Tauber", coords: [49.30, 9.12], isRegion: true },
     { name: "Baden-Nordschwarzwald", coords: [49.12, 8.55], isRegion: true },
     // Prominent neighboring cities across state & cluster borders
-    { name: "Ludwigshafen", coords: [49.48, 8.44], isRegion: false },
     { name: "Worms", coords: [49.63, 8.36], isRegion: false },
     { name: "Frankenthal", coords: [49.53, 8.35], isRegion: false }
   ];
@@ -2210,7 +2209,7 @@ function updateCurrentActivity(actKey, val) {
 
 function updateClusterStats() {
   const towns = Object.values(AppState.towns);
-  const totalTowns = Object.keys(AppState.townFeaturesById).length || 57;
+  const totalTowns = Object.keys(AppState.townFeaturesById).length || 58;
   
   let reachedTowns = 0;
   let totalNuclei = 0;

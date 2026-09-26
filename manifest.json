@@ -1,0 +1,18 @@
+{
+  "name": "Rhein-Neckar Cluster – Aktionskarte",
+  "short_name": "Rhein-Neckar",
+  "description": "Interaktive Aktions- und Wachstumsplanung für den Cluster Rhein-Neckar",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f5f5f7",
+  "theme_color": "#007aff",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

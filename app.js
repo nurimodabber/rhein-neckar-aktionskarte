@@ -46,13 +46,20 @@ const AppState = {
   townFeaturesById: {},
   townLayersById: {},
   districtFeaturesById: {},
-  districtLayersById: {}
+  districtLayersById: {},
+
+  // History & Quick Action state
+  undoStack: [],
+  redoStack: [],
+  isHistoryAction: false,
+  activeQuickDeployment: null
 };
 
 const STORAGE_KEY = 'rhein_neckar_cluster_clean_v7';
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
+  registerServiceWorker();
   loadStoredData();
   initMap();
   initArrowSvgLayer();
@@ -63,6 +70,8 @@ document.addEventListener('DOMContentLoaded', () => {
   renderTownPerimeterLayer();
   initUIEventListeners();
   updateClusterStats();
+  updateUndoRedoButtons();
+  saveAutoBackup("Sitzungsstart", false);
 });
 
 // --- Data Persistence ---
@@ -120,6 +129,14 @@ function loadStoredData() {
   }
 }
 
+function registerServiceWorker() {
+  if ('serviceWorker' in navigator && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
+    navigator.serviceWorker.register('./sw.js').catch(err => {
+      console.log('Service worker note (offline fallback):', err);
+    });
+  }
+}
+
 function saveState() {
   try {
     const dataToSave = {
@@ -133,6 +150,200 @@ function saveState() {
     console.warn('Could not save to localStorage:', e);
   }
   updateClusterStats();
+  saveAutoBackup('Automatische Sicherung', false);
+}
+
+// --- History (Undo / Redo) & Local Auto-Backups ---
+const MAX_UNDO_STACK = 45;
+const BACKUPS_STORAGE_KEY = 'rn_cluster_backups_v1';
+const MAX_BACKUPS = 12;
+
+function snapshotCurrentData() {
+  return {
+    towns: JSON.parse(JSON.stringify(AppState.towns)),
+    districts: JSON.parse(JSON.stringify(AppState.districts)),
+    deployments: JSON.parse(JSON.stringify(AppState.deployments))
+  };
+}
+
+function pushHistory(desc) {
+  if (AppState.isHistoryAction) return;
+  const snapshot = snapshotCurrentData();
+  snapshot.desc = desc || 'Änderung';
+  snapshot.time = Date.now();
+
+  AppState.undoStack.push(snapshot);
+  if (AppState.undoStack.length > MAX_UNDO_STACK) {
+    AppState.undoStack.shift();
+  }
+  AppState.redoStack = [];
+  updateUndoRedoButtons();
+}
+
+function undo() {
+  if (AppState.undoStack.length === 0) return;
+
+  const currentState = snapshotCurrentData();
+  currentState.desc = 'Vor Rückgängig';
+  currentState.time = Date.now();
+  AppState.redoStack.push(currentState);
+
+  const prevState = AppState.undoStack.pop();
+  AppState.isHistoryAction = true;
+  AppState.towns = prevState.towns;
+  AppState.districts = prevState.districts;
+  AppState.deployments = prevState.deployments;
+
+  saveState();
+  refreshAllStyles();
+  refreshMarkers();
+  renderArrows();
+  if (AppState.selectedDistrictId) selectDistrict(AppState.selectedDistrictId);
+  else if (AppState.selectedTownId) selectTown(AppState.selectedTownId);
+  AppState.isHistoryAction = false;
+
+  updateUndoRedoButtons();
+}
+
+function redo() {
+  if (AppState.redoStack.length === 0) return;
+
+  const currentState = snapshotCurrentData();
+  currentState.desc = 'Vor Wiederholen';
+  currentState.time = Date.now();
+  AppState.undoStack.push(currentState);
+
+  const nextState = AppState.redoStack.pop();
+  AppState.isHistoryAction = true;
+  AppState.towns = nextState.towns;
+  AppState.districts = nextState.districts;
+  AppState.deployments = nextState.deployments;
+
+  saveState();
+  refreshAllStyles();
+  refreshMarkers();
+  renderArrows();
+  if (AppState.selectedDistrictId) selectDistrict(AppState.selectedDistrictId);
+  else if (AppState.selectedTownId) selectTown(AppState.selectedTownId);
+  AppState.isHistoryAction = false;
+
+  updateUndoRedoButtons();
+}
+
+function updateUndoRedoButtons() {
+  const btnUndo = document.getElementById('btn-undo');
+  const btnRedo = document.getElementById('btn-redo');
+  if (btnUndo) btnUndo.disabled = (AppState.undoStack.length === 0);
+  if (btnRedo) btnRedo.disabled = (AppState.redoStack.length === 0);
+}
+
+function getStoredBackups() {
+  try {
+    const raw = localStorage.getItem(BACKUPS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveAutoBackup(desc, force = false) {
+  try {
+    const backups = getStoredBackups();
+    const now = Date.now();
+
+    // Throttle automated saves to once every 2 minutes unless forced
+    if (!force && backups.length > 0) {
+      const last = backups[0];
+      if (now - last.timestamp < 2 * 60 * 1000) return;
+    }
+
+    let activeTownsCount = 0;
+    let totalNuclei = 0;
+    let totalActivities = 0;
+    Object.values(AppState.towns).forEach(t => {
+      if (t.milestone !== 'none') activeTownsCount++;
+      totalNuclei += (t.nuclei || 0);
+      if (t.activities) {
+        totalActivities += (t.activities.devotionals || 0) + (t.activities.studyCircles || 0) + (t.activities.childrenClasses || 0) + (t.activities.juniorYouth || 0);
+      }
+    });
+
+    const newBackup = {
+      id: 'bk_' + now,
+      timestamp: now,
+      dateFormatted: new Intl.DateTimeFormat('de-DE', { dateStyle: 'short', timeStyle: 'medium' }).format(new Date(now)),
+      desc: desc || 'Automatischer Speicherpunkt',
+      stats: {
+        activeTowns: activeTownsCount,
+        nuclei: totalNuclei,
+        activities: totalActivities,
+        deployments: AppState.deployments.length
+      },
+      data: snapshotCurrentData()
+    };
+
+    backups.unshift(newBackup);
+    if (backups.length > MAX_BACKUPS) backups.pop();
+    localStorage.setItem(BACKUPS_STORAGE_KEY, JSON.stringify(backups));
+  } catch (e) {
+    console.warn('Could not save auto backup:', e);
+  }
+}
+
+function restoreBackup(backupId) {
+  const backups = getStoredBackups();
+  const found = backups.find(b => b.id === backupId);
+  if (!found) return;
+
+  if (!confirm(`Möchtest du den Sicherungsstand vom ${found.dateFormatted} (${found.desc}) wirklich wiederherstellen?`)) {
+    return;
+  }
+
+  pushHistory('Vor Wiederherstellung gesichert');
+  AppState.isHistoryAction = true;
+  AppState.towns = found.data.towns;
+  AppState.districts = found.data.districts;
+  AppState.deployments = found.data.deployments;
+  saveState();
+  refreshAllStyles();
+  refreshMarkers();
+  renderArrows();
+  if (AppState.selectedTownId) selectTown(AppState.selectedTownId);
+  AppState.isHistoryAction = false;
+
+  const modal = document.getElementById('backups-modal');
+  if (modal) modal.classList.remove('visible');
+}
+
+function renderBackupsList() {
+  const container = document.getElementById('backups-list-container');
+  if (!container) return;
+  const backups = getStoredBackups();
+
+  if (backups.length === 0) {
+    container.innerHTML = '<div style="color:var(--text-tertiary); font-style:italic; padding:12px 0;">Noch keine Sicherungspunkte vorhanden.</div>';
+    return;
+  }
+
+  container.innerHTML = '';
+  backups.forEach(b => {
+    const card = document.createElement('div');
+    card.className = 'backup-card';
+    card.innerHTML = `
+      <div class="backup-info">
+        <div class="backup-time">${escapeHtml(b.dateFormatted)}</div>
+        <div class="backup-desc">${escapeHtml(b.desc)}</div>
+        <div class="backup-stats">${b.stats.activeTowns} aktive Orte • ${b.stats.nuclei} Nuklei • ${b.stats.activities} Aktivitäten • ${b.stats.deployments} Pfeile</div>
+      </div>
+      <div class="backup-actions">
+        <button class="btn btn-secondary btn-restore-item" style="padding: 4px 10px; font-size: 11px;" data-backup-id="${b.id}">Wiederherstellen</button>
+      </div>
+    `;
+    card.querySelector('.btn-restore-item').addEventListener('click', () => {
+      restoreBackup(b.id);
+    });
+    container.appendChild(card);
+  });
 }
 
 // --- Map Setup ---
@@ -151,6 +362,10 @@ function initMap() {
   AppState.map.getPane('townPerimeterPane').style.pointerEvents = 'none';
 
   AppState.markersLayer = L.layerGroup().addTo(AppState.map);
+
+  AppState.map.on('click', () => {
+    closeArrowQuickHUD();
+  });
 
   AppState.map.on('zoomend', () => {
     refreshAllStyles();
@@ -798,7 +1013,7 @@ function refreshAllStyles() {
   refreshMarkers();
 }
 
-// --- Curved Arrow Engine (With 3 Visual Statuses) ---
+// --- Curved Arrow Engine (With Smart Separation & Fast Interactive HUD) ---
 function renderArrows() {
   if (!AppState.arrowSvgLayer || !AppState.map) return;
   
@@ -819,6 +1034,14 @@ function renderArrows() {
   const topLeft = AppState.map.containerPointToLayerPoint([0, 0]);
   L.DomUtil.setPosition(svg, topLeft);
 
+  // Group deployments connecting the same pair of nodes (in either direction) to prevent overlapping lines
+  const pairGroups = {};
+  AppState.deployments.forEach((dep) => {
+    const key = [dep.fromId, dep.toId].sort().join(':::');
+    if (!pairGroups[key]) pairGroups[key] = [];
+    pairGroups[key].push(dep);
+  });
+
   AppState.deployments.forEach((dep) => {
     const fromFeat = AppState.districtFeaturesById[dep.fromId] || AppState.townFeaturesById[dep.fromId];
     const toFeat = AppState.districtFeaturesById[dep.toId] || AppState.townFeaturesById[dep.toId];
@@ -832,10 +1055,21 @@ function renderArrows() {
     const dist = Math.hypot(dx, dy);
     if (dist < 5) return;
 
+    // Normal unit vector pointing perpendicular to direction of travel
     const nx = -dy / dist;
     const ny = dx / dist;
 
-    const curvature = Math.min(80, Math.max(20, dist * 0.22));
+    // Determine curvature offset for multiple parallel or bidirectional connections
+    const pairKey = [dep.fromId, dep.toId].sort().join(':::');
+    const pairList = pairGroups[pairKey] || [dep];
+    const totalInPair = pairList.length;
+    const indexInPair = pairList.indexOf(dep);
+
+    const baseCurvature = Math.min(65, Math.max(20, dist * 0.20));
+    // Symmetrically fan out multiple arrows connecting the same nodes
+    const separationOffset = totalInPair > 1 ? (indexInPair - (totalInPair - 1) / 2) * 22 : 0;
+    const curvature = baseCurvature + separationOffset;
+
     const cpX = (pA.x + pB.x) / 2 + nx * curvature;
     const cpY = (pA.y + pB.y) / 2 + ny * curvature;
 
@@ -849,7 +1083,7 @@ function renderArrows() {
     const markerId = `arrowhead-${dep.id}`;
 
     // Color based on status or custom
-    let arrowColor = dep.color || '#2563eb';
+    let arrowColor = dep.color || '#007aff';
     let dashStyle = null;
 
     if (dep.status === 'planned') {
@@ -885,7 +1119,7 @@ function renderArrows() {
 
     path.addEventListener("click", (e) => {
       e.stopPropagation();
-      openDeploymentModal(dep);
+      openArrowQuickHUD(dep);
     });
 
     svg.appendChild(path);
@@ -907,7 +1141,7 @@ function renderArrows() {
     group.setAttribute("transform", `translate(${midX}, ${midY})`);
     group.addEventListener("click", (e) => {
       e.stopPropagation();
-      openDeploymentModal(dep);
+      openArrowQuickHUD(dep);
     });
 
     const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
@@ -936,6 +1170,57 @@ function renderArrows() {
 
     svg.appendChild(group);
   });
+}
+
+function openArrowQuickHUD(dep) {
+  AppState.activeQuickDeployment = dep;
+  const hud = document.getElementById('arrow-quick-hud');
+  if (!hud) return;
+
+  const titleElem = document.getElementById('quick-dep-names');
+  if (titleElem) titleElem.textContent = `${dep.fromName} ➔ ${dep.toName}`;
+
+  const typeElem = document.getElementById('quick-dep-type');
+  if (typeElem) typeElem.textContent = dep.type;
+
+  const countElem = document.getElementById('quick-dep-count');
+  if (countElem) countElem.textContent = dep.count ? `${dep.count} Pers.` : '1 Pers.';
+
+  const dot = document.getElementById('quick-dep-dot');
+  let arrowColor = dep.color || '#007aff';
+  if (dep.status === 'planned') arrowColor = '#f59e0b';
+  else if (dep.status === 'established') arrowColor = '#16a34a';
+  if (dot) dot.style.background = arrowColor;
+
+  document.querySelectorAll('.quick-status-pill').forEach(pill => {
+    pill.classList.toggle('active', pill.dataset.status === (dep.status || 'active'));
+  });
+
+  hud.style.display = 'block';
+}
+
+function closeArrowQuickHUD() {
+  AppState.activeQuickDeployment = null;
+  const hud = document.getElementById('arrow-quick-hud');
+  if (hud) hud.style.display = 'none';
+}
+
+function setQuickArrowStatus(newStatus) {
+  if (!AppState.activeQuickDeployment) return;
+  const dep = AppState.activeQuickDeployment;
+  pushHistory(`Status von Entsendung ${dep.fromName} ➔ ${dep.toName} geändert`);
+  dep.status = newStatus;
+  saveState();
+  renderArrows();
+  openArrowQuickHUD(dep);
+  if (AppState.selectedTownId) renderDeploymentsList(AppState.selectedTownId);
+}
+
+function deleteQuickArrow() {
+  if (!AppState.activeQuickDeployment) return;
+  const dep = AppState.activeQuickDeployment;
+  closeArrowQuickHUD();
+  deleteDeployment(dep.id);
 }
 
 // --- Interaction Handlers ---
@@ -1210,6 +1495,7 @@ function renderDistrictsListForTown(townId) {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const m = btn.dataset.m;
+        pushHistory(`Stadtteil ${df.properties.name}: Meilenstein auf ${getMilestoneLabel(m)} geändert`);
         dData.milestone = m;
         saveState();
         refreshAllStyles();
@@ -1224,6 +1510,7 @@ function renderDistrictsListForTown(townId) {
     const nucleiInput = card.querySelector('.input-sub-nuclei');
     card.querySelector('.btn-dec-sub-nuclei').addEventListener('click', (e) => {
       e.stopPropagation();
+      pushHistory(`Stadtteil ${df.properties.name}: Nuklei verringert`);
       let v = Math.max(0, (parseInt(nucleiInput.value) || 0) - 1);
       nucleiInput.value = v;
       dData.nuclei = v;
@@ -1234,6 +1521,7 @@ function renderDistrictsListForTown(townId) {
     });
     card.querySelector('.btn-inc-sub-nuclei').addEventListener('click', (e) => {
       e.stopPropagation();
+      pushHistory(`Stadtteil ${df.properties.name}: Nuklei erhöht`);
       let v = (parseInt(nucleiInput.value) || 0) + 1;
       nucleiInput.value = v;
       dData.nuclei = v;
@@ -1248,6 +1536,7 @@ function renderDistrictsListForTown(townId) {
       const inp = card.querySelector(inputCls);
       card.querySelector(decCls).addEventListener('click', (e) => {
         e.stopPropagation();
+        pushHistory(`Stadtteil ${df.properties.name}: Aktivität verringert`);
         if (!dData.activities) dData.activities = {};
         let v = Math.max(0, (parseInt(inp.value) || 0) - 1);
         inp.value = v;
@@ -1258,6 +1547,7 @@ function renderDistrictsListForTown(townId) {
       });
       card.querySelector(incCls).addEventListener('click', (e) => {
         e.stopPropagation();
+        pushHistory(`Stadtteil ${df.properties.name}: Aktivität erhöht`);
         if (!dData.activities) dData.activities = {};
         let v = (parseInt(inp.value) || 0) + 1;
         inp.value = v;
@@ -1362,6 +1652,8 @@ function renderDeploymentsList(targetId) {
 function applyPaintToTown(townId) {
   const town = AppState.towns[townId];
   if (!town) return;
+  const name = AppState.townFeaturesById[townId]?.properties?.name || 'Ortschaft';
+  pushHistory(`Ortschaft ${name} eingefärbt`);
   town.milestone = AppState.activePaintMilestone;
   if (AppState.activePaintMilestone === 'custom') town.customColor = AppState.activePaintColor;
   saveState();
@@ -1374,6 +1666,8 @@ function applyPaintToTown(townId) {
 function applyPaintToDistrict(districtId) {
   const dist = AppState.districts[districtId];
   if (!dist) return;
+  const name = AppState.districtFeaturesById[districtId]?.properties?.name || 'Stadtteil';
+  pushHistory(`Stadtteil ${name} eingefärbt`);
   dist.milestone = AppState.activePaintMilestone;
   if (AppState.activePaintMilestone === 'custom') dist.customColor = AppState.activePaintColor;
   saveState();
@@ -1431,6 +1725,8 @@ function saveNewArrowFromModal() {
   const fromName = fromFeat.properties.townName ? `${fromFeat.properties.townName} (${fromFeat.properties.name})` : fromFeat.properties.name;
   const toName = toFeat.properties.townName ? `${toFeat.properties.townName} (${toFeat.properties.name})` : toFeat.properties.name;
 
+  pushHistory(`Entsendung ${fromName} ➔ ${toName} erstellt`);
+
   const newDep = {
     id: 'dep-' + Date.now(),
     fromId: fromId,
@@ -1462,7 +1758,10 @@ function cancelArrowDrawing() {
 }
 
 function deleteDeployment(depId) {
+  const found = AppState.deployments.find(d => d.id === depId);
+  const desc = found ? `Entsendung ${found.fromName} ➔ ${found.toName} gelöscht` : 'Entsendung gelöscht';
   if (confirm("Möchtest du diesen Pfeil wirklich entfernen?")) {
+    pushHistory(desc);
     AppState.deployments = AppState.deployments.filter(d => d.id !== depId);
     saveState();
     refreshAllStyles();
@@ -1580,6 +1879,7 @@ function initUIEventListeners() {
   document.querySelectorAll('.milestone-card').forEach(card => {
     card.addEventListener('click', () => {
       const m = card.dataset.milestone;
+      pushHistory(`Meilenstein auf ${getMilestoneLabel(m)} geändert`);
       if (AppState.selectedDistrictId) {
         AppState.districts[AppState.selectedDistrictId].milestone = m;
       } else if (AppState.selectedTownId) {
@@ -1591,7 +1891,8 @@ function initUIEventListeners() {
     });
   });
 
-  document.getElementById('drawer-custom-color').addEventListener('input', (e) => {
+  document.getElementById('drawer-custom-color').addEventListener('change', (e) => {
+    pushHistory('Farbe angepasst');
     if (AppState.selectedDistrictId) {
       AppState.districts[AppState.selectedDistrictId].customColor = e.target.value;
     } else if (AppState.selectedTownId) {
@@ -1603,6 +1904,7 @@ function initUIEventListeners() {
 
   document.getElementById('drawer-is-center').addEventListener('change', (e) => {
     if (AppState.selectedTownId && !AppState.selectedDistrictId) {
+      pushHistory(e.target.checked ? 'Als Entsende-Zentrum markiert' : 'Zentrums-Status entfernt');
       AppState.towns[AppState.selectedTownId].isCenter = e.target.checked;
       saveState();
       refreshAllStyles();
@@ -1631,6 +1933,87 @@ function initUIEventListeners() {
       AppState.towns[AppState.selectedTownId].notes = e.target.value;
     }
     saveState();
+  });
+
+  document.getElementById('drawer-notes').addEventListener('change', () => {
+    pushHistory('Notizen aktualisiert');
+  });
+
+  // Undo & Redo buttons
+  const btnUndo = document.getElementById('btn-undo');
+  const btnRedo = document.getElementById('btn-redo');
+  if (btnUndo) btnUndo.addEventListener('click', undo);
+  if (btnRedo) btnRedo.addEventListener('click', redo);
+
+  // Backups modal buttons
+  const btnOpenBackups = document.getElementById('btn-open-backups');
+  if (btnOpenBackups) {
+    btnOpenBackups.addEventListener('click', () => {
+      renderBackupsList();
+      document.getElementById('backups-modal').classList.add('visible');
+    });
+  }
+  const btnCloseBackupsModal = document.getElementById('btn-close-backups-modal');
+  if (btnCloseBackupsModal) {
+    btnCloseBackupsModal.addEventListener('click', () => {
+      document.getElementById('backups-modal').classList.remove('visible');
+    });
+  }
+  const btnCloseBackupsSheet = document.getElementById('btn-close-backups-sheet');
+  if (btnCloseBackupsSheet) {
+    btnCloseBackupsSheet.addEventListener('click', () => {
+      document.getElementById('backups-modal').classList.remove('visible');
+    });
+  }
+  const btnCreateBackup = document.getElementById('btn-create-manual-backup');
+  if (btnCreateBackup) {
+    btnCreateBackup.addEventListener('click', () => {
+      saveAutoBackup("Manuelle Sicherung", true);
+      renderBackupsList();
+    });
+  }
+
+  // Quick Arrow HUD buttons
+  const btnCloseQuick = document.getElementById('btn-close-quick-arrow');
+  if (btnCloseQuick) btnCloseQuick.addEventListener('click', closeArrowQuickHUD);
+
+  document.querySelectorAll('.quick-status-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      setQuickArrowStatus(pill.dataset.status);
+    });
+  });
+
+  const btnQuickDetails = document.getElementById('quick-btn-more-details');
+  if (btnQuickDetails) {
+    btnQuickDetails.addEventListener('click', () => {
+      if (AppState.activeQuickDeployment) {
+        const dep = AppState.activeQuickDeployment;
+        closeArrowQuickHUD();
+        openDeploymentModal(dep);
+      }
+    });
+  }
+
+  const btnQuickDelete = document.getElementById('quick-btn-delete');
+  if (btnQuickDelete) {
+    btnQuickDelete.addEventListener('click', deleteQuickArrow);
+  }
+
+  // Global Keyboard Shortcuts (⌘Z / ⇧⌘Z / ⌘Y)
+  window.addEventListener('keydown', (e) => {
+    if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+      if (e.shiftKey) {
+        e.preventDefault();
+        redo();
+      } else {
+        e.preventDefault();
+        undo();
+      }
+    } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') {
+      e.preventDefault();
+      redo();
+    }
   });
 
   document.getElementById('btn-start-arrow-from-town').addEventListener('click', () => {
@@ -1737,16 +2120,19 @@ function initStepper(name, onChange) {
   if (!decBtn || !incBtn || !input) return;
 
   decBtn.addEventListener('click', () => {
+    pushHistory(`Zähler ${name} verringert`);
     let val = Math.max(0, (parseInt(input.value) || 0) - 1);
     input.value = val;
     onChange(val);
   });
   incBtn.addEventListener('click', () => {
+    pushHistory(`Zähler ${name} erhöht`);
     let val = (parseInt(input.value) || 0) + 1;
     input.value = val;
     onChange(val);
   });
   input.addEventListener('change', () => {
+    pushHistory(`Zähler ${name} geändert`);
     let val = Math.max(0, parseInt(input.value) || 0);
     input.value = val;
     onChange(val);
@@ -1968,6 +2354,8 @@ function exportMapAsPng() {
 
 function resetToCleanData() {
   if (confirm("Möchtest du alle Daten auf den sauberen Anfangszustand (0 / keine Aktivitäten) zurücksetzen?")) {
+    saveAutoBackup("Vor Zurücksetzen gesichert", true);
+    pushHistory("Vor Zurücksetzen gesichert");
     localStorage.removeItem(STORAGE_KEY);
     AppState.towns = {};
     AppState.districts = {};

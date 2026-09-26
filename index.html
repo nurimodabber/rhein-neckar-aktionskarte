@@ -9,6 +9,14 @@
   <link rel="stylesheet" href="lib/leaflet.css" />
   <!-- Apple HIG Custom Styling -->
   <link rel="stylesheet" href="style.css" />
+  <!-- PWA & Apple Web App Meta -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Rhein-Neckar" />
+  <link rel="icon" type="image/svg+xml" href="icon.svg" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <meta name="theme-color" content="#007aff" />
 </head>
 <body>
 
@@ -106,6 +114,29 @@
         </svg>
         Bild
       </button>
+      <div class="apple-undo-group" style="display: flex; gap: 2px;">
+        <button class="btn btn-ghost" id="btn-undo" title="Rückgängig (⌘Z / Strg+Z)" disabled style="padding: 6px 8px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
+            <path d="M3 7v6h6"></path>
+            <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path>
+          </svg>
+        </button>
+        <button class="btn btn-ghost" id="btn-redo" title="Wiederholen (⇧⌘Z / Strg+Y)" disabled style="padding: 6px 8px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
+            <path d="M21 7v6h-6"></path>
+            <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"></path>
+          </svg>
+        </button>
+      </div>
+
+      <button class="btn btn-secondary" id="btn-open-backups" title="Automatische Sicherungen einsehen &amp; wiederherstellen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        Backups
+      </button>
+
       <button class="btn btn-ghost" id="btn-reset-demo" title="Daten zurücksetzen">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="1 4 1 10 7 10"></polyline>
@@ -153,6 +184,34 @@
         <div class="pulsing-dot"></div>
         <span id="arrow-instruction-text">1. Start-Ort auf Karte anklicken → 2. Ziel-Ort anklicken</span>
         <button class="btn btn-secondary" id="btn-cancel-arrow" style="padding: 2px 8px; font-size: 11px;">Abbrechen</button>
+      </div>
+
+      <!-- Arrow Quick Action HUD (Apple-style interactive popover) -->
+      <div class="arrow-quick-hud apple-hud" id="arrow-quick-hud" style="display: none;">
+        <div class="arrow-quick-header">
+          <div class="arrow-quick-title">
+            <span class="arrow-quick-dot" id="quick-dep-dot"></span>
+            <strong id="quick-dep-names">Start ➔ Ziel</strong>
+            <span class="arrow-quick-badge" id="quick-dep-type">Pioniere</span>
+            <span class="arrow-quick-count" id="quick-dep-count">1 Pers.</span>
+          </div>
+          <button class="focus-dismiss" id="btn-close-quick-arrow" title="Schließen">✕</button>
+        </div>
+        <div class="arrow-quick-body">
+          <div class="quick-status-selector">
+            <button class="quick-status-pill" data-status="active">● Aktiv</button>
+            <button class="quick-status-pill" data-status="planned">⏳ In Planung</button>
+            <button class="quick-status-pill" data-status="established">✓ Etabliert</button>
+          </div>
+          <div class="arrow-quick-actions">
+            <button class="btn btn-secondary" id="quick-btn-more-details" style="padding: 4px 10px; font-size: 11px;">
+              Notizen &amp; Details...
+            </button>
+            <button class="btn btn-destructive" id="quick-btn-delete" style="padding: 4px 10px; font-size: 11px;" title="Entsendung entfernen">
+              Löschen
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Bottom Left HUD Stack: Spotlight Search & Legend -->
@@ -526,6 +585,24 @@
             </tbody>
           </table>
         </div>
+  <!-- Modal: Backups & History (Apple HIG Sheet) -->
+  <div class="modal-backdrop" id="backups-modal">
+    <div class="apple-sheet" style="max-width: 540px;">
+      <div class="sheet-header">
+        <h3>Automatische Sicherungen &amp; Revisionsverlauf</h3>
+        <button class="inspector-close-btn" id="btn-close-backups-modal">✕</button>
+      </div>
+      <div class="sheet-body">
+        <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
+          Deine Änderungen werden fortlaufend lokal gesichert. Wähle einen Sicherungspunkt, um den gesamten Cluster-Stand auf diesen Zeitpunkt zurückzusetzen:
+        </div>
+        <div class="backups-list" id="backups-list-container">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+      <div class="sheet-footer">
+        <button class="btn btn-secondary" id="btn-create-manual-backup">Aktuellen Stand jetzt sichern</button>
+        <button class="btn btn-primary" id="btn-close-backups-sheet">Schließen</button>
       </div>
     </div>
   </div>

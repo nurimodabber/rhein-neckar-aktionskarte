@@ -173,20 +173,25 @@ function renderSurroundingRegions() {
   }).addTo(AppState.map);
 
   const regionalLabels = [
-    { name: "Rheinhessen-Pfalz", coords: [49.46, 8.35] },
-    { name: "Darmstadt-Aschaffenburg", coords: [49.65, 8.70] },
-    { name: "Heilbronn-Tauber", coords: [49.30, 9.12] },
-    { name: "Baden-Nordschwarzwald", coords: [49.12, 8.55] }
+    { name: "Rheinhessen-Pfalz", coords: [49.46, 8.25], isRegion: true },
+    { name: "Darmstadt-Aschaffenburg", coords: [49.65, 8.70], isRegion: true },
+    { name: "Heilbronn-Tauber", coords: [49.30, 9.12], isRegion: true },
+    { name: "Baden-Nordschwarzwald", coords: [49.12, 8.55], isRegion: true },
+    // Prominent neighboring cities across state & cluster borders
+    { name: "Speyer", coords: [49.32, 8.44], isRegion: false },
+    { name: "Ludwigshafen", coords: [49.48, 8.44], isRegion: false },
+    { name: "Worms", coords: [49.63, 8.36], isRegion: false },
+    { name: "Frankenthal", coords: [49.53, 8.35], isRegion: false }
   ];
 
-  regionalLabels.forEach(reg => {
+  regionalLabels.forEach(item => {
     const icon = L.divIcon({
-      className: 'surrounding-region-label',
-      html: `<span>${reg.name}</span>`,
-      iconSize: [160, 20],
-      iconAnchor: [80, 10]
+      className: item.isRegion ? 'surrounding-region-label' : 'surrounding-city-label',
+      html: `<span>${item.name}</span>`,
+      iconSize: [item.isRegion ? 160 : 100, 20],
+      iconAnchor: [item.isRegion ? 80 : 50, 10]
     });
-    L.marker(reg.coords, { icon: icon, interactive: false }).addTo(AppState.surroundingLayer);
+    L.marker(item.coords, { icon: icon, interactive: false }).addTo(AppState.surroundingLayer);
   });
 }
 
@@ -1578,8 +1583,15 @@ function resetToCleanData() {
     AppState.towns = {};
     AppState.districts = {};
     AppState.deployments = [];
+    AppState.selectedTownId = null;
+    AppState.selectedDistrictId = null;
+    AppState.focusedTownId = null;
     loadStoredData();
     refreshAllStyles();
+    refreshMarkers();
+    renderArrows();
+    updateClusterStats();
+    document.getElementById('details-drawer').classList.add('collapsed');
   }
 }
 

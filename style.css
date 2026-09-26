@@ -297,6 +297,30 @@ body {
   z-index: 1;
 }
 
+/* Eliminate browser default rectangular / square focus selection outlines on all map paths, polygons and SVGs */
+#map:focus,
+#map:focus-visible,
+.leaflet-container:focus,
+.leaflet-container:focus-visible,
+.leaflet-container *:focus,
+.leaflet-container *:focus-visible,
+.leaflet-pane > svg path:focus,
+.leaflet-pane > svg path:focus-visible,
+.leaflet-interactive:focus,
+.leaflet-interactive:focus-visible,
+path.leaflet-interactive:focus,
+path.leaflet-interactive:focus-visible,
+path:focus,
+path:focus-visible,
+svg:focus,
+svg:focus-visible,
+.leaflet-marker-icon:focus,
+.leaflet-marker-icon:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
 /* Apple Floating HUD Container */
 .apple-hud {
   background: rgba(255, 255, 255, 0.88);

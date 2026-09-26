@@ -351,6 +351,7 @@ function initMap() {
   AppState.map = L.map('map', {
     zoomControl: false,
     attributionControl: false,
+    boxZoom: false,
     minZoom: 9,
     maxZoom: 16
   }).setView([49.38, 8.75], 10);

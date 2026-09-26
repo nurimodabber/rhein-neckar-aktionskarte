@@ -14,7 +14,7 @@ const AppState = {
   activePaintColor: '#86efac',
   visualViewMode: 'milestone',
   
-  showLabels: false,
+  showLabels: true,
   showSurrounding: true,
   showRivers: true,
   showLandmarks: true,
@@ -146,7 +146,13 @@ function initMap() {
 
   AppState.markersLayer = L.layerGroup().addTo(AppState.map);
 
-  AppState.map.on('move viewreset resize zoomend', () => {
+  AppState.map.on('zoomend', () => {
+    refreshAllStyles();
+    refreshMarkers();
+    updateNavigationHUD();
+  });
+
+  AppState.map.on('move viewreset resize', () => {
     renderArrows();
   });
 }
@@ -258,6 +264,7 @@ function exitDistrictFocus() {
   }
 
   refreshAllStyles();
+  refreshMarkers();
 }
 
 // --- SVG Arrow Layer ---
@@ -290,41 +297,58 @@ const MILESTONE_COLORS = {
   ipg_plus: { fill: '#15803d', border: '#052e16', text: '#ffffff' }
 };
 
+// --- Level of Detail & District Mode Helper ---
+function isTownInDistrictMode(townId) {
+  const hasDistricts = Object.values(AppState.districtFeaturesById).some(df => df.properties.townId === townId);
+  if (!hasDistricts) return false;
+  const currentZoom = AppState.map ? AppState.map.getZoom() : 10;
+  return currentZoom >= 12 || AppState.focusedTownId === townId;
+}
+
+// --- Navigation Breadcrumb HUD Sync ---
+function updateNavigationHUD() {
+  const banner = document.getElementById('focus-banner');
+  const bannerText = document.getElementById('focus-banner-text');
+  if (!banner || !bannerText) return;
+
+  const currentZoom = AppState.map ? AppState.map.getZoom() : 10;
+  if (AppState.focusedTownId) {
+    const feat = AppState.townFeaturesById[AppState.focusedTownId];
+    const distCount = Object.values(AppState.districtFeaturesById).filter(df => df.properties.townId === AppState.focusedTownId).length;
+    banner.style.display = 'flex';
+    bannerText.textContent = `${feat ? feat.properties.name : 'Ortschaft'} (${distCount} Stadtteile)`;
+  } else if (currentZoom >= 12) {
+    banner.style.display = 'flex';
+    bannerText.textContent = 'Stadtteil-Ebene (Detail-Ansicht)';
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
 // --- Polygon Styles (Towns) ---
 function getTownStyle(feature) {
   const id = feature.properties.id;
   const town = AppState.towns[id] || { milestone: 'none', nuclei: 0, activities: {} };
-  
-  const isFocused = AppState.focusedTownId === id;
-  const isAnotherFocused = AppState.focusedTownId && AppState.focusedTownId !== id;
-  const isSelected = AppState.selectedTownId === id && !AppState.selectedDistrictId;
-  const isArrowSource = AppState.arrowSourceId === id;
-  const isCenter = town.isCenter;
 
-  const hasDistricts = Object.values(AppState.districtFeaturesById).some(df => df.properties.townId === id);
-
-  if (isFocused && hasDistricts) {
+  if (isTownInDistrictMode(id)) {
+    // When in district mode, this city's interior is rendered by its individual Stadtteile.
+    // The municipality boundary remains as a very subtle reference contour.
     return {
       fillOpacity: 0,
-      opacity: 0.9,
-      color: '#2563eb',
-      weight: 3,
+      opacity: 0.3,
+      color: '#007aff',
+      weight: 1.2,
+      dashArray: '3, 4',
       interactive: false
     };
   }
 
-  if (isAnotherFocused) {
-    return {
-      fillOpacity: 0.35,
-      fillColor: '#f1f5f9',
-      color: '#cbd5e1',
-      weight: 1,
-      opacity: 0.5
-    };
-  }
+  const isSelected = AppState.selectedTownId === id && !AppState.selectedDistrictId;
+  const isArrowSource = AppState.arrowSourceId === id;
+  const isCenter = town.isCenter;
 
   let fillColor = '#ffffff';
-  let borderColor = '#1e293b';
+  let borderColor = '#3a3a3c';
   let fillOpacity = 0.92;
 
   if (AppState.visualViewMode === 'milestone') {
@@ -358,28 +382,28 @@ function getTownStyle(feature) {
   return {
     fillColor: fillColor,
     fillOpacity: isSelected || isArrowSource ? 0.98 : fillOpacity,
-    color: isArrowSource ? '#2563eb' : (isCenter ? '#d97706' : (isSelected ? '#0284c7' : borderColor)),
-    weight: isArrowSource ? 3.5 : (isSelected ? 3 : (isCenter ? 2.5 : 1.8)),
+    color: isArrowSource ? '#007aff' : (isCenter ? '#ff9500' : (isSelected ? '#007aff' : borderColor)),
+    weight: isArrowSource ? 3.5 : (isSelected ? 3 : (isCenter ? 2.2 : 1.4)),
     opacity: 0.95,
-    dashArray: isArrowSource ? '4, 4' : null
+    dashArray: isArrowSource ? '4, 4' : null,
+    interactive: true
   };
 }
 
 // --- Polygon Styles (Districts) ---
 function getDistrictStyle(feature) {
   const townId = feature.properties.townId;
-  const isThisTownFocused = AppState.focusedTownId === townId;
+  const id = feature.properties.id;
 
-  if (!isThisTownFocused) {
+  if (!isTownInDistrictMode(townId)) {
     return { opacity: 0, fillOpacity: 0, interactive: false };
   }
 
-  const id = feature.properties.id;
   const dist = AppState.districts[id] || { milestone: 'none', nuclei: 0, activities: {} };
 
-  let fillColor = '#f8fafc';
-  let borderColor = '#2563eb';
-  let fillOpacity = 0.85;
+  let fillColor = '#ffffff';
+  let borderColor = '#3a3a3c';
+  let fillOpacity = 0.92;
 
   if (AppState.visualViewMode === 'milestone') {
     if (dist.milestone === 'custom' && dist.customColor) {
@@ -412,11 +436,11 @@ function getDistrictStyle(feature) {
 
   return {
     fillColor: fillColor,
-    fillOpacity: isSelected || isArrowSource ? 0.95 : fillOpacity,
-    color: isArrowSource ? '#2563eb' : (isSelected ? '#0f172a' : borderColor),
-    weight: isSelected || isArrowSource ? 3 : 1.8,
+    fillOpacity: isSelected || isArrowSource ? 0.98 : fillOpacity,
+    color: isArrowSource ? '#007aff' : (isSelected ? '#007aff' : borderColor),
+    weight: isSelected || isArrowSource ? 3 : 1.4,
     dashArray: isArrowSource ? '3, 3' : null,
-    opacity: 1,
+    opacity: 0.95,
     interactive: true
   };
 }
@@ -438,17 +462,17 @@ function renderGeoJson() {
 
       layer.on({
         mouseover: (e) => {
-          if (!AppState.focusedTownId) {
-            layer.setStyle({ weight: 3, color: '#0284c7' });
+          if (!isTownInDistrictMode(id)) {
+            layer.setStyle({ weight: 2.8, color: '#007aff' });
           }
         },
         mouseout: (e) => {
-          if (!AppState.focusedTownId) {
+          if (!isTownInDistrictMode(id)) {
             layer.setStyle(getTownStyle(feature));
           }
         },
         click: (e) => {
-          if (!AppState.focusedTownId) {
+          if (!isTownInDistrictMode(id)) {
             handleTownClick(id);
           }
         }
@@ -477,17 +501,17 @@ function renderDistrictsGeoJson() {
 
       layer.on({
         mouseover: (e) => {
-          if (AppState.focusedTownId === feature.properties.townId) {
-            layer.setStyle({ weight: 3, color: '#0f172a' });
+          if (isTownInDistrictMode(feature.properties.townId)) {
+            layer.setStyle({ weight: 2.8, color: '#007aff' });
           }
         },
         mouseout: (e) => {
-          if (AppState.focusedTownId === feature.properties.townId) {
+          if (isTownInDistrictMode(feature.properties.townId)) {
             layer.setStyle(getDistrictStyle(feature));
           }
         },
         click: (e) => {
-          if (AppState.focusedTownId === feature.properties.townId) {
+          if (isTownInDistrictMode(feature.properties.townId)) {
             handleDistrictClick(id);
           }
         }
@@ -506,25 +530,22 @@ function updateTownTooltip(townId) {
 
   const totalActs = calculateTotalActivities(town.activities);
   const milestoneLabel = getMilestoneLabel(town.milestone);
-  const centerBadge = town.isCenter ? '<span style="color:#f59e0b; margin-left:4px;">★ Zentrum</span>' : '';
+  const centerBadge = town.isCenter ? '<span style="color:var(--system-orange); margin-left:4px;">★ Zentrum</span>' : '';
   const distCount = Object.values(AppState.districtFeaturesById).filter(df => df.properties.townId === townId).length;
 
   const tooltipContent = `
-    <div class="leaflet-tooltip-custom">
-      <div class="tt-title">${escapeHtml(feature.properties.name)} ${centerBadge}</div>
-      <div class="tt-row"><span>Status:</span> <span class="tt-val">${milestoneLabel}</span></div>
-      <div class="tt-row"><span>Nuklei:</span> <span class="tt-val">${town.nuclei || 0}</span></div>
-      <div class="tt-row"><span>Kernaktivitäten:</span> <span class="tt-val">${totalActs}</span></div>
-      ${distCount > 0 ? `<div style="margin-top:5px; font-size:10px; color:var(--system-blue); font-weight:500;">Klick: ${distCount} offizielle Stadtteile öffnen</div>` : `<div style="margin-top:5px; font-size:10px; color:var(--text-tertiary);">Einheitliche Gemeinde</div>`}
-    </div>
+    <div class="tt-title">${escapeHtml(feature.properties.name)} ${centerBadge}</div>
+    <div class="tt-row"><span>Status:</span> <span class="tt-val">${milestoneLabel}</span></div>
+    <div class="tt-row"><span>Nuklei:</span> <span class="tt-val">${town.nuclei || 0}</span></div>
+    <div class="tt-row"><span>Kernaktivitäten:</span> <span class="tt-val">${totalActs}</span></div>
+    ${distCount > 0 ? `<div style="margin-top:5px; font-size:10px; color:var(--system-blue); font-weight:600;">Klick: Auf Stadtteile heranzoomen (${distCount} Stadtteile)</div>` : `<div style="margin-top:5px; font-size:10px; color:var(--text-tertiary);">Einheitliche Kommune</div>`}
   `;
 
   layer.unbindTooltip();
   layer.bindTooltip(tooltipContent, {
     sticky: true,
     direction: 'top',
-    opacity: 0.98,
-    className: 'custom-leaflet-tooltip-wrapper'
+    opacity: 0.98
   });
 }
 
@@ -538,84 +559,89 @@ function updateDistrictTooltip(districtId) {
   const milestoneLabel = getMilestoneLabel(dist.milestone);
 
   const tooltipContent = `
-    <div class="leaflet-tooltip-custom">
-      <div class="tt-title">${escapeHtml(feature.properties.name)}</div>
-      <div style="font-size:10px; color:#94a3b8; margin-bottom:4px;">Stadtteil von ${escapeHtml(feature.properties.townName)}</div>
-      <div class="tt-row"><span>Status:</span> <span class="tt-val">${milestoneLabel}</span></div>
-      <div class="tt-row"><span>Nuklei:</span> <span class="tt-val">${dist.nuclei || 0}</span></div>
-      <div class="tt-row"><span>Kernaktivitäten:</span> <span class="tt-val">${totalActs}</span></div>
-    </div>
+    <div class="tt-title">${escapeHtml(feature.properties.name)}</div>
+    <div style="font-size:10px; color:var(--text-tertiary); margin-bottom:4px;">Stadtteil von ${escapeHtml(feature.properties.townName)}</div>
+    <div class="tt-row"><span>Status:</span> <span class="tt-val">${milestoneLabel}</span></div>
+    <div class="tt-row"><span>Nuklei:</span> <span class="tt-val">${dist.nuclei || 0}</span></div>
+    <div class="tt-row"><span>Kernaktivitäten:</span> <span class="tt-val">${totalActs}</span></div>
   `;
 
   layer.unbindTooltip();
   layer.bindTooltip(tooltipContent, {
     sticky: true,
     direction: 'top',
-    opacity: 0.98,
-    className: 'custom-leaflet-tooltip-wrapper'
+    opacity: 0.98
   });
 }
 
-// --- Clean Markers & Labels ---
+// --- Subtle Cartographic Markers & Labels ---
 function refreshMarkers() {
   if (!AppState.markersLayer) return;
   AppState.markersLayer.clearLayers();
 
-  if (AppState.focusedTownId && typeof RHEIN_NECKAR_DISTRICTS !== 'undefined') {
-    RHEIN_NECKAR_DISTRICTS.features.forEach(f => {
-      if (f.properties.townId !== AppState.focusedTownId) return;
+  if (!AppState.showLabels) return;
 
-      const center = f.properties.center;
+  // 1. Municipalities (Ortschaften)
+  if (typeof RHEIN_NECKAR_GEOJSON !== 'undefined') {
+    RHEIN_NECKAR_GEOJSON.features.forEach(f => {
       const id = f.properties.id;
+      const center = f.properties.center;
+      const town = AppState.towns[id];
+      if (!center || !town) return;
+
+      // If this town is currently resolved into Stadtteile, don't overlap with town label
+      if (isTownInDistrictMode(id)) return;
+
+      const totalActs = calculateTotalActivities(town.activities);
+      const isCenter = town.isCenter;
+
+      const markerHtml = `
+        <div class="subtle-map-label ${isCenter ? 'center' : ''}">
+          ${isCenter ? '<span class="center-star">★</span>' : ''}
+          <span>${escapeHtml(f.properties.name)}</span>
+          ${town.nuclei > 0 ? `<span class="subtle-badge nuclei">${town.nuclei}</span>` : ''}
+          ${totalActs > 0 ? `<span class="subtle-badge acts">${totalActs}</span>` : ''}
+        </div>
+      `;
+
+      const customIcon = L.divIcon({
+        className: 'subtle-marker-container',
+        html: markerHtml,
+        iconSize: [120, 20],
+        iconAnchor: [60, 10]
+      });
+
+      const marker = L.marker(center, { icon: customIcon, interactive: false });
+      AppState.markersLayer.addLayer(marker);
+    });
+  }
+
+  // 2. Neighborhoods / Districts (Nachbarschaften / Stadtteile)
+  if (typeof RHEIN_NECKAR_DISTRICTS !== 'undefined') {
+    RHEIN_NECKAR_DISTRICTS.features.forEach(df => {
+      const townId = df.properties.townId;
+      if (!isTownInDistrictMode(townId)) return;
+
+      const center = df.properties.center;
+      const id = df.properties.id;
       const dist = AppState.districts[id];
       if (!center || !dist) return;
 
       const totalActs = calculateTotalActivities(dist.activities);
 
       const markerHtml = `
-        <div class="clean-map-label district">
-          <span>${escapeHtml(f.properties.name)}</span>
-          ${dist.nuclei > 0 ? `<span class="nuclei-pill">${dist.nuclei}</span>` : ''}
-          ${totalActs > 0 ? `<span style="background:#0284c7; color:white; border-radius:6px; padding:0 3px; font-size:8px;">${totalActs}</span>` : ''}
+        <div class="subtle-map-label district">
+          <span>${escapeHtml(df.properties.name)}</span>
+          ${dist.nuclei > 0 ? `<span class="subtle-badge nuclei">${dist.nuclei}</span>` : ''}
+          ${totalActs > 0 ? `<span class="subtle-badge acts">${totalActs}</span>` : ''}
         </div>
       `;
 
       const customIcon = L.divIcon({
-        className: 'town-centroid-marker',
+        className: 'subtle-marker-container',
         html: markerHtml,
-        iconSize: [110, 20],
-        iconAnchor: [55, 10]
-      });
-
-      const marker = L.marker(center, { icon: customIcon, interactive: false });
-      AppState.markersLayer.addLayer(marker);
-    });
-  } else if (typeof RHEIN_NECKAR_GEOJSON !== 'undefined') {
-    RHEIN_NECKAR_GEOJSON.features.forEach(f => {
-      const center = f.properties.center;
-      const id = f.properties.id;
-      const town = AppState.towns[id];
-      if (!center || !town) return;
-
-      const totalActs = calculateTotalActivities(town.activities);
-      const hasActivity = totalActs > 0 || (town.nuclei && town.nuclei > 0) || town.milestone !== 'none';
-      const isCenter = town.isCenter;
-
-      if (!hasActivity && !isCenter && !AppState.showLabels) return;
-
-      const markerHtml = `
-        <div class="clean-map-label ${isCenter ? 'center' : ''}">
-          ${isCenter ? '<span>★</span>' : ''}
-          <span>${escapeHtml(f.properties.name)}</span>
-          ${town.nuclei > 0 ? `<span class="nuclei-pill">${town.nuclei}</span>` : ''}
-        </div>
-      `;
-
-      const customIcon = L.divIcon({
-        className: 'town-centroid-marker',
-        html: markerHtml,
-        iconSize: [100, 18],
-        iconAnchor: [50, 9]
+        iconSize: [110, 18],
+        iconAnchor: [55, 9]
       });
 
       const marker = L.marker(center, { icon: customIcon, interactive: false });
@@ -808,6 +834,10 @@ function renderArrows() {
 function handleTownClick(townId) {
   if (AppState.currentMode === 'inspect') {
     selectTown(townId);
+    const hasDistricts = Object.values(AppState.districtFeaturesById).some(df => df.properties.townId === townId);
+    if (hasDistricts && AppState.map && AppState.map.getZoom() < 12) {
+      focusTownDistricts(townId);
+    }
   } else if (AppState.currentMode === 'paint') {
     applyPaintToTown(townId);
   } else if (AppState.currentMode === 'arrow') {
@@ -1199,8 +1229,8 @@ function initUIEventListeners() {
   });
 
   const toggleLabelsInput = document.getElementById('toggle-labels');
-  toggleLabelsInput.checked = false;
-  AppState.showLabels = false;
+  toggleLabelsInput.checked = true;
+  AppState.showLabels = true;
 
   toggleLabelsInput.addEventListener('change', (e) => {
     AppState.showLabels = e.target.checked;

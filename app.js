@@ -391,9 +391,10 @@ function initMap() {
     refreshAllStyles();
     refreshMarkers();
     updateNavigationHUD();
+    renderArrows();
   });
 
-  AppState.map.on('move viewreset resize', () => {
+  AppState.map.on('move zoom viewreset resize', () => {
     renderArrows();
   });
 }
@@ -1189,6 +1190,7 @@ function renderArrows() {
     hitPath.setAttribute("fill", "none");
     hitPath.setAttribute("stroke", "transparent");
     hitPath.setAttribute("stroke-width", "26");
+    hitPath.setAttribute("stroke-linecap", "round");
     hitPath.setAttribute("style", "cursor: pointer; pointer-events: stroke;");
     hitPath.setAttribute("data-dep-id", dep.id);
 
@@ -1208,12 +1210,14 @@ function renderArrows() {
     hitPath.addEventListener("touchstart", onArrowClick, { passive: false });
     svg.appendChild(hitPath);
 
+    const isSelected = AppState.activeQuickDeployment && AppState.activeQuickDeployment.id === dep.id;
+
     // 2. Visible arrow path
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("d", pathData);
-    path.setAttribute("class", `arrow-path ${dep.status || 'active'}`);
+    path.setAttribute("class", `arrow-path ${dep.status || 'active'} ${isSelected ? 'selected' : ''}`);
     path.setAttribute("stroke", arrowColor);
-    path.setAttribute("stroke-width", dep.status === 'established' ? "3.5" : "3");
+    path.setAttribute("stroke-width", isSelected ? "5" : (dep.status === 'established' ? "3.5" : "3"));
     if (dashStyle) path.setAttribute("stroke-dasharray", dashStyle);
     path.setAttribute("marker-end", `url(#${markerId})`);
     path.setAttribute("data-dep-id", dep.id);
@@ -1237,7 +1241,7 @@ function renderArrows() {
     const midY = 0.25 * pA.y + 0.5 * cpY + 0.25 * endY;
 
     const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    group.setAttribute("class", "arrow-midpoint-node");
+    group.setAttribute("class", `arrow-midpoint-node ${isSelected ? 'selected' : ''}`);
     group.setAttribute("transform", `translate(${midX}, ${midY})`);
     group.setAttribute("style", "cursor: pointer; pointer-events: auto;");
     group.addEventListener("click", onArrowClick);
@@ -1272,7 +1276,12 @@ function renderArrows() {
 }
 
 function openArrowQuickHUD(dep) {
+  const prevId = AppState.activeQuickDeployment ? AppState.activeQuickDeployment.id : null;
   AppState.activeQuickDeployment = dep;
+  if (prevId !== dep.id) {
+    renderArrows();
+  }
+
   const hud = document.getElementById('arrow-quick-hud');
   if (!hud) return;
 
@@ -1313,7 +1322,11 @@ function adjustQuickArrowCount(delta) {
 }
 
 function closeArrowQuickHUD() {
+  const hadActive = !!AppState.activeQuickDeployment;
   AppState.activeQuickDeployment = null;
+  if (hadActive) {
+    renderArrows();
+  }
   const hud = document.getElementById('arrow-quick-hud');
   if (hud) hud.style.display = 'none';
 }

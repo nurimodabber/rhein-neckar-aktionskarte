@@ -558,23 +558,88 @@ svg:focus-visible,
   color: var(--system-blue) !important;
 }
 
-/* Quick Paint Palette Sub-bar */
-.paint-palette-bar {
+/* ==========================================================================
+   Floating Map Mode Toolbar (Center Island) & Contextual Sub-bars
+   ========================================================================== */
+.map-floating-toolbar-container {
   position: absolute;
-  top: 66px;
+  top: 14px;
   left: 50%;
   transform: translateX(-50%);
-  padding: 4px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 850;
+  pointer-events: none;
+}
+
+.map-floating-toolbar-container > * {
+  pointer-events: auto;
+}
+
+.map-mode-control {
+  background: rgba(255, 255, 255, 0.90) !important;
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  padding: 3px;
+  border-radius: 20px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.09), 0 0 0 0.5px rgba(0, 0, 0, 0.08);
+  border: none;
+  display: inline-flex;
+}
+
+.map-mode-control .segmented-btn {
+  padding: 6px 14px;
+  border-radius: 17px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: all 0.15s ease;
+}
+
+.map-mode-control .segmented-btn:hover {
+  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.map-mode-control .segmented-btn.active {
+  background: #ffffff;
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12), 0 0.5px 1.5px rgba(0, 0, 0, 0.06);
+}
+
+/* Quick Paint Palette Sub-bar */
+.paint-palette-bar {
+  position: relative;
+  top: auto;
+  left: auto;
+  transform: none;
+  padding: 4px 12px;
   display: none;
   align-items: center;
   gap: 8px;
   font-size: 12px;
   font-weight: 500;
   color: var(--text-secondary);
+  border-radius: 18px;
+}
+
+@keyframes hudSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-5px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .paint-palette-bar.visible {
   display: flex;
+  animation: hudSlideDown 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .color-chip {
@@ -598,10 +663,10 @@ svg:focus-visible,
 
 /* Arrow Drawing Mode Banner */
 .arrow-instruction-banner {
-  position: absolute;
-  top: 66px;
-  left: 50%;
-  transform: translateX(-50%);
+  position: relative;
+  top: auto;
+  left: auto;
+  transform: none;
   padding: 6px 14px;
   display: none;
   align-items: center;
@@ -611,10 +676,12 @@ svg:focus-visible,
   color: var(--system-blue);
   background: rgba(255, 255, 255, 0.94);
   border: 0.5px solid rgba(0, 122, 255, 0.3);
+  border-radius: 18px;
 }
 
 .arrow-instruction-banner.visible {
   display: flex;
+  animation: hudSlideDown 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .pulsing-dot {

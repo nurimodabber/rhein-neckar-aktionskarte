@@ -33,31 +33,6 @@
         <div class="subtitle">Aktionskarte · Region Süd</div>
       </div>
     </div>
-
-    <!-- Center: Apple Segmented Mode Control -->
-    <div class="segmented-control" role="tablist">
-      <button class="segmented-btn active" id="mode-btn-inspect" role="tab" aria-selected="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="8"></circle>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        </svg>
-        Info &amp; Details
-      </button>
-      <button class="segmented-btn" id="mode-btn-paint" role="tab" aria-selected="false">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M18.37 2.63L14 7l-1.59-1.59a2 2 0 0 0-2.82 0L8 7l9 9 1.59-1.59a2 2 0 0 0 0-2.82L17 10l4.37-4.37a2.12 2.12 0 1 0-3-3z"></path>
-          <path d="M9 8c-2 3-4 3.5-7 4l8 8c.5-3 1-5 4-7"></path>
-          <path d="M14.5 17.5L4.5 7.5"></path>
-        </svg>
-        Schnell-Einfärben
-      </button>
-      <button class="segmented-btn" id="mode-btn-arrow" role="tab" aria-selected="false">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="7" y1="17" x2="17" y2="7"></line>
-          <polyline points="7 7 17 7 17 17"></polyline>
-        </svg>
-        Entsendung
-      </button>
     </div>
 
     <!-- Right: Cluster Key Statistics & Toolbar Buttons -->
@@ -169,20 +144,48 @@
         </div>
       </div>
 
-      <!-- Quick Paint Palette HUD -->
-      <div class="paint-palette-bar apple-hud" id="paint-palette-bar">
-        <span>Klick-Farbe:</span>
-        <div class="color-chip selected" data-milestone="pg" data-color="#86efac" style="background:#86efac;" title="PG – Programm des Wachstums (Hellgrün)"></div>
-        <div class="color-chip" data-milestone="ipg" data-color="#34c759" style="background:#34c759;" title="IPG – Intensives Programm (Grün)"></div>
-        <div class="color-chip" data-milestone="ipg_plus" data-color="#15803d" style="background:#15803d;" title="IPG+ – Fortgeschrittenes Programm (Dunkelgrün)"></div>
-        <div class="color-chip" data-milestone="none" data-color="#ffffff" style="background:#ffffff;" title="Noch nicht begonnen (Weiß)"></div>
-      </div>
+      <!-- Floating Map Mode Toolbar & Contextual Sub-bars -->
+      <div class="map-floating-toolbar-container">
+        <div class="segmented-control apple-hud map-mode-control" role="tablist">
+          <button class="segmented-btn active" id="mode-btn-inspect" role="tab" aria-selected="true" title="Standard-Modus: Details ansehen und bearbeiten">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            Info &amp; Details
+          </button>
+          <button class="segmented-btn" id="mode-btn-paint" role="tab" aria-selected="false" title="Schnell-Einfärben: Direkt per Klick auf der Karte einfärben">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18.37 2.63L14 7l-1.59-1.59a2 2 0 0 0-2.82 0L8 7l9 9 1.59-1.59a2 2 0 0 0 0-2.82L17 10l4.37-4.37a2.12 2.12 0 1 0-3-3z"></path>
+              <path d="M9 8c-2 3-4 3.5-7 4l8 8c.5-3 1-5 4-7"></path>
+              <path d="M14.5 17.5L4.5 7.5"></path>
+            </svg>
+            Schnell-Einfärben
+          </button>
+          <button class="segmented-btn" id="mode-btn-arrow" role="tab" aria-selected="false" title="Entsendung: Pfeile zwischen Ortschaften ziehen">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="7" y1="17" x2="17" y2="7"></line>
+              <polyline points="7 7 17 7 17 17"></polyline>
+            </svg>
+            Entsendung
+          </button>
+        </div>
 
-      <!-- Arrow Drawing Instruction Banner -->
-      <div class="arrow-instruction-banner apple-hud" id="arrow-instruction-banner">
-        <div class="pulsing-dot"></div>
-        <span id="arrow-instruction-text">1. Start-Ort auf Karte anklicken → 2. Ziel-Ort anklicken</span>
-        <button class="btn btn-secondary" id="btn-cancel-arrow" style="padding: 2px 8px; font-size: 11px;">Abbrechen</button>
+        <!-- Quick Paint Palette HUD -->
+        <div class="paint-palette-bar apple-hud" id="paint-palette-bar">
+          <span>Klick-Farbe:</span>
+          <div class="color-chip selected" data-milestone="pg" data-color="#86efac" style="background:#86efac;" title="PG – Programm des Wachstums (Hellgrün)"></div>
+          <div class="color-chip" data-milestone="ipg" data-color="#34c759" style="background:#34c759;" title="IPG – Intensives Programm (Grün)"></div>
+          <div class="color-chip" data-milestone="ipg_plus" data-color="#15803d" style="background:#15803d;" title="IPG+ – Fortgeschrittenes Programm (Dunkelgrün)"></div>
+          <div class="color-chip" data-milestone="none" data-color="#ffffff" style="background:#ffffff;" title="Noch nicht begonnen (Weiß)"></div>
+        </div>
+
+        <!-- Arrow Drawing Instruction Banner -->
+        <div class="arrow-instruction-banner apple-hud" id="arrow-instruction-banner">
+          <div class="pulsing-dot"></div>
+          <span id="arrow-instruction-text">1. Start-Ort auf Karte anklicken → 2. Ziel-Ort anklicken</span>
+          <button class="btn btn-secondary" id="btn-cancel-arrow" style="padding: 2px 8px; font-size: 11px;">Abbrechen</button>
+        </div>
       </div>
 
       <!-- Arrow Quick Action HUD (Apple-style interactive popover) -->

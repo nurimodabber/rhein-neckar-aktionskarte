@@ -482,6 +482,12 @@ function focusTownDistricts(townId) {
   selectTown(townId, false);
   if (distCount > 0) {
     switchDrawerTab('districts');
+    const firstDist = Object.values(AppState.districtFeaturesById).find(df => df.properties.townId === townId);
+    if (firstDist) {
+      AppState.selectedDistrictId = firstDist.properties.id;
+      updateMilestoneHeaderAndSelection();
+      renderDistrictsListForTown(townId);
+    }
   }
 
   refreshAllStyles();
@@ -1414,7 +1420,7 @@ function selectTown(townId, shouldZoom = true) {
 
   renderDistrictsListForTown(townId);
 
-  updateMilestoneUISelection(town.milestone);
+  updateMilestoneHeaderAndSelection();
   document.getElementById('drawer-custom-color').value = town.customColor || '#86efac';
 
   document.getElementById('drawer-is-center').checked = !!town.isCenter;
@@ -1481,7 +1487,7 @@ function selectDistrict(districtId, shouldZoom = false) {
   renderDistrictsListForTown(feature.properties.townId);
 
   // Synchronize inputs with the selected district
-  updateMilestoneUISelection(dist.milestone);
+  updateMilestoneHeaderAndSelection();
   document.getElementById('drawer-custom-color').value = dist.customColor || '#86efac';
 
   document.getElementById('drawer-is-center').closest('.center-switch-box').style.display = 'none';
@@ -1537,15 +1543,19 @@ function renderDistrictsListForTown(townId) {
     const actsTotal = calculateTotalActivities(dData.activities);
     const isSelected = AppState.selectedDistrictId === dId;
 
+    const isPaintMode = AppState.currentMode === 'paint';
     const card = document.createElement('div');
-    card.className = `district-subcard ${isSelected ? 'active expanded' : ''}`;
+    card.className = `district-subcard ${isSelected ? 'active expanded' : ''} ${isPaintMode ? 'paint-ready' : ''}`;
     card.id = `subcard-${dId}`;
+    if (isPaintMode) {
+      card.title = `Klicken, um ${df.properties.name} mit ${getMilestoneLabel(AppState.activePaintMilestone)} einzufärben`;
+    }
 
     card.innerHTML = `
       <div class="district-subcard-header">
         <div class="district-subcard-left">
           <span class="subcard-chevron">${isSelected ? '▼' : '▶'}</span>
-          <span style="width:9px; height:9px; border-radius:50%; background:${getMilestoneColor(dData.milestone)}; flex-shrink:0;"></span>
+          <span class="subcard-color-dot" style="background:${getMilestoneColor(dData.milestone)};"></span>
           <span class="district-subcard-title">${escapeHtml(df.properties.name)}</span>
           <span class="subpoint-tag">Unterpunkt</span>
         </div>
@@ -1615,9 +1625,13 @@ function renderDistrictsListForTown(townId) {
       </div>
     `;
 
-    // Wire header click to toggle or select
+    // Wire header click to toggle, select or paint
     const header = card.querySelector('.district-subcard-header');
     header.addEventListener('click', () => {
+      if (AppState.currentMode === 'paint') {
+        applyPaintToDistrict(dId);
+        return;
+      }
       if (AppState.selectedDistrictId === dId) {
         const body = card.querySelector('.district-subcard-body');
         const isExp = body.style.display !== 'none';
@@ -1625,9 +1639,35 @@ function renderDistrictsListForTown(townId) {
         card.classList.toggle('expanded', !isExp);
         card.querySelector('.subcard-chevron').textContent = isExp ? '▶' : '▼';
       } else {
-        selectDistrict(dId);
+        selectDistrict(dId, false);
       }
     });
+
+    // Wire color dot quick toggle
+    const colorDot = card.querySelector('.subcard-color-dot');
+    if (colorDot) {
+      colorDot.title = isPaintMode 
+        ? `Klicken zum Einfärben (${getMilestoneLabel(AppState.activePaintMilestone)})` 
+        : 'Klicken zum Ändern der Stufe';
+      colorDot.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (AppState.currentMode === 'paint') {
+          applyPaintToDistrict(dId);
+          return;
+        }
+        const cycle = { none: 'pg', pg: 'ipg', ipg: 'ipg_plus', ipg_plus: 'none' };
+        const nextM = cycle[dData.milestone] || 'pg';
+        pushHistory(`Stadtteil ${df.properties.name}: Meilenstein auf ${getMilestoneLabel(nextM)} geändert`);
+        dData.milestone = nextM;
+        AppState.selectedDistrictId = dId;
+        saveState();
+        refreshAllStyles();
+        refreshMarkers();
+        updateClusterStats();
+        renderDistrictsListForTown(townId);
+        updateMilestoneHeaderAndSelection();
+      });
+    }
 
     // Milestone buttons
     card.querySelectorAll('.subcard-m-btn').forEach(btn => {
@@ -1636,12 +1676,13 @@ function renderDistrictsListForTown(townId) {
         const m = btn.dataset.m;
         pushHistory(`Stadtteil ${df.properties.name}: Meilenstein auf ${getMilestoneLabel(m)} geändert`);
         dData.milestone = m;
+        AppState.selectedDistrictId = dId;
         saveState();
         refreshAllStyles();
+        refreshMarkers();
+        updateClusterStats();
         renderDistrictsListForTown(townId);
-        if (AppState.selectedDistrictId === dId) {
-          updateMilestoneUISelection(m);
-        }
+        updateMilestoneHeaderAndSelection();
       });
     });
 
@@ -1719,11 +1760,21 @@ function switchDrawerTab(tab) {
   const viewOverview = document.getElementById('drawer-overview-view');
   const viewDistricts = document.getElementById('drawer-districts-view');
 
-  btnOverview.classList.toggle('active', tab === 'overview');
-  btnDistricts.classList.toggle('active', tab === 'districts');
+  if (btnOverview) btnOverview.classList.toggle('active', tab === 'overview');
+  if (btnDistricts) btnDistricts.classList.toggle('active', tab === 'districts');
 
-  viewOverview.style.display = tab === 'overview' ? 'block' : 'none';
-  viewDistricts.style.display = tab === 'districts' ? 'block' : 'none';
+  if (viewOverview) viewOverview.style.display = tab === 'overview' ? 'block' : 'none';
+  if (viewDistricts) viewDistricts.style.display = tab === 'districts' ? 'block' : 'none';
+
+  if (tab === 'districts' && !AppState.selectedDistrictId && AppState.selectedTownId) {
+    const firstDist = Object.values(AppState.districtFeaturesById).find(f => f.properties.townId === AppState.selectedTownId);
+    if (firstDist) {
+      AppState.selectedDistrictId = firstDist.properties.id;
+      renderDistrictsListForTown(AppState.selectedTownId);
+    }
+  }
+
+  updateMilestoneHeaderAndSelection();
 }
 
 function updateMilestoneUISelection(milestone) {
@@ -1731,7 +1782,50 @@ function updateMilestoneUISelection(milestone) {
     card.classList.toggle('active', card.dataset.milestone === milestone);
   });
   const customRow = document.getElementById('drawer-custom-color-row');
-  customRow.style.display = milestone === 'custom' ? 'flex' : 'none';
+  if (customRow) customRow.style.display = milestone === 'custom' ? 'flex' : 'none';
+}
+
+function updateMilestoneHeaderAndSelection() {
+  const header = document.getElementById('drawer-milestone-header');
+  const btnApplyAll = document.getElementById('btn-apply-milestone-all-districts');
+  const townId = AppState.selectedTownId;
+  const distId = AppState.selectedDistrictId;
+  const distCount = townId ? Object.values(AppState.districtFeaturesById).filter(f => f.properties.townId === townId).length : 0;
+
+  if (AppState.activeDrawerTab === 'districts' || distId) {
+    if (distId && AppState.districts[distId]) {
+      const distFeat = AppState.districtFeaturesById[distId];
+      const distName = distFeat ? distFeat.properties.name : 'Stadtteil';
+      if (header) header.textContent = `Meilenstein für: ${distName}`;
+      updateMilestoneUISelection(AppState.districts[distId].milestone);
+      const customInput = document.getElementById('drawer-custom-color');
+      if (customInput) customInput.value = AppState.districts[distId].customColor || '#86efac';
+    } else {
+      if (header) header.textContent = 'Meilenstein für Stadtteil:';
+      const firstDist = Object.values(AppState.districtFeaturesById).find(f => f.properties.townId === townId);
+      if (firstDist && AppState.districts[firstDist.properties.id]) {
+        updateMilestoneUISelection(AppState.districts[firstDist.properties.id].milestone);
+      }
+    }
+    if (btnApplyAll) {
+      btnApplyAll.style.display = distCount > 0 ? 'inline-block' : 'none';
+      btnApplyAll.textContent = `Auf alle ${distCount} Stadtteile anwenden`;
+    }
+  } else {
+    // Overview tab
+    if (header) {
+      header.textContent = distCount > 0 ? 'Wachstumsstufe (Gesamtgemeinde)' : 'Wachstumsstufe & Meilenstein';
+    }
+    if (townId && AppState.towns[townId]) {
+      updateMilestoneUISelection(AppState.towns[townId].milestone);
+      const customInput = document.getElementById('drawer-custom-color');
+      if (customInput) customInput.value = AppState.towns[townId].customColor || '#86efac';
+    }
+    if (btnApplyAll) {
+      btnApplyAll.style.display = distCount > 0 ? 'inline-block' : 'none';
+      btnApplyAll.textContent = `Auf alle ${distCount} Stadtteile anwenden`;
+    }
+  }
 }
 
 function renderDeploymentsList(targetId) {
@@ -1815,24 +1909,43 @@ function applyPaintToTown(townId) {
   pushHistory(`Ortschaft ${name} eingefärbt`);
   town.milestone = AppState.activePaintMilestone;
   if (AppState.activePaintMilestone === 'custom') town.customColor = AppState.activePaintColor;
+
+  // Also set all districts of this town to the painted milestone
+  const districts = Object.values(AppState.districtFeaturesById).filter(f => f.properties.townId === townId);
+  districts.forEach(df => {
+    const dId = df.properties.id;
+    if (AppState.districts[dId]) {
+      AppState.districts[dId].milestone = AppState.activePaintMilestone;
+      if (AppState.activePaintMilestone === 'custom') AppState.districts[dId].customColor = AppState.activePaintColor;
+    }
+  });
+
   saveState();
   refreshAllStyles();
-  if (AppState.selectedTownId === townId && !AppState.selectedDistrictId) {
-    updateMilestoneUISelection(town.milestone);
+  refreshMarkers();
+  updateClusterStats();
+  if (AppState.selectedTownId === townId) {
+    updateMilestoneHeaderAndSelection();
+    renderDistrictsListForTown(townId);
   }
 }
 
 function applyPaintToDistrict(districtId) {
   const dist = AppState.districts[districtId];
   if (!dist) return;
-  const name = AppState.districtFeaturesById[districtId]?.properties?.name || 'Stadtteil';
+  const df = AppState.districtFeaturesById[districtId];
+  const name = df?.properties?.name || 'Stadtteil';
   pushHistory(`Stadtteil ${name} eingefärbt`);
   dist.milestone = AppState.activePaintMilestone;
   if (AppState.activePaintMilestone === 'custom') dist.customColor = AppState.activePaintColor;
+  AppState.selectedDistrictId = districtId;
   saveState();
   refreshAllStyles();
-  if (AppState.selectedDistrictId === districtId) {
-    updateMilestoneUISelection(dist.milestone);
+  refreshMarkers();
+  updateClusterStats();
+  updateMilestoneHeaderAndSelection();
+  if (df && AppState.selectedTownId === df.properties.townId) {
+    renderDistrictsListForTown(df.properties.townId);
   }
 }
 
@@ -2120,23 +2233,98 @@ function initUIEventListeners() {
   document.querySelectorAll('.milestone-card').forEach(card => {
     card.addEventListener('click', () => {
       const m = card.dataset.milestone;
-      pushHistory(`Meilenstein auf ${getMilestoneLabel(m)} geändert`);
-      if (AppState.selectedDistrictId) {
-        AppState.districts[AppState.selectedDistrictId].milestone = m;
-      } else if (AppState.selectedTownId) {
-        AppState.towns[AppState.selectedTownId].milestone = m;
+
+      // If we are in the districts tab or have an active selected district:
+      if (AppState.activeDrawerTab === 'districts' || AppState.selectedDistrictId) {
+        let targetDistId = AppState.selectedDistrictId;
+        if (!targetDistId && AppState.selectedTownId) {
+          const firstDist = Object.values(AppState.districtFeaturesById).find(f => f.properties.townId === AppState.selectedTownId);
+          if (firstDist) targetDistId = firstDist.properties.id;
+        }
+
+        if (targetDistId && AppState.districts[targetDistId]) {
+          const df = AppState.districtFeaturesById[targetDistId];
+          const name = df ? df.properties.name : 'Stadtteil';
+          pushHistory(`Stadtteil ${name}: Meilenstein auf ${getMilestoneLabel(m)} geändert`);
+          AppState.districts[targetDistId].milestone = m;
+          AppState.selectedDistrictId = targetDistId;
+          updateMilestoneHeaderAndSelection();
+          saveState();
+          refreshAllStyles();
+          refreshMarkers();
+          updateClusterStats();
+          if (AppState.selectedTownId) {
+            renderDistrictsListForTown(AppState.selectedTownId);
+          }
+          return;
+        }
       }
-      updateMilestoneUISelection(m);
-      saveState();
-      refreshAllStyles();
+
+      // Otherwise we are on the overall town / municipality level:
+      if (AppState.selectedTownId && AppState.towns[AppState.selectedTownId]) {
+        const town = AppState.towns[AppState.selectedTownId];
+        const tf = AppState.townFeaturesById[AppState.selectedTownId];
+        const name = tf ? tf.properties.name : 'Ortschaft';
+        pushHistory(`Ortschaft ${name}: Meilenstein auf ${getMilestoneLabel(m)} geändert`);
+        town.milestone = m;
+        updateMilestoneHeaderAndSelection();
+        saveState();
+        refreshAllStyles();
+        refreshMarkers();
+        updateClusterStats();
+        renderDistrictsListForTown(AppState.selectedTownId);
+      }
     });
   });
 
+  const btnApplyAll = document.getElementById('btn-apply-milestone-all-districts');
+  if (btnApplyAll) {
+    btnApplyAll.addEventListener('click', () => {
+      const townId = AppState.selectedTownId;
+      if (!townId) return;
+      const town = AppState.towns[townId];
+      if (!town) return;
+
+      let targetMilestone = town.milestone;
+      let targetColor = town.customColor;
+      if (AppState.activeDrawerTab === 'districts' && AppState.selectedDistrictId && AppState.districts[AppState.selectedDistrictId]) {
+        targetMilestone = AppState.districts[AppState.selectedDistrictId].milestone;
+        targetColor = AppState.districts[AppState.selectedDistrictId].customColor;
+      }
+
+      const townFeat = AppState.townFeaturesById[townId];
+      const townName = townFeat ? townFeat.properties.name : 'Gemeinde';
+      const districts = Object.values(AppState.districtFeaturesById).filter(f => f.properties.townId === townId);
+      if (districts.length === 0) return;
+
+      pushHistory(`Alle ${districts.length} Stadtteile von ${townName} auf ${getMilestoneLabel(targetMilestone)} gesetzt`);
+      districts.forEach(df => {
+        const dId = df.properties.id;
+        if (!AppState.districts[dId]) AppState.districts[dId] = { milestone: 'none', nuclei: 0, activities: {} };
+        AppState.districts[dId].milestone = targetMilestone;
+        if (targetMilestone === 'custom' && targetColor) {
+          AppState.districts[dId].customColor = targetColor;
+        }
+      });
+      town.milestone = targetMilestone;
+      if (targetMilestone === 'custom' && targetColor) town.customColor = targetColor;
+
+      saveState();
+      refreshAllStyles();
+      refreshMarkers();
+      updateClusterStats();
+      renderDistrictsListForTown(townId);
+      updateMilestoneHeaderAndSelection();
+    });
+  }
+
   document.getElementById('drawer-custom-color').addEventListener('change', (e) => {
     pushHistory('Farbe angepasst');
-    if (AppState.selectedDistrictId) {
-      AppState.districts[AppState.selectedDistrictId].customColor = e.target.value;
-    } else if (AppState.selectedTownId) {
+    if (AppState.activeDrawerTab === 'districts' || AppState.selectedDistrictId) {
+      if (AppState.selectedDistrictId && AppState.districts[AppState.selectedDistrictId]) {
+        AppState.districts[AppState.selectedDistrictId].customColor = e.target.value;
+      }
+    } else if (AppState.selectedTownId && AppState.towns[AppState.selectedTownId]) {
       AppState.towns[AppState.selectedTownId].customColor = e.target.value;
     }
     saveState();

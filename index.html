@@ -315,6 +315,40 @@
 
       <div class="inspector-body">
         
+        <!-- Milestone Selection Group (Always at top of drawer for instant coloring of town or selected district) -->
+        <div id="drawer-milestone-section" style="margin-bottom: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; padding: 0 4px;">
+            <div class="group-header" id="drawer-milestone-header" style="margin: 0; padding: 0;">Wachstumsstufe &amp; Meilenstein</div>
+            <button type="button" class="btn btn-ghost" id="btn-apply-milestone-all-districts" style="display: none; font-size: 11px; padding: 2px 8px; color: var(--system-blue); font-weight: 500;" title="Diesen Meilenstein auf alle Stadtteile dieser Ortschaft anwenden">
+              Auf alle Stadtteile anwenden
+            </button>
+          </div>
+          <div class="apple-group">
+            <div class="milestone-selector">
+              <div class="milestone-card milestone-option" data-milestone="none">
+                <div class="legend-dot none"></div>
+                <span>Keine Aktivität</span>
+              </div>
+              <div class="milestone-card milestone-option" data-milestone="pg">
+                <div class="legend-dot pg"></div>
+                <span>PG (Programm)</span>
+              </div>
+              <div class="milestone-card milestone-option" data-milestone="ipg">
+                <div class="legend-dot ipg"></div>
+                <span>IPG (Intensiv)</span>
+              </div>
+              <div class="milestone-card milestone-option" data-milestone="ipg_plus">
+                <div class="legend-dot ipg-plus"></div>
+                <span>IPG+ (Fortgeschr.)</span>
+              </div>
+            </div>
+            <div class="custom-color-row" id="drawer-custom-color-row" style="display:none;">
+              <span>Farbe anpassen:</span>
+              <input type="color" id="drawer-custom-color" value="#86efac" />
+            </div>
+          </div>
+        </div>
+
         <!-- Segmented Tab Control (Visible when town has sub-districts) -->
         <div class="segmented-control" id="drawer-tabs-segmented" style="width: 100%; margin-bottom: 8px;">
           <button class="segmented-btn active" id="tab-btn-overview" style="flex: 1; justify-content: center;">Gesamtgemeinde</button>
@@ -338,35 +372,6 @@
         <!-- Container for Overview Tab -->
         <div id="drawer-overview-view">
           
-          <!-- Milestone Selection Group -->
-          <div style="margin-bottom: 12px;">
-            <div class="group-header">Wachstumsstufe &amp; Meilenstein</div>
-            <div class="apple-group">
-              <div class="milestone-selector">
-                <div class="milestone-card milestone-option" data-milestone="none">
-                  <div class="legend-dot none"></div>
-                  <span>Keine Aktivität</span>
-                </div>
-                <div class="milestone-card milestone-option" data-milestone="pg">
-                  <div class="legend-dot pg"></div>
-                  <span>PG (Programm)</span>
-                </div>
-                <div class="milestone-card milestone-option" data-milestone="ipg">
-                  <div class="legend-dot ipg"></div>
-                  <span>IPG (Intensiv)</span>
-                </div>
-                <div class="milestone-card milestone-option" data-milestone="ipg_plus">
-                  <div class="legend-dot ipg-plus"></div>
-                  <span>IPG+ (Fortgeschr.)</span>
-                </div>
-              </div>
-              <div class="custom-color-row" id="drawer-custom-color-row" style="display:none;">
-                <span>Farbe anpassen:</span>
-                <input type="color" id="drawer-custom-color" value="#86efac" />
-              </div>
-            </div>
-          </div>
-
           <!-- Center Toggle Switch Row -->
           <div style="margin-bottom: 12px;">
             <div class="apple-group">

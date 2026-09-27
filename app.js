@@ -1384,26 +1384,22 @@ function selectTown(townId, shouldZoom = true) {
   
   const distCount = Object.values(AppState.districtFeaturesById).filter(f => f.properties.townId === townId).length;
   document.getElementById('drawer-town-type').textContent = distCount > 0 
-    ? `${feature.properties.kreis} • ${distCount} Nachbarschaften` 
+    ? `${feature.properties.kreis} • ${distCount} Stadtteile` 
     : `${feature.properties.kreis} • Gesamtgemeinde`;
 
-  renderDistrictsListForTown(townId);
-
-  // Sync zoom button in drawer
-  const btnZoomTown = document.getElementById('btn-zoom-to-town');
-  if (btnZoomTown) {
+  const tabsControl = document.getElementById('drawer-tabs-segmented');
+  if (tabsControl) {
     if (distCount > 0) {
-      btnZoomTown.style.display = 'flex';
-      const isFocused = AppState.focusedTownId === townId;
-      btnZoomTown.innerHTML = isFocused 
-        ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;margin-right:6px;"><polyline points="20 6 9 17 4 12"></polyline></svg> Stadtteile auf Karte aktiv`
-        : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;margin-right:6px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg> Auf Karte heranzoomen &amp; Stadtteile anzeigen`;
-      btnZoomTown.classList.toggle('btn-primary', isFocused);
-      btnZoomTown.classList.toggle('btn-secondary', !isFocused);
+      tabsControl.style.display = 'inline-flex';
+      const badge = document.getElementById('drawer-districts-count');
+      if (badge) badge.textContent = distCount;
     } else {
-      btnZoomTown.style.display = 'none';
+      tabsControl.style.display = 'none';
+      switchDrawerTab('overview');
     }
   }
+
+  renderDistrictsListForTown(townId);
 
   updateMilestoneUISelection(town.milestone);
   document.getElementById('drawer-custom-color').value = town.customColor || '#86efac';
@@ -1893,6 +1889,7 @@ function saveNewArrowFromModal() {
   AppState.deployments.push(newDep);
   saveState();
   cancelArrowDrawing();
+  setMode('inspect');
   document.getElementById('new-arrow-modal').classList.remove('visible');
   refreshAllStyles();
 
@@ -1903,7 +1900,8 @@ function saveNewArrowFromModal() {
 function cancelArrowDrawing() {
   AppState.arrowSourceId = null;
   AppState.arrowSourceIsDistrict = false;
-  document.getElementById('arrow-instruction-text').textContent = "1. Start-Ort auf Karte anklicken → 2. Ziel-Ort anklicken";
+  const banner = document.getElementById('arrow-instruction-text');
+  if (banner) banner.textContent = "1. Start-Ort auf Karte anklicken → 2. Ziel-Ort anklicken";
   refreshAllStyles();
 }
 
@@ -1985,13 +1983,60 @@ function saveEditedDeployment() {
   else if (AppState.selectedTownId) renderDeploymentsList(AppState.selectedTownId);
 }
 
+// --- Application Modes ---
+function setMode(mode) {
+  AppState.currentMode = mode;
+  const btnInspect = document.getElementById('mode-btn-inspect');
+  const btnPaint = document.getElementById('mode-btn-paint');
+  const btnArrow = document.getElementById('mode-btn-arrow');
+  const paintBar = document.getElementById('paint-palette-bar');
+  const arrowBanner = document.getElementById('arrow-instruction-banner');
+
+  if (btnInspect) btnInspect.classList.toggle('active', mode === 'inspect');
+  if (btnPaint) btnPaint.classList.toggle('active', mode === 'paint');
+  if (btnArrow) btnArrow.classList.toggle('active', mode === 'arrow');
+
+  if (paintBar) paintBar.classList.toggle('visible', mode === 'paint');
+  if (arrowBanner) arrowBanner.classList.toggle('visible', mode === 'arrow');
+
+  if (mode !== 'arrow') {
+    cancelArrowDrawing();
+  }
+}
+
+// Recenter current selection (Town or District) on map
+function recenterCurrentSelection() {
+  if (AppState.selectedDistrictId) {
+    focusDistrictOnMap(AppState.selectedDistrictId);
+  } else if (AppState.selectedTownId) {
+    const distCount = Object.values(AppState.districtFeaturesById).filter(f => f.properties.townId === AppState.selectedTownId).length;
+    if (distCount > 0) {
+      focusTownDistricts(AppState.selectedTownId);
+    } else {
+      const layer = AppState.townLayersById[AppState.selectedTownId];
+      if (layer && AppState.map) {
+        const drawer = document.getElementById('details-drawer');
+        const drawerWidth = drawer && !drawer.classList.contains('collapsed') ? Math.min(window.innerWidth * 0.45, 420) : 40;
+        AppState.map.fitBounds(layer.getBounds(), {
+          maxZoom: 13,
+          paddingTopLeft: [50, 40],
+          paddingBottomRight: [drawerWidth + 30, 40],
+          animate: true
+        });
+      }
+    }
+  }
+}
+
 // --- UI Event Listeners ---
 function initUIEventListeners() {
   document.getElementById('btn-zoom-cluster').addEventListener('click', exitDistrictFocus);
   document.getElementById('btn-exit-focus').addEventListener('click', exitDistrictFocus);
-  document.getElementById('btn-zoom-to-town').addEventListener('click', () => {
-    if (AppState.selectedTownId) focusTownDistricts(AppState.selectedTownId);
-  });
+  
+  const btnRecenter = document.getElementById('btn-recenter-selection');
+  if (btnRecenter) {
+    btnRecenter.addEventListener('click', recenterCurrentSelection);
+  }
 
   document.getElementById('tab-btn-overview').addEventListener('click', () => switchDrawerTab('overview'));
   document.getElementById('tab-btn-districts').addEventListener('click', () => switchDrawerTab('districts'));
@@ -1999,25 +2044,14 @@ function initUIEventListeners() {
   const btnInspect = document.getElementById('mode-btn-inspect');
   const btnPaint = document.getElementById('mode-btn-paint');
   const btnArrow = document.getElementById('mode-btn-arrow');
-  const paintBar = document.getElementById('paint-palette-bar');
-  const arrowBanner = document.getElementById('arrow-instruction-banner');
-
-  function setMode(mode) {
-    AppState.currentMode = mode;
-    btnInspect.classList.toggle('active', mode === 'inspect');
-    btnPaint.classList.toggle('active', mode === 'paint');
-    btnArrow.classList.toggle('active', mode === 'arrow');
-
-    paintBar.classList.toggle('visible', mode === 'paint');
-    arrowBanner.classList.toggle('visible', mode === 'arrow');
-
-    if (mode !== 'arrow') cancelArrowDrawing();
-  }
 
   btnInspect.addEventListener('click', () => setMode('inspect'));
   btnPaint.addEventListener('click', () => setMode('paint'));
   btnArrow.addEventListener('click', () => setMode('arrow'));
-  document.getElementById('btn-cancel-arrow').addEventListener('click', cancelArrowDrawing);
+  document.getElementById('btn-cancel-arrow').addEventListener('click', () => {
+    cancelArrowDrawing();
+    setMode('inspect');
+  });
 
   document.querySelectorAll('.color-chip').forEach(chip => {
     chip.addEventListener('click', () => {
@@ -2217,9 +2251,34 @@ function initUIEventListeners() {
     });
   }
 
-  // Global Keyboard Shortcuts (⌘Z / ⇧⌘Z / ⌘Y)
+  // Global Keyboard Shortcuts (⌘Z / ⇧⌘Z / ⌘Y / Escape)
   window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const openModal = document.querySelector('.modal-backdrop.visible');
+      if (openModal) {
+        openModal.classList.remove('visible');
+        if (openModal.id === 'new-arrow-modal') {
+          cancelArrowDrawing();
+          setMode('inspect');
+        }
+      }
+      closeArrowQuickHUD();
+      const projMenu = document.getElementById('project-dropdown-menu');
+      if (projMenu) {
+        projMenu.classList.remove('visible');
+        document.getElementById('btn-project-menu')?.setAttribute('aria-expanded', 'false');
+      }
+      const searchRes = document.getElementById('town-search-results');
+      if (searchRes) searchRes.classList.remove('visible');
+      if (AppState.currentMode === 'arrow') {
+        cancelArrowDrawing();
+        setMode('inspect');
+      }
+      return;
+    }
+
     if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
       if (e.shiftKey) {
         e.preventDefault();
@@ -2299,34 +2358,110 @@ function initUIEventListeners() {
     searchResults.classList.add('visible');
   });
 
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('.search-box-card')) searchResults.classList.remove('visible');
+  // Spotlight search keyboard accessibility
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const firstItem = searchResults.querySelector('.search-item');
+      if (firstItem) {
+        e.preventDefault();
+        firstItem.click();
+      }
+    } else if (e.key === 'Escape') {
+      searchResults.classList.remove('visible');
+      searchInput.blur();
+    }
   });
 
+  // Close search when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.spotlight-search')) searchResults.classList.remove('visible');
+  });
+
+  // Collapsible Legend Header
+  const legendToggle = document.getElementById('legend-header-toggle');
+  if (legendToggle) {
+    legendToggle.addEventListener('click', () => {
+      const hud = document.getElementById('legend-hud');
+      const chevron = document.getElementById('legend-chevron');
+      if (hud) {
+        hud.classList.toggle('collapsed');
+        const isCollapsed = hud.classList.contains('collapsed');
+        if (chevron) chevron.textContent = isCollapsed ? '▸' : '▾';
+      }
+    });
+  }
+
+  // Arrow modals & buttons
   document.getElementById('btn-save-new-arrow').addEventListener('click', saveNewArrowFromModal);
   document.getElementById('btn-close-new-arrow-modal').addEventListener('click', () => {
     document.getElementById('new-arrow-modal').classList.remove('visible');
     cancelArrowDrawing();
+    setMode('inspect');
   });
   document.getElementById('btn-cancel-new-arrow-modal').addEventListener('click', () => {
     document.getElementById('new-arrow-modal').classList.remove('visible');
     cancelArrowDrawing();
+    setMode('inspect');
   });
 
   document.getElementById('btn-close-view-dep-modal').addEventListener('click', () => {
     document.getElementById('view-dep-modal').classList.remove('visible');
   });
 
+  // Report Modal
   document.getElementById('btn-open-report').addEventListener('click', openClusterReportModal);
   document.getElementById('btn-close-report-modal').addEventListener('click', () => {
     document.getElementById('report-modal').classList.remove('visible');
   });
 
-  document.getElementById('btn-export-json').addEventListener('click', exportDataJson);
-  document.getElementById('btn-import-json').addEventListener('click', () => document.getElementById('json-file-input').click());
-  document.getElementById('json-file-input').addEventListener('change', handleImportJson);
+  // Export PNG Image
   document.getElementById('btn-export-png').addEventListener('click', exportMapAsPng);
-  document.getElementById('btn-reset-demo').addEventListener('click', resetToCleanData);
+
+  // Unified Apple-style Projekt Menu
+  const btnProjectMenu = document.getElementById('btn-project-menu');
+  const projectDropdownMenu = document.getElementById('project-dropdown-menu');
+
+  if (btnProjectMenu && projectDropdownMenu) {
+    btnProjectMenu.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isVis = projectDropdownMenu.classList.toggle('visible');
+      btnProjectMenu.setAttribute('aria-expanded', isVis ? 'true' : 'false');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#project-dropdown-container')) {
+        projectDropdownMenu.classList.remove('visible');
+        btnProjectMenu.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    document.getElementById('menu-item-export')?.addEventListener('click', () => {
+      projectDropdownMenu.classList.remove('visible');
+      btnProjectMenu.setAttribute('aria-expanded', 'false');
+      exportDataJson();
+    });
+
+    document.getElementById('menu-item-import')?.addEventListener('click', () => {
+      projectDropdownMenu.classList.remove('visible');
+      btnProjectMenu.setAttribute('aria-expanded', 'false');
+      document.getElementById('json-file-input').click();
+    });
+
+    document.getElementById('menu-item-backups')?.addEventListener('click', () => {
+      projectDropdownMenu.classList.remove('visible');
+      btnProjectMenu.setAttribute('aria-expanded', 'false');
+      renderBackupsList();
+      document.getElementById('backups-modal').classList.add('visible');
+    });
+
+    document.getElementById('menu-item-reset')?.addEventListener('click', () => {
+      projectDropdownMenu.classList.remove('visible');
+      btnProjectMenu.setAttribute('aria-expanded', 'false');
+      resetToCleanData();
+    });
+  }
+
+  document.getElementById('json-file-input').addEventListener('change', handleImportJson);
 }
 
 function initStepper(name, onChange) {

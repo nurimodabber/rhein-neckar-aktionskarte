@@ -88,24 +88,7 @@
         </svg>
         Bericht
       </button>
-      <button class="btn btn-secondary" id="btn-export-json" title="Projekt als JSON herunterladen">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-          <polyline points="7 10 12 15 17 10"></polyline>
-          <line x1="12" y1="15" x2="12" y2="3"></line>
-        </svg>
-        Export
-      </button>
-      <button class="btn btn-secondary" id="btn-import-json" title="Gespeichertes Projekt laden">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-          <polyline points="17 8 12 3 7 8"></polyline>
-          <line x1="12" y1="3" x2="12" y2="15"></line>
-        </svg>
-        Import
-      </button>
-      <input type="file" id="json-file-input" accept=".json" style="display: none;" />
-      
+
       <button class="btn btn-secondary" id="btn-export-png" title="Karte als Bild speichern">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
@@ -114,6 +97,39 @@
         </svg>
         Bild
       </button>
+
+      <!-- Unified Apple-style Projekt Menu Dropdown -->
+      <div class="dropdown" id="project-dropdown-container">
+        <button class="btn btn-secondary" id="btn-project-menu" aria-haspopup="true" aria-expanded="false" title="Projekt- &amp; Datenverwaltung">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+            <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+          </svg>
+          Projekt ▾
+        </button>
+        <div class="dropdown-menu" id="project-dropdown-menu">
+          <button type="button" class="dropdown-item" id="menu-item-export">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Projekt exportieren (JSON)
+          </button>
+          <button type="button" class="dropdown-item" id="menu-item-import">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            Projekt importieren (JSON)...
+          </button>
+          <button type="button" class="dropdown-item" id="menu-item-backups">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            Automatische Sicherungen...
+          </button>
+          <div class="dropdown-divider"></div>
+          <button type="button" class="dropdown-item destructive" id="menu-item-reset">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+            Auf Anfangszustand zurücksetzen...
+          </button>
+        </div>
+      </div>
+      <input type="file" id="json-file-input" accept=".json" style="display: none;" />
+
       <div class="apple-undo-group" style="display: flex; gap: 2px;">
         <button class="btn btn-ghost" id="btn-undo" title="Rückgängig (⌘Z / Strg+Z)" disabled style="padding: 6px 8px;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
@@ -128,22 +144,6 @@
           </svg>
         </button>
       </div>
-
-      <button class="btn btn-secondary" id="btn-open-backups" title="Automatische Sicherungen einsehen &amp; wiederherstellen">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"></circle>
-          <polyline points="12 6 12 12 16 14"></polyline>
-        </svg>
-        Backups
-      </button>
-
-      <button class="btn btn-ghost" id="btn-reset-demo" title="Daten zurücksetzen">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="1 4 1 10 7 10"></polyline>
-          <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
-        </svg>
-        Reset
-      </button>
     </div>
   </header>
 
@@ -231,54 +231,59 @@
           <div class="search-results-menu" id="town-search-results"></div>
         </div>
 
-        <!-- Minimalist Apple Legend -->
-        <div class="legend-hud apple-hud">
-          <div class="legend-header">Cluster-Stufen</div>
-          <div class="legend-row">
-            <div class="legend-dot ipg-plus"></div>
-            <span><strong>IPG+</strong> (Fortgeschritten)</span>
+        <!-- Minimalist Apple Legend (Collapsible) -->
+        <div class="legend-hud apple-hud" id="legend-hud">
+          <div class="legend-header" id="legend-header-toggle" title="Legende einklappen / ausklappen" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none; margin-bottom: 0;">
+            <span>Cluster-Stufen</span>
+            <span id="legend-chevron" style="font-size: 10px; color: var(--text-tertiary); transition: transform 0.2s ease;">▾</span>
           </div>
-          <div class="legend-row">
-            <div class="legend-dot ipg"></div>
-            <span><strong>IPG</strong> (Intensiv)</span>
-          </div>
-          <div class="legend-row">
-            <div class="legend-dot pg"></div>
-            <span><strong>PG</strong> (Wachstumsprogramm)</span>
-          </div>
-          <div class="legend-row">
-            <div class="legend-dot none"></div>
-            <span style="color: var(--text-tertiary);">Noch nicht begonnen</span>
-          </div>
-          <div class="legend-row">
-            <span style="color: var(--system-orange); font-size: 13px; line-height: 1; width: 12px; text-align: center;">★</span>
-            <span>Entsende-Zentrum</span>
-          </div>
-
-          <div class="legend-toggles">
-            <div style="margin-bottom: 4px;">
-              <select id="select-visual-view" class="form-select" style="padding: 3px 6px; font-size: 11px;">
-                <option value="milestone">Ansicht: Meilensteine (PG/IPG/IPG+)</option>
-                <option value="activities">Ansicht: Kernaktivitäten (Zahl)</option>
-                <option value="nuclei">Ansicht: Anzahl Nuklei</option>
-              </select>
+          <div class="legend-body" id="legend-body" style="margin-top: 10px;">
+            <div class="legend-row">
+              <div class="legend-dot ipg-plus"></div>
+              <span><strong>IPG+</strong> (Fortgeschritten)</span>
             </div>
-            <label class="legend-checkbox-label">
-              <input type="checkbox" id="toggle-labels" checked />
-              <span>Orts- &amp; Stadtteilnamen</span>
-            </label>
-            <label class="legend-checkbox-label">
-              <input type="checkbox" id="toggle-surrounding" checked />
-              <span>Nachbarregionen</span>
-            </label>
-            <label class="legend-checkbox-label">
-              <input type="checkbox" id="toggle-rivers" checked />
-              <span>Rhein, Neckar &amp; Landmarken</span>
-            </label>
-            <label class="legend-checkbox-label">
-              <input type="checkbox" id="toggle-arrows" checked />
-              <span>Entsende-Pfeile</span>
-            </label>
+            <div class="legend-row">
+              <div class="legend-dot ipg"></div>
+              <span><strong>IPG</strong> (Intensiv)</span>
+            </div>
+            <div class="legend-row">
+              <div class="legend-dot pg"></div>
+              <span><strong>PG</strong> (Wachstumsprogramm)</span>
+            </div>
+            <div class="legend-row">
+              <div class="legend-dot none"></div>
+              <span style="color: var(--text-tertiary);">Noch nicht begonnen</span>
+            </div>
+            <div class="legend-row">
+              <span style="color: var(--system-orange); font-size: 13px; line-height: 1; width: 12px; text-align: center;">★</span>
+              <span>Entsende-Zentrum</span>
+            </div>
+
+            <div class="legend-toggles">
+              <div style="margin-bottom: 4px;">
+                <select id="select-visual-view" class="form-select" style="padding: 3px 6px; font-size: 11px;">
+                  <option value="milestone">Ansicht: Meilensteine (PG/IPG/IPG+)</option>
+                  <option value="activities">Ansicht: Kernaktivitäten (Zahl)</option>
+                  <option value="nuclei">Ansicht: Anzahl Nuklei</option>
+                </select>
+              </div>
+              <label class="legend-checkbox-label">
+                <input type="checkbox" id="toggle-labels" checked />
+                <span>Orts- &amp; Stadtteilnamen</span>
+              </label>
+              <label class="legend-checkbox-label">
+                <input type="checkbox" id="toggle-surrounding" checked />
+                <span>Nachbarregionen</span>
+              </label>
+              <label class="legend-checkbox-label">
+                <input type="checkbox" id="toggle-rivers" checked />
+                <span>Rhein, Neckar &amp; Landmarken</span>
+              </label>
+              <label class="legend-checkbox-label">
+                <input type="checkbox" id="toggle-arrows" checked />
+                <span>Entsende-Pfeile</span>
+              </label>
+            </div>
           </div>
         </div>
       </div>
@@ -296,7 +301,13 @@
             <span class="breadcrumb-sep">›</span>
             <span class="breadcrumb-current" id="drawer-breadcrumb-current">Nachbarschaft</span>
           </div>
-          <h2 id="drawer-town-name">Ortschaft</h2>
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <h2 id="drawer-town-name" style="margin: 0;">Ortschaft</h2>
+            <button class="btn btn-ghost" id="btn-recenter-selection" title="Auf Karte zentrieren &amp; zeigen" style="padding: 3px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+              Auf Karte
+            </button>
+          </div>
           <div class="type-badge" id="drawer-town-type">Gemeinde</div>
         </div>
         <button class="inspector-close-btn" id="btn-close-drawer" title="Schließen">✕</button>
@@ -304,20 +315,11 @@
 
       <div class="inspector-body">
         
-        <!-- Segmented Tab Control -->
-        <div class="segmented-control" style="width: 100%;">
+        <!-- Segmented Tab Control (Visible when town has sub-districts) -->
+        <div class="segmented-control" id="drawer-tabs-segmented" style="width: 100%; margin-bottom: 8px;">
           <button class="segmented-btn active" id="tab-btn-overview" style="flex: 1; justify-content: center;">Gesamtgemeinde</button>
-          <button class="segmented-btn" id="tab-btn-districts" style="flex: 1; justify-content: center;">Nachbarschaften (<span id="drawer-districts-count">0</span>)</button>
+          <button class="segmented-btn" id="tab-btn-districts" style="flex: 1; justify-content: center;">Stadtteile (<span id="drawer-districts-count">0</span>)</button>
         </div>
-
-        <!-- Zoom to town button -->
-        <button class="btn btn-secondary" id="btn-zoom-to-town" style="width: 100%; justify-content: center;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-          Auf Karte heranzoomen &amp; Stadtteile anzeigen
-        </button>
 
         <!-- Container for Stadtteile Tab -->
         <div id="drawer-districts-view" style="display: none;">
@@ -642,6 +644,10 @@
             </tbody>
           </table>
         </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: Backups & History (Apple HIG Sheet) -->
   <div class="modal-backdrop" id="backups-modal">
     <div class="apple-sheet" style="max-width: 540px;">

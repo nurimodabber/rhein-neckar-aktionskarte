@@ -273,6 +273,97 @@ body {
   background: rgba(255, 59, 48, 0.18);
 }
 
+/* Apple HIG Dropdown Menu */
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 230px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(25px) saturate(180%);
+  -webkit-backdrop-filter: blur(25px) saturate(180%);
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.06);
+  border: 0.5px solid rgba(0, 0, 0, 0.12);
+  padding: 6px;
+  z-index: 1300;
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  animation: appleMenuAppear 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dropdown-menu.visible {
+  display: flex;
+}
+
+@keyframes appleMenuAppear {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  line-height: 1.2;
+}
+
+.dropdown-item svg {
+  width: 14px;
+  height: 14px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.dropdown-item:hover {
+  background: var(--system-blue);
+  color: #ffffff;
+}
+
+.dropdown-item:hover svg {
+  color: #ffffff;
+}
+
+.dropdown-item.destructive {
+  color: var(--system-red);
+}
+
+.dropdown-item.destructive svg {
+  color: var(--system-red);
+}
+
+.dropdown-item.destructive:hover {
+  background: var(--system-red);
+  color: #ffffff;
+}
+
+.dropdown-item.destructive:hover svg {
+  color: #ffffff;
+}
+
+.dropdown-divider {
+  height: 0.5px;
+  background: rgba(0, 0, 0, 0.08);
+  margin: 4px 6px;
+}
+
 /* ==========================================================================
    Main Map Area & Apple Floating HUDs
    ========================================================================== */
@@ -623,6 +714,16 @@ svg:focus-visible,
 .legend-hud {
   width: 220px;
   padding: 12px 14px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.legend-hud.collapsed {
+  width: auto;
+  padding: 7px 12px;
+}
+
+.legend-hud.collapsed .legend-body {
+  display: none !important;
 }
 
 .legend-header {
@@ -631,7 +732,7 @@ svg:focus-visible,
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--text-tertiary);
-  margin-bottom: 10px;
+  margin-bottom: 0;
 }
 
 .legend-row {

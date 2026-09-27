@@ -41,7 +41,6 @@ const AppState = {
   townPerimeterLayer: null,
   markersLayer: null,
   arrowSvgLayer: null,
-  arrowDefs: null,
   
   townFeaturesById: {},
   townLayersById: {},
@@ -647,12 +646,8 @@ function initArrowSvgLayer() {
   svg.style.pointerEvents = "none";
   svg.style.zIndex = "450";
   
-  const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
-  svg.appendChild(defs);
-  
   container.appendChild(svg);
   AppState.arrowSvgLayer = svg;
-  AppState.arrowDefs = defs;
 }
 
 // --- Milestone Colors ---
@@ -1195,10 +1190,7 @@ function renderArrows() {
   if (!AppState.arrowSvgLayer || !AppState.map) return;
   
   const svg = AppState.arrowSvgLayer;
-  while (svg.lastChild && svg.lastChild !== AppState.arrowDefs) {
-    svg.removeChild(svg.lastChild);
-  }
-  AppState.arrowDefs.innerHTML = '';
+  svg.innerHTML = '';
 
   if (!AppState.showArrows || AppState.deployments.length === 0) return;
 
@@ -1254,11 +1246,17 @@ function renderArrows() {
     const tangentX = pB.x - cpX;
     const tangentY = pB.y - cpY;
     const tangentLen = Math.hypot(tangentX, tangentY) || 1;
-    const endX = pB.x - (tangentX / tangentLen) * 12;
-    const endY = pB.y - (tangentY / tangentLen) * 12;
+    const ux = tangentX / tangentLen;
+    const uy = tangentY / tangentLen;
+    const unx = -uy;
+    const uny = ux;
+
+    const headLen = 14;
+    const headWidth = 6.5;
+    const endX = pB.x - ux * (headLen - 2);
+    const endY = pB.y - uy * (headLen - 2);
 
     const pathData = `M ${pA.x} ${pA.y} Q ${cpX} ${cpY} ${endX} ${endY}`;
-    const markerId = `arrowhead-${dep.id}`;
 
     // Color based on status or custom
     let arrowColor = dep.color || '#007aff';
@@ -1270,31 +1268,6 @@ function renderArrows() {
     } else if (dep.status === 'established') {
       arrowColor = '#16a34a'; // Green for established
     }
-
-    const marker = document.createElementNS("http://www.w3.org/2000/svg", "marker");
-    marker.setAttribute("id", markerId);
-    marker.setAttribute("viewBox", "0 0 10 10");
-    marker.setAttribute("refX", "7");
-    marker.setAttribute("refY", "5");
-    marker.setAttribute("markerWidth", "6");
-    marker.setAttribute("markerHeight", "6");
-    marker.setAttribute("orient", "auto-start-reverse");
-
-    const markerPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    markerPath.setAttribute("d", "M 0 1.5 L 8 5 L 0 8.5 z");
-    markerPath.setAttribute("fill", arrowColor);
-    marker.appendChild(markerPath);
-    AppState.arrowDefs.appendChild(marker);
-
-    // 1. Wide invisible hit-area path for easy, effortless clicking
-    const hitPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    hitPath.setAttribute("d", pathData);
-    hitPath.setAttribute("fill", "none");
-    hitPath.setAttribute("stroke", "transparent");
-    hitPath.setAttribute("stroke-width", "26");
-    hitPath.setAttribute("stroke-linecap", "round");
-    hitPath.setAttribute("style", "cursor: pointer; pointer-events: stroke;");
-    hitPath.setAttribute("data-dep-id", dep.id);
 
     const onArrowClick = (e) => {
       if (e) {
@@ -1308,26 +1281,53 @@ function renderArrows() {
       openArrowQuickHUD(dep);
     };
 
+    // 1. Wide invisible hit-area path for easy, effortless clicking
+    const hitPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    hitPath.setAttribute("d", pathData);
+    hitPath.setAttribute("fill", "none");
+    hitPath.setAttribute("stroke", "transparent");
+    hitPath.setAttribute("stroke-width", "26");
+    hitPath.setAttribute("stroke-linecap", "round");
+    hitPath.setAttribute("style", "cursor: pointer; pointer-events: stroke;");
+    hitPath.setAttribute("data-dep-id", dep.id);
+
     hitPath.addEventListener("click", onArrowClick);
     hitPath.addEventListener("touchstart", onArrowClick, { passive: false });
     svg.appendChild(hitPath);
 
     const isSelected = AppState.activeQuickDeployment && AppState.activeQuickDeployment.id === dep.id;
 
-    // 2. Visible arrow path
+    // 2. Visible arrow path (no marker-end needed!)
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("d", pathData);
     path.setAttribute("class", `arrow-path ${dep.status || 'active'} ${isSelected ? 'selected' : ''}`);
     path.setAttribute("stroke", arrowColor);
     path.setAttribute("stroke-width", isSelected ? "5" : (dep.status === 'established' ? "3.5" : "3"));
     if (dashStyle) path.setAttribute("stroke-dasharray", dashStyle);
-    path.setAttribute("marker-end", `url(#${markerId})`);
     path.setAttribute("data-dep-id", dep.id);
     path.setAttribute("style", "cursor: pointer; pointer-events: stroke;");
 
     path.addEventListener("click", onArrowClick);
     path.addEventListener("touchstart", onArrowClick, { passive: false });
     svg.appendChild(path);
+
+    // 2b. Direct SVG Arrowhead Polygon (100% canvas & html2canvas compatible, razor sharp)
+    const tipX = pB.x;
+    const tipY = pB.y;
+    const w1X = (pB.x - ux * headLen) + unx * headWidth;
+    const w1Y = (pB.y - uy * headLen) + uny * headWidth;
+    const w2X = (pB.x - ux * headLen) - unx * headWidth;
+    const w2Y = (pB.y - uy * headLen) - uny * headWidth;
+
+    const arrowhead = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+    arrowhead.setAttribute("points", `${tipX.toFixed(2)},${tipY.toFixed(2)} ${w1X.toFixed(2)},${w1Y.toFixed(2)} ${w2X.toFixed(2)},${w2Y.toFixed(2)}`);
+    arrowhead.setAttribute("fill", arrowColor);
+    arrowhead.setAttribute("class", `arrow-head ${dep.status || 'active'} ${isSelected ? 'selected' : ''}`);
+    arrowhead.setAttribute("data-dep-id", dep.id);
+    arrowhead.setAttribute("style", "cursor: pointer; pointer-events: auto;");
+    arrowhead.addEventListener("click", onArrowClick);
+    arrowhead.addEventListener("touchstart", onArrowClick, { passive: false });
+    svg.appendChild(arrowhead);
 
     // 3. Animated dash for active arrows
     if (dep.status !== 'planned') {
@@ -2993,15 +2993,183 @@ function handleImportJson(e) {
   e.target.value = '';
 }
 
-function exportMapAsPng() {
-  if (typeof html2canvas === 'undefined') return;
-  const mapElem = document.getElementById('map-container');
-  html2canvas(mapElem, { useCORS: true, scale: 2 }).then(canvas => {
+async function exportMapAsPng() {
+  if (typeof html2canvas === 'undefined') {
+    alert("Export-Bibliothek nicht geladen.");
+    return;
+  }
+
+  const btnExport = document.getElementById('btn-export-png');
+  if (btnExport) {
+    btnExport.style.opacity = '0.6';
+    btnExport.style.pointerEvents = 'none';
+  }
+
+  // Close project menu dropdown
+  const projDropdown = document.getElementById('project-dropdown-menu');
+  if (projDropdown) projDropdown.classList.remove('visible');
+
+  // Selectively hide all interactive overlay and HUD controls
+  const uiElementsToHide = [
+    document.querySelector('.map-floating-toolbar-container'),
+    document.getElementById('zoom-nav-bar'),
+    document.querySelector('.bottom-left-stack'),
+    document.querySelector('.leaflet-control-zoom'),
+    document.getElementById('arrow-quick-hud'),
+    document.getElementById('arrow-instruction-banner'),
+    document.getElementById('project-dropdown-menu')
+  ].filter(Boolean);
+
+  const prevDisplays = uiElementsToHide.map(el => el.style.display);
+  uiElementsToHide.forEach(el => el.style.display = 'none');
+
+  // Temporarily collapse drawer if open so it doesn't obscure the map
+  const drawer = document.getElementById('details-drawer');
+  const wasDrawerOpen = drawer && !drawer.classList.contains('collapsed');
+  if (wasDrawerOpen) drawer.classList.add('collapsed');
+
+  try {
+    const mapElem = document.getElementById('map-container');
+    const scale = 2; // 2x Retina crisp resolution
+
+    const canvas = await html2canvas(mapElem, {
+      useCORS: true,
+      scale: scale,
+      backgroundColor: '#f8fafc',
+      logging: false
+    });
+
+    const ctx = canvas.getContext('2d');
+    // Critical: reset dirty scaling/translation matrix left by html2canvas
+    ctx.resetTransform();
+
+    const totalWidth = canvas.width;
+    const totalHeight = canvas.height;
+
+    // --- 1. Apple-Style Presentation Title Card (Top-Left) ---
+    ctx.save();
+    const cardX = 20 * scale;
+    const cardY = 20 * scale;
+    const cardW = 310 * scale;
+    const cardH = 56 * scale;
+    const radius = 12 * scale;
+
+    ctx.shadowColor = 'rgba(0,0,0,0.10)';
+    ctx.shadowBlur = 10 * scale;
+    ctx.shadowOffsetY = 3 * scale;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    
+    ctx.beginPath();
+    ctx.roundRect(cardX, cardY, cardW, cardH, radius);
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.lineWidth = 1 * scale;
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
+    ctx.stroke();
+
+    ctx.fillStyle = '#0f172a';
+    ctx.font = "bold " + (14 * scale) + "px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('Rhein-Neckar · Aktionskarte', cardX + 14 * scale, cardY + 12 * scale);
+
+    const townsActive = Object.values(AppState.towns).filter(t => t.milestone && t.milestone !== 'none').length;
+    const depCount = (AppState.deployments || []).length;
+    const dateStr = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+    ctx.fillStyle = '#64748b';
+    ctx.font = "500 " + (10.5 * scale) + "px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    ctx.fillText(townsActive + " / 133 aktiv · " + depCount + " Pfeile · Stand: " + dateStr, cardX + 14 * scale, cardY + 32 * scale);
+    ctx.restore();
+
+    // --- 2. Apple-Style Compact Map Legend (Bottom-Left) ---
+    ctx.save();
+    const legX = 20 * scale;
+    const legW = 350 * scale;
+    const legH = 42 * scale;
+    const legY = totalHeight - legH - 20 * scale;
+
+    ctx.shadowColor = 'rgba(0,0,0,0.10)';
+    ctx.shadowBlur = 10 * scale;
+    ctx.shadowOffsetY = 3 * scale;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    
+    ctx.beginPath();
+    ctx.roundRect(legX, legY, legW, legH, 10 * scale);
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.lineWidth = 1 * scale;
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
+    ctx.stroke();
+
+    const legItems = [
+      { type: 'box', color: '#15803d', label: 'IPG+' },
+      { type: 'box', color: '#22c55e', label: 'IPG' },
+      { type: 'box', color: '#86efac', label: 'PG' },
+      { type: 'star', color: '#ea580c', label: 'Zentrum' },
+      { type: 'arrow', color: '#007aff', label: 'Pfeil' }
+    ];
+
+    let curX = legX + 14 * scale;
+    const centerY = legY + (legH / 2);
+
+    legItems.forEach(it => {
+      if (it.type === 'box') {
+        ctx.fillStyle = it.color;
+        ctx.beginPath();
+        ctx.roundRect(curX, centerY - 5.5 * scale, 11 * scale, 11 * scale, 2.5 * scale);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+        ctx.lineWidth = 1 * scale;
+        ctx.stroke();
+        curX += 15 * scale;
+      } else if (it.type === 'star') {
+        ctx.fillStyle = it.color;
+        ctx.font = "bold " + (12 * scale) + "px sans-serif";
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('★', curX, centerY);
+        curX += 14 * scale;
+      } else if (it.type === 'arrow') {
+        ctx.fillStyle = it.color;
+        ctx.font = "bold " + (12 * scale) + "px sans-serif";
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('➔', curX, centerY);
+        curX += 16 * scale;
+      }
+
+      ctx.fillStyle = '#334155';
+      ctx.font = "600 " + (10 * scale) + "px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(it.label, curX, centerY);
+      curX += ctx.measureText(it.label).width + 12 * scale;
+    });
+
+    ctx.restore();
+
+    // Trigger download
     const link = document.createElement('a');
-    link.download = `rhein_neckar_karte_${new Date().toISOString().slice(0,10)}.png`;
+    link.download = `rhein_neckar_karte_${new Date().toISOString().slice(0, 10)}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
-  });
+  } catch (err) {
+    console.error("Export-Fehler:", err);
+    alert("Fehler beim Erstellen des Bildes: " + (err.message || err));
+  } finally {
+    // Restore UI elements and drawer
+    uiElementsToHide.forEach((el, i) => {
+      el.style.display = prevDisplays[i] || '';
+    });
+    if (wasDrawerOpen && drawer) {
+      drawer.classList.remove('collapsed');
+    }
+    if (btnExport) {
+      btnExport.style.opacity = '';
+      btnExport.style.pointerEvents = '';
+    }
+  }
 }
 
 function resetToCleanData() {

@@ -192,21 +192,27 @@
             <span class="arrow-quick-dot" id="quick-dep-dot"></span>
             <strong id="quick-dep-names">Start ➔ Ziel</strong>
             <span class="arrow-quick-badge" id="quick-dep-type">Pioniere</span>
-            <span class="arrow-quick-count" id="quick-dep-count">1 Pers.</span>
           </div>
           <button class="focus-dismiss" id="btn-close-quick-arrow" title="Schließen">✕</button>
         </div>
         <div class="arrow-quick-body">
-          <div class="quick-status-selector">
-            <button class="quick-status-pill" data-status="active">● Aktiv</button>
-            <button class="quick-status-pill" data-status="planned">⏳ In Planung</button>
-            <button class="quick-status-pill" data-status="established">✓ Etabliert</button>
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; margin-bottom: 4px;">
+            <div class="quick-status-selector">
+              <button type="button" class="quick-status-pill" data-status="active">● Aktiv</button>
+              <button type="button" class="quick-status-pill" data-status="planned">⏳ Geplant</button>
+              <button type="button" class="quick-status-pill" data-status="established">✓ Etabliert</button>
+            </div>
+            <div class="quick-count-stepper" style="display: inline-flex; align-items: center; background: rgba(118, 118, 128, 0.12); border-radius: 8px; padding: 2px 6px; gap: 4px;">
+              <button type="button" id="quick-count-minus" style="border: none; background: transparent; font-weight: bold; cursor: pointer; padding: 0 4px; font-size: 14px; line-height: 1;">−</button>
+              <span id="quick-dep-count" style="font-size: 11px; font-weight: 600; min-width: 44px; text-align: center;">1 Pers.</span>
+              <button type="button" id="quick-count-plus" style="border: none; background: transparent; font-weight: bold; cursor: pointer; padding: 0 4px; font-size: 14px; line-height: 1;">+</button>
+            </div>
           </div>
-          <div class="arrow-quick-actions">
-            <button class="btn btn-secondary" id="quick-btn-more-details" style="padding: 4px 10px; font-size: 11px;">
-              Notizen &amp; Details...
+          <div class="arrow-quick-actions" style="width: 100%; display: flex; gap: 6px; margin-top: 4px;">
+            <button type="button" class="btn btn-secondary" id="quick-btn-more-details" style="padding: 4px 10px; font-size: 11px; flex: 1; justify-content: center;">
+              ✏️ Bearbeiten &amp; Notizen...
             </button>
-            <button class="btn btn-destructive" id="quick-btn-delete" style="padding: 4px 10px; font-size: 11px;" title="Entsendung entfernen">
+            <button type="button" class="btn btn-destructive" id="quick-btn-delete" style="padding: 4px 10px; font-size: 11px;" title="Entsendung entfernen">
               Löschen
             </button>
           </div>
@@ -533,26 +539,78 @@
     </div>
   </div>
 
-  <!-- Modal: View Deployment Details (Apple HIG Sheet) -->
+  <!-- Modal: Edit Deployment Details (Apple HIG Sheet) -->
   <div class="modal-backdrop" id="view-dep-modal">
     <div class="apple-sheet">
       <div class="sheet-header">
-        <h3 id="view-dep-title">Entsendung Details</h3>
-        <button class="inspector-close-btn" id="btn-close-view-dep-modal">✕</button>
+        <h3 id="view-dep-title">Entsendung bearbeiten</h3>
+        <button type="button" class="inspector-close-btn" id="btn-close-view-dep-modal">✕</button>
       </div>
       <div class="sheet-body">
-        <div style="display: flex; flex-direction: column; gap: 10px; font-size: 13px;">
-          <div><strong>Typ:</strong> <span id="view-dep-type">-</span></div>
-          <div><strong>Beteiligte Personen:</strong> <span id="view-dep-count">-</span></div>
-          <div><strong>Status:</strong> <span id="view-dep-frequency">-</span></div>
-          <div style="background: rgba(118, 118, 128, 0.08); padding: 10px 14px; border-radius: var(--radius-sm);">
-            <div style="font-weight: 600; color: var(--text-tertiary); margin-bottom: 4px; font-size: 11px; text-transform: uppercase;">Notiz &amp; Ziel:</div>
-            <div id="view-dep-notes">-</div>
+        <input type="hidden" id="edit-dep-id" />
+
+        <div style="background: rgba(118, 118, 128, 0.08); padding: 10px 14px; border-radius: var(--radius-sm); margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 600;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="color: var(--system-green);">Start: <span id="edit-dep-from-name">-</span></span>
+            <span style="color: var(--text-tertiary);">→</span>
+            <span style="color: var(--system-blue);">Ziel: <span id="edit-dep-to-name">-</span></span>
+          </div>
+          <button type="button" class="btn btn-secondary" id="btn-edit-dep-swap" title="Richtung der Entsendung umkehren" style="font-size: 11px; padding: 3px 8px; display: inline-flex; align-items: center; gap: 4px;">
+            ⇄ Umkehren
+          </button>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Art der Entsendung / Unterstützung</label>
+          <select class="form-select" id="edit-dep-type">
+            <option value="Pioniere / Umzügler">Pioniere / Umzügler (Dauerhaft / Langzeit)</option>
+            <option value="Wanderlehrer / Besuchsteam">Wanderlehrer / Besuchsteam (Begleitung &amp; Lehre)</option>
+            <option value="Projektbegleitung">Projektbegleitung (z.B. Kampagne / Ferien)</option>
+            <option value="Kinderklassen-Lehrer">Kinderklassen-Lehrer / Helfer</option>
+            <option value="Junioren-Animateur">Junioren-Animateur / Jugend-Team</option>
+            <option value="Studienkreis-Tutor">Studienkreis-Tutor</option>
+            <option value="Sonstige Unterstützung">Sonstige Unterstützung</option>
+          </select>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label class="form-label">Anzahl Personen</label>
+            <input type="number" class="form-input" id="edit-dep-count" value="1" min="1" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status der Entsendung</label>
+            <select class="form-select" id="edit-dep-status">
+              <option value="active">Aktiv (Laufende Begleitung)</option>
+              <option value="planned">In Planung (Gestrichelt)</option>
+              <option value="established">Etabliert / Konsolidiert (Mit Haken)</option>
+            </select>
           </div>
         </div>
+
+        <div class="form-group">
+          <label class="form-label">Farbe des Pfeils</label>
+          <select class="form-select" id="edit-dep-color">
+            <option value="#007aff">Systemblau (Standard)</option>
+            <option value="#34c759">Smaragdgrün</option>
+            <option value="#ff9500">Bernstein-Orange</option>
+            <option value="#ff3b30">Karminrot</option>
+            <option value="#5856d6">Indigo-Violett</option>
+            <option value="#06b6d4">Cyan / Türkis</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Zielsetzung / Details &amp; Notizen</label>
+          <textarea class="form-input" id="edit-dep-notes" rows="3" placeholder="z.B. Aufbau der 1. Juniorengruppe, Begleitung von Familie X..."></textarea>
+        </div>
       </div>
-      <div class="sheet-footer">
-        <button class="btn btn-destructive" id="view-dep-del-btn">Entsendung entfernen</button>
+      <div class="sheet-footer" style="display: flex; justify-content: space-between; align-items: center;">
+        <button type="button" class="btn btn-destructive" id="view-dep-del-btn">Pfeil löschen</button>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-edit-dep-modal">Abbrechen</button>
+          <button type="button" class="btn btn-primary" id="btn-save-edit-dep">Änderungen speichern</button>
+        </div>
       </div>
     </div>
   </div>

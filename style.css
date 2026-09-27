@@ -1415,7 +1415,6 @@ input:checked + .slider:before {
   background: transparent;
 }
 
-/* Deployment Cards in Drawer */
 .deployment-card {
   padding: 8px 12px;
   border-radius: var(--radius-sm);
@@ -1425,6 +1424,28 @@ input:checked + .slider:before {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.deployment-card:hover {
+  background: rgba(118, 118, 128, 0.09);
+  transform: translateY(-1px);
+}
+
+.btn-icon-edit {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  border-radius: 4px;
+  padding: 2px 4px;
+  transition: all 0.15s ease;
+}
+
+.btn-icon-edit:hover {
+  background: rgba(0, 122, 255, 0.12);
+  transform: scale(1.15);
 }
 
 .dep-info-title {
@@ -1714,8 +1735,8 @@ input:checked + .slider:before {
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 1000;
-  min-width: 340px;
+  z-index: 1200;
+  min-width: 360px;
   max-width: 90vw;
   background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(24px) saturate(190%);

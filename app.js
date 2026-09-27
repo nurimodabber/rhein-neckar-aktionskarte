@@ -378,7 +378,12 @@ function initMap() {
 
   AppState.markersLayer = L.layerGroup().addTo(AppState.map);
 
-  AppState.map.on('click', () => {
+  AppState.map.on('click', (e) => {
+    if (e && e.originalEvent && e.originalEvent.target) {
+      if (e.originalEvent.target.closest && (e.originalEvent.target.closest('#arrow-quick-hud') || e.originalEvent.target.closest('.arrow-svg-layer'))) {
+        return;
+      }
+    }
     closeArrowQuickHUD();
   });
 
@@ -1178,6 +1183,32 @@ function renderArrows() {
     marker.appendChild(markerPath);
     AppState.arrowDefs.appendChild(marker);
 
+    // 1. Wide invisible hit-area path for easy, effortless clicking
+    const hitPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    hitPath.setAttribute("d", pathData);
+    hitPath.setAttribute("fill", "none");
+    hitPath.setAttribute("stroke", "transparent");
+    hitPath.setAttribute("stroke-width", "26");
+    hitPath.setAttribute("style", "cursor: pointer; pointer-events: stroke;");
+    hitPath.setAttribute("data-dep-id", dep.id);
+
+    const onArrowClick = (e) => {
+      if (e) {
+        if (e.stopPropagation) e.stopPropagation();
+        if (e.preventDefault) e.preventDefault();
+        if (window.L && L.DomEvent) {
+          L.DomEvent.stopPropagation(e);
+          L.DomEvent.preventDefault(e);
+        }
+      }
+      openArrowQuickHUD(dep);
+    };
+
+    hitPath.addEventListener("click", onArrowClick);
+    hitPath.addEventListener("touchstart", onArrowClick, { passive: false });
+    svg.appendChild(hitPath);
+
+    // 2. Visible arrow path
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("d", pathData);
     path.setAttribute("class", `arrow-path ${dep.status || 'active'}`);
@@ -1186,33 +1217,31 @@ function renderArrows() {
     if (dashStyle) path.setAttribute("stroke-dasharray", dashStyle);
     path.setAttribute("marker-end", `url(#${markerId})`);
     path.setAttribute("data-dep-id", dep.id);
+    path.setAttribute("style", "cursor: pointer; pointer-events: stroke;");
 
-    path.addEventListener("click", (e) => {
-      e.stopPropagation();
-      openArrowQuickHUD(dep);
-    });
-
+    path.addEventListener("click", onArrowClick);
+    path.addEventListener("touchstart", onArrowClick, { passive: false });
     svg.appendChild(path);
 
-    // Animated dash for active arrows
+    // 3. Animated dash for active arrows
     if (dep.status !== 'planned') {
       const flowPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
       flowPath.setAttribute("d", pathData);
       flowPath.setAttribute("class", "arrow-flow-dash");
+      flowPath.setAttribute("style", "pointer-events: none;");
       svg.appendChild(flowPath);
     }
 
-    // Midpoint Node Badge
+    // 4. Midpoint Node Badge
     const midX = 0.25 * pA.x + 0.5 * cpX + 0.25 * endX;
     const midY = 0.25 * pA.y + 0.5 * cpY + 0.25 * endY;
 
     const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
     group.setAttribute("class", "arrow-midpoint-node");
     group.setAttribute("transform", `translate(${midX}, ${midY})`);
-    group.addEventListener("click", (e) => {
-      e.stopPropagation();
-      openArrowQuickHUD(dep);
-    });
+    group.setAttribute("style", "cursor: pointer; pointer-events: auto;");
+    group.addEventListener("click", onArrowClick);
+    group.addEventListener("touchstart", onArrowClick, { passive: false });
 
     const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
     circle.setAttribute("r", "11");
@@ -1269,6 +1298,20 @@ function openArrowQuickHUD(dep) {
   hud.style.display = 'block';
 }
 
+function adjustQuickArrowCount(delta) {
+  if (!AppState.activeQuickDeployment) return;
+  const dep = AppState.activeQuickDeployment;
+  const newCount = Math.max(1, (dep.count || 1) + delta);
+  if (newCount === dep.count) return;
+  pushHistory(`Personenanzahl für Entsendung ${dep.fromName} ➔ ${dep.toName} auf ${newCount} geändert`);
+  dep.count = newCount;
+  saveState();
+  renderArrows();
+  openArrowQuickHUD(dep);
+  if (AppState.selectedDistrictId) renderDeploymentsList(AppState.selectedDistrictId);
+  else if (AppState.selectedTownId) renderDeploymentsList(AppState.selectedTownId);
+}
+
 function closeArrowQuickHUD() {
   AppState.activeQuickDeployment = null;
   const hud = document.getElementById('arrow-quick-hud');
@@ -1283,7 +1326,8 @@ function setQuickArrowStatus(newStatus) {
   saveState();
   renderArrows();
   openArrowQuickHUD(dep);
-  if (AppState.selectedTownId) renderDeploymentsList(AppState.selectedTownId);
+  if (AppState.selectedDistrictId) renderDeploymentsList(AppState.selectedDistrictId);
+  else if (AppState.selectedTownId) renderDeploymentsList(AppState.selectedTownId);
 }
 
 function deleteQuickArrow() {
@@ -1699,17 +1743,27 @@ function renderDeploymentsList(targetId) {
     card.style.borderLeftColor = d.status === 'planned' ? 'var(--system-orange)' : (d.status === 'established' ? 'var(--system-green)' : (d.color || 'var(--system-blue)'));
     const statusText = d.status === 'planned' ? 'Geplant' : (d.status === 'established' ? 'Etabliert' : 'Aktiv');
     card.innerHTML = `
-      <div>
+      <div style="flex:1; cursor:pointer;">
         <div class="dep-info-title">
           <span>→ Nach ${escapeHtml(d.toName)}</span>
           <span style="background:rgba(0,122,255,0.1); color:var(--system-blue); padding:1px 6px; border-radius:4px; font-size:10px; font-weight:600;">${d.count || 1} Pers.</span>
         </div>
         <div class="dep-info-sub">${escapeHtml(d.type)} • <span class="dep-status-pill ${d.status}">${statusText}</span></div>
       </div>
-      <div class="dep-actions">
-        <button class="btn-icon-del" title="Entsendung löschen" onclick="deleteDeployment('${d.id}')">✕</button>
+      <div class="dep-actions" style="display:flex; gap:4px; align-items:center;">
+        <button type="button" class="btn-icon-edit" title="Entsendung bearbeiten" style="background:none; border:none; cursor:pointer; font-size:12px; padding:2px 4px;">✏️</button>
+        <button type="button" class="btn-icon-del" title="Entsendung löschen">✕</button>
       </div>
     `;
+    card.querySelector('div:first-child').onclick = () => openDeploymentModal(d);
+    card.querySelector('.btn-icon-edit').onclick = (e) => {
+      e.stopPropagation();
+      openDeploymentModal(d);
+    };
+    card.querySelector('.btn-icon-del').onclick = (e) => {
+      e.stopPropagation();
+      deleteDeployment(d.id);
+    };
     container.appendChild(card);
   });
 
@@ -1719,17 +1773,27 @@ function renderDeploymentsList(targetId) {
     card.style.borderLeftColor = d.status === 'planned' ? 'var(--system-orange)' : (d.status === 'established' ? 'var(--system-green)' : 'var(--system-green)');
     const statusText = d.status === 'planned' ? 'Geplant' : (d.status === 'established' ? 'Etabliert' : 'Aktiv');
     card.innerHTML = `
-      <div>
+      <div style="flex:1; cursor:pointer;">
         <div class="dep-info-title">
           <span>← Von ${escapeHtml(d.fromName)}</span>
           <span style="background:rgba(52,199,89,0.12); color:var(--system-green); padding:1px 6px; border-radius:4px; font-size:10px; font-weight:600;">${d.count || 1} Pers.</span>
         </div>
         <div class="dep-info-sub">${escapeHtml(d.type)} • <span class="dep-status-pill ${d.status}">${statusText}</span></div>
       </div>
-      <div class="dep-actions">
-        <button class="btn-icon-del" title="Entsendung löschen" onclick="deleteDeployment('${d.id}')">✕</button>
+      <div class="dep-actions" style="display:flex; gap:4px; align-items:center;">
+        <button type="button" class="btn-icon-edit" title="Entsendung bearbeiten" style="background:none; border:none; cursor:pointer; font-size:12px; padding:2px 4px;">✏️</button>
+        <button type="button" class="btn-icon-del" title="Entsendung löschen">✕</button>
       </div>
     `;
+    card.querySelector('div:first-child').onclick = () => openDeploymentModal(d);
+    card.querySelector('.btn-icon-edit').onclick = (e) => {
+      e.stopPropagation();
+      openDeploymentModal(d);
+    };
+    card.querySelector('.btn-icon-del').onclick = (e) => {
+      e.stopPropagation();
+      deleteDeployment(d.id);
+    };
     container.appendChild(card);
   });
 }
@@ -1857,21 +1921,68 @@ function deleteDeployment(depId) {
 }
 
 function openDeploymentModal(dep) {
-  document.getElementById('view-dep-title').textContent = `${dep.fromName} → ${dep.toName}`;
-  document.getElementById('view-dep-type').textContent = dep.type;
-  document.getElementById('view-dep-count').textContent = dep.count ? `${dep.count} Person(en)` : '1 Person';
-  
-  const statusLabel = dep.status === 'planned' ? 'In Planung (Gestrichelt)' : (dep.status === 'established' ? 'Etabliert & Konsolidiert' : 'Aktiv (Laufende Begleitung)');
-  document.getElementById('view-dep-frequency').textContent = statusLabel;
-  document.getElementById('view-dep-notes').textContent = dep.notes || 'Keine Notiz hinterlegt.';
-  
+  AppState.editingDeploymentId = dep.id;
+  AppState.activeQuickDeployment = dep;
+
+  document.getElementById('edit-dep-id').value = dep.id;
+  document.getElementById('edit-dep-from-name').textContent = dep.fromName;
+  document.getElementById('edit-dep-to-name').textContent = dep.toName;
+  document.getElementById('edit-dep-type').value = dep.type || 'Pioniere / Umzügler';
+  document.getElementById('edit-dep-count').value = dep.count || 1;
+  document.getElementById('edit-dep-status').value = dep.status || 'active';
+  document.getElementById('edit-dep-color').value = dep.color || '#007aff';
+  document.getElementById('edit-dep-notes').value = dep.notes || '';
+
+  // Setup swap button (Richtung umkehren)
+  const swapBtn = document.getElementById('btn-edit-dep-swap');
+  if (swapBtn) {
+    swapBtn.onclick = () => {
+      const tmpId = dep.fromId;
+      const tmpName = dep.fromName;
+      dep.fromId = dep.toId;
+      dep.fromName = dep.toName;
+      dep.toId = tmpId;
+      dep.toName = tmpName;
+
+      document.getElementById('edit-dep-from-name').textContent = dep.fromName;
+      document.getElementById('edit-dep-to-name').textContent = dep.toName;
+    };
+  }
+
+  // Delete button
   const delBtn = document.getElementById('view-dep-del-btn');
-  delBtn.onclick = () => {
-    document.getElementById('view-dep-modal').classList.remove('visible');
-    deleteDeployment(dep.id);
-  };
+  if (delBtn) {
+    delBtn.onclick = () => {
+      document.getElementById('view-dep-modal').classList.remove('visible');
+      deleteDeployment(dep.id);
+    };
+  }
 
   document.getElementById('view-dep-modal').classList.add('visible');
+}
+
+function saveEditedDeployment() {
+  const depId = document.getElementById('edit-dep-id').value;
+  const dep = AppState.deployments.find(d => d.id === depId);
+  if (!dep) return;
+
+  pushHistory(`Entsendung ${dep.fromName} ➔ ${dep.toName} aktualisiert`);
+
+  dep.type = document.getElementById('edit-dep-type').value;
+  dep.count = Math.max(1, parseInt(document.getElementById('edit-dep-count').value) || 1);
+  dep.status = document.getElementById('edit-dep-status').value || 'active';
+  dep.color = document.getElementById('edit-dep-color').value || '#007aff';
+  dep.notes = document.getElementById('edit-dep-notes').value;
+
+  saveState();
+  renderArrows();
+  document.getElementById('view-dep-modal').classList.remove('visible');
+
+  if (AppState.activeQuickDeployment && AppState.activeQuickDeployment.id === depId) {
+    openArrowQuickHUD(dep);
+  }
+  if (AppState.selectedDistrictId) renderDeploymentsList(AppState.selectedDistrictId);
+  else if (AppState.selectedTownId) renderDeploymentsList(AppState.selectedTownId);
 }
 
 // --- UI Event Listeners ---
@@ -2060,6 +2171,12 @@ function initUIEventListeners() {
   const btnCloseQuick = document.getElementById('btn-close-quick-arrow');
   if (btnCloseQuick) btnCloseQuick.addEventListener('click', closeArrowQuickHUD);
 
+  const btnQuickMinus = document.getElementById('quick-count-minus');
+  if (btnQuickMinus) btnQuickMinus.addEventListener('click', () => adjustQuickArrowCount(-1));
+
+  const btnQuickPlus = document.getElementById('quick-count-plus');
+  if (btnQuickPlus) btnQuickPlus.addEventListener('click', () => adjustQuickArrowCount(1));
+
   document.querySelectorAll('.quick-status-pill').forEach(pill => {
     pill.addEventListener('click', () => {
       setQuickArrowStatus(pill.dataset.status);
@@ -2080,6 +2197,24 @@ function initUIEventListeners() {
   const btnQuickDelete = document.getElementById('quick-btn-delete');
   if (btnQuickDelete) {
     btnQuickDelete.addEventListener('click', deleteQuickArrow);
+  }
+
+  // Edit Deployment Modal buttons
+  const btnSaveEditDep = document.getElementById('btn-save-edit-dep');
+  if (btnSaveEditDep) btnSaveEditDep.addEventListener('click', saveEditedDeployment);
+
+  const btnCloseEditDep = document.getElementById('btn-close-view-dep-modal');
+  if (btnCloseEditDep) {
+    btnCloseEditDep.addEventListener('click', () => {
+      document.getElementById('view-dep-modal').classList.remove('visible');
+    });
+  }
+
+  const btnCancelEditDep = document.getElementById('btn-cancel-edit-dep-modal');
+  if (btnCancelEditDep) {
+    btnCancelEditDep.addEventListener('click', () => {
+      document.getElementById('view-dep-modal').classList.remove('visible');
+    });
   }
 
   // Global Keyboard Shortcuts (⌘Z / ⇧⌘Z / ⌘Y)

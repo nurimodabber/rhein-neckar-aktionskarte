@@ -744,17 +744,22 @@ function getTownStyle(feature) {
   const isCenter = town.isCenter;
 
   let fillColor = '#ffffff';
-  let borderColor = '#3a3a3c';
-  let fillOpacity = 0.92;
+  let borderColor = 'rgba(100, 116, 139, 0.28)';
+  let fillOpacity = 0.88;
+  let weight = 1.0;
 
   if (AppState.visualViewMode === 'milestone') {
     if (town.milestone === 'custom' && town.customColor) {
       fillColor = town.customColor;
       borderColor = darkenColor(town.customColor, 20);
+      weight = 1.8;
+      fillOpacity = 0.95;
     } else if (town.milestone !== 'none') {
       const mc = MILESTONE_COLORS[town.milestone] || MILESTONE_COLORS.none;
       fillColor = mc.fill;
       borderColor = mc.border;
+      weight = town.milestone === 'ipg_plus' ? 2.2 : (town.milestone === 'ipg' ? 1.9 : 1.6);
+      fillOpacity = 0.95;
     }
   } else if (AppState.visualViewMode === 'activities') {
     const totalActs = calculateTotalActivities(town.activities);
@@ -764,6 +769,8 @@ function getTownStyle(feature) {
       else if (totalActs <= 10) fillColor = '#22c55e';
       else fillColor = '#15803d';
       borderColor = darkenColor(fillColor, 15);
+      weight = 1.8;
+      fillOpacity = 0.95;
     }
   } else if (AppState.visualViewMode === 'nuclei') {
     const n = town.nuclei || 0;
@@ -772,14 +779,16 @@ function getTownStyle(feature) {
       else if (n <= 3) fillColor = '#10b981';
       else fillColor = '#047857';
       borderColor = darkenColor(fillColor, 15);
+      weight = 1.8;
+      fillOpacity = 0.95;
     }
   }
 
   return {
     fillColor: fillColor,
     fillOpacity: isSelected || isArrowSource ? 0.98 : fillOpacity,
-    color: isArrowSource ? '#007aff' : (isCenter ? '#ff9500' : (isSelected ? '#007aff' : borderColor)),
-    weight: isArrowSource ? 3.5 : (isSelected ? 3 : (isCenter ? 2.2 : 1.4)),
+    color: isArrowSource ? '#007aff' : (isSelected ? '#007aff' : (isCenter ? '#f59e0b' : borderColor)),
+    weight: isArrowSource ? 3.5 : (isSelected ? 3.2 : (isCenter ? 2.4 : weight)),
     opacity: 0.95,
     dashArray: isArrowSource ? '4, 4' : null,
     interactive: true
@@ -898,7 +907,13 @@ function renderGeoJson() {
       layer.on({
         mouseover: (e) => {
           if (!isTownInDistrictMode(id)) {
-            layer.setStyle({ weight: 2.8, color: '#007aff' });
+            const currentStyle = getTownStyle(feature);
+            layer.setStyle({
+              weight: 2.4,
+              color: '#007aff',
+              fillColor: currentStyle.fillColor === '#ffffff' ? '#f8fafc' : currentStyle.fillColor,
+              fillOpacity: 0.98
+            });
           }
         },
         mouseout: (e) => {
@@ -908,7 +923,7 @@ function renderGeoJson() {
         },
         click: (e) => {
           if (!isTownInDistrictMode(id)) {
-            handleTownClick(id);
+            handleTownClick(id, e.latlng);
           }
         }
       });
@@ -937,7 +952,7 @@ function renderDistrictsGeoJson() {
       layer.on({
         mouseover: (e) => {
           if (isTownInDistrictMode(feature.properties.townId)) {
-            layer.setStyle({ weight: 2.8, color: '#007aff' });
+            layer.setStyle({ weight: 2.6, color: '#007aff', fillOpacity: 0.98 });
           }
         },
         mouseout: (e) => {
@@ -947,7 +962,7 @@ function renderDistrictsGeoJson() {
         },
         click: (e) => {
           if (isTownInDistrictMode(feature.properties.townId)) {
-            handleDistrictClick(id);
+            handleDistrictClick(id, e.latlng);
           }
         }
       });
@@ -1029,11 +1044,19 @@ function updateDistrictTooltip(districtId) {
 }
 
 // --- Subtle Cartographic Markers & Labels ---
+const CARTOGRAPHIC_ANCHORS = new Set([
+  'Heidelberg', 'Mannheim', 'Ludwigshafen am Rhein', 'Speyer',
+  'Weinheim', 'Sinsheim', 'Wiesloch', 'Schwetzingen', 'Bad Dürkheim',
+  'Frankenthal (Pfalz)', 'Leimen', 'Walldorf', 'Hockenheim', 'Eberbach'
+]);
+
 function refreshMarkers() {
   if (!AppState.markersLayer) return;
   AppState.markersLayer.clearLayers();
 
   if (!AppState.showLabels) return;
+
+  const currentZoom = AppState.map ? AppState.map.getZoom() : 10.4;
 
   // 1. Municipalities (Ortschaften)
   if (typeof RHEIN_NECKAR_GEOJSON !== 'undefined') {
@@ -1065,6 +1088,14 @@ function refreshMarkers() {
 
       const totalActs = calculateTotalActivities(town.activities);
       const isCenter = town.isCenter;
+      const isActive = (town.milestone && town.milestone !== 'none') || isCenter || totalActs > 0 || (town.nuclei > 0);
+      const isAnchor = CARTOGRAPHIC_ANCHORS.has(f.properties.name);
+      const isSelected = AppState.selectedTownId === id;
+
+      // Smart Cartographic LOD: Inactive smaller towns only show permanent labels when zoomed in (zoom >= 11.2) or selected
+      if (!isActive && !isAnchor && !isSelected && currentZoom < 11.2) {
+        return;
+      }
 
       const markerHtml = `
         <div class="subtle-map-label ${isCenter ? 'center' : ''}">
@@ -1456,10 +1487,280 @@ function deleteQuickArrow() {
   deleteDeployment(dep.id);
 }
 
-// --- Interaction Handlers ---
-function handleTownClick(townId) {
+// --- Interaction Handlers & Quick Action Popover (Apple-Style) ---
+function showTownQuickPopover(townId, latlng) {
+  const feature = AppState.townFeaturesById[townId];
+  const town = AppState.towns[townId];
+  if (!feature || !town || !AppState.map) return;
+
+  const targetCoords = latlng || feature.properties.center || [49.4, 8.5];
+
+  AppState.selectedTownId = townId;
+  AppState.selectedDistrictId = null;
+  refreshAllStyles();
+
+  const distCount = Object.values(AppState.districtFeaturesById).filter(f => f.properties.townId === townId).length;
+  const totalActs = calculateTotalActivities(town.activities);
+  const ms = town.milestone || 'none';
+  const connectedDeps = AppState.deployments.filter(d => d.fromId === townId || d.toId === townId);
+
+  const container = document.createElement('div');
+  container.className = 'quick-action-popover';
+  container.innerHTML = `
+    <div class="qpop-header">
+      <div class="qpop-title-col">
+        <h4 class="qpop-name">${escapeHtml(feature.properties.name)}</h4>
+        <span class="qpop-sub">${distCount > 0 ? `${distCount} Stadtteile` : escapeHtml(feature.properties.kreis || 'Gemeinde')}</span>
+      </div>
+      <button class="qpop-center-toggle ${town.isCenter ? 'is-center' : ''}" id="qpop-btn-center" title="Als Entsende-Zentrum umschalten">
+        ★ ${town.isCenter ? 'Zentrum' : 'Zentrum'}
+      </button>
+    </div>
+
+    <div class="qpop-section-label">Wachstumsstufe (1 Klick)</div>
+    <div class="qpop-milestones-row">
+      <button class="qpop-ms-btn ${ms === 'none' ? 'active' : ''}" data-ms="none" title="Keine Aktivität">
+        <span class="ms-pill-dot none"></span>Kein
+      </button>
+      <button class="qpop-ms-btn ${ms === 'pg' ? 'active' : ''}" data-ms="pg" title="PG – Programm des Wachstums">
+        <span class="ms-pill-dot pg"></span>PG
+      </button>
+      <button class="qpop-ms-btn ${ms === 'ipg' ? 'active' : ''}" data-ms="ipg" title="IPG – Intensives Programm">
+        <span class="ms-pill-dot ipg"></span>IPG
+      </button>
+      <button class="qpop-ms-btn ${ms === 'ipg_plus' ? 'active' : ''}" data-ms="ipg_plus" title="IPG+ – Fortgeschrittenes Programm">
+        <span class="ms-pill-dot ipg-plus"></span>IPG+
+      </button>
+    </div>
+
+    <div class="qpop-metrics-row">
+      <div class="qpop-metric">
+        <span class="qpop-metric-val">${town.nuclei || 0}</span>
+        <span class="qpop-metric-lbl">Nuklei</span>
+      </div>
+      <div class="qpop-metric">
+        <span class="qpop-metric-val">${totalActs}</span>
+        <span class="qpop-metric-lbl">Aktivitäten</span>
+      </div>
+      <div class="qpop-metric">
+        <span class="qpop-metric-val">${connectedDeps.length}</span>
+        <span class="qpop-metric-lbl">Pfeile</span>
+      </div>
+    </div>
+
+    <div class="qpop-actions-row">
+      ${distCount > 0 ? `
+        <button class="btn btn-secondary btn-sm" id="qpop-btn-districts" style="color:var(--system-blue);font-weight:600;">
+          🔍 Stadtteile (${distCount})
+        </button>
+      ` : ''}
+      <button class="btn btn-secondary btn-sm" id="qpop-btn-arrow" title="Entsende-Pfeil von hier starten">
+        ➔ Entsendung
+      </button>
+      <button class="btn btn-primary btn-sm" id="qpop-btn-details" title="Details &amp; Notizen im Inspektor öffnen">
+        Details ➔
+      </button>
+    </div>
+  `;
+
+  // Milestone 1-click update
+  container.querySelectorAll('.qpop-ms-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const newMs = btn.dataset.ms;
+      pushHistory(`Meilenstein von ${feature.properties.name} geändert`);
+      town.milestone = newMs;
+      saveState();
+      refreshAllStyles();
+      refreshMarkers();
+      container.querySelectorAll('.qpop-ms-btn').forEach(b => b.classList.toggle('active', b.dataset.ms === newMs));
+      const drawer = document.getElementById('details-drawer');
+      if (drawer && !drawer.classList.contains('collapsed') && AppState.selectedTownId === townId) {
+        updateMilestoneHeaderAndSelection();
+      }
+    });
+  });
+
+  // Center toggle
+  const centerBtn = container.querySelector('#qpop-btn-center');
+  if (centerBtn) {
+    centerBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      pushHistory(`Zentrumsstatus für ${feature.properties.name} geändert`);
+      town.isCenter = !town.isCenter;
+      saveState();
+      refreshAllStyles();
+      refreshMarkers();
+      centerBtn.classList.toggle('is-center', !!town.isCenter);
+      const drawer = document.getElementById('details-drawer');
+      if (drawer && !drawer.classList.contains('collapsed') && AppState.selectedTownId === townId) {
+        document.getElementById('drawer-is-center').checked = !!town.isCenter;
+      }
+    });
+  }
+
+  // Arrow
+  const arrowBtn = container.querySelector('#qpop-btn-arrow');
+  if (arrowBtn) {
+    arrowBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      AppState.map.closePopup();
+      setMode('arrow');
+      handleArrowSourceTargetClick(townId, false);
+    });
+  }
+
+  // Details
+  const detailsBtn = container.querySelector('#qpop-btn-details');
+  if (detailsBtn) {
+    detailsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      AppState.map.closePopup();
+      selectTown(townId, false);
+    });
+  }
+
+  // Districts
+  const distBtn = container.querySelector('#qpop-btn-districts');
+  if (distBtn) {
+    distBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      AppState.map.closePopup();
+      focusTownDistricts(townId);
+    });
+  }
+
+  L.popup({
+    className: 'apple-quick-popover-wrapper',
+    closeButton: true,
+    autoPan: true,
+    autoPanPadding: [30, 30],
+    maxWidth: 320,
+    offset: [0, -6]
+  })
+  .setLatLng(targetCoords)
+  .setContent(container)
+  .openOn(AppState.map);
+}
+
+function showDistrictQuickPopover(districtId, latlng) {
+  const feature = AppState.districtFeaturesById[districtId];
+  const dist = AppState.districts[districtId];
+  if (!feature || !dist || !AppState.map) return;
+
+  const targetCoords = latlng || feature.properties.center || [49.4, 8.5];
+
+  AppState.selectedDistrictId = districtId;
+  refreshAllStyles();
+
+  const totalActs = calculateTotalActivities(dist.activities);
+  const ms = dist.milestone || 'none';
+  const parentName = feature.properties.townName || (AppState.townFeaturesById[feature.properties.townId] ? AppState.townFeaturesById[feature.properties.townId].properties.name : '');
+
+  const container = document.createElement('div');
+  container.className = 'quick-action-popover';
+  container.innerHTML = `
+    <div class="qpop-header">
+      <div class="qpop-title-col">
+        <h4 class="qpop-name">${escapeHtml(feature.properties.name)}</h4>
+        <span class="qpop-sub">Stadtteil von ${escapeHtml(parentName)}</span>
+      </div>
+    </div>
+
+    <div class="qpop-section-label">Wachstumsstufe (1 Klick)</div>
+    <div class="qpop-milestones-row">
+      <button class="qpop-ms-btn ${ms === 'none' ? 'active' : ''}" data-ms="none">
+        <span class="ms-pill-dot none"></span>Kein
+      </button>
+      <button class="qpop-ms-btn ${ms === 'pg' ? 'active' : ''}" data-ms="pg">
+        <span class="ms-pill-dot pg"></span>PG
+      </button>
+      <button class="qpop-ms-btn ${ms === 'ipg' ? 'active' : ''}" data-ms="ipg">
+        <span class="ms-pill-dot ipg"></span>IPG
+      </button>
+      <button class="qpop-ms-btn ${ms === 'ipg_plus' ? 'active' : ''}" data-ms="ipg_plus">
+        <span class="ms-pill-dot ipg-plus"></span>IPG+
+      </button>
+    </div>
+
+    <div class="qpop-metrics-row">
+      <div class="qpop-metric">
+        <span class="qpop-metric-val">${dist.nuclei || 0}</span>
+        <span class="qpop-metric-lbl">Nuklei</span>
+      </div>
+      <div class="qpop-metric">
+        <span class="qpop-metric-val">${totalActs}</span>
+        <span class="qpop-metric-lbl">Aktivitäten</span>
+      </div>
+    </div>
+
+    <div class="qpop-actions-row">
+      <button class="btn btn-secondary btn-sm" id="qpop-dist-btn-arrow">
+        ➔ Entsendung
+      </button>
+      <button class="btn btn-primary btn-sm" id="qpop-dist-btn-details">
+        Details ➔
+      </button>
+    </div>
+  `;
+
+  container.querySelectorAll('.qpop-ms-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const newMs = btn.dataset.ms;
+      pushHistory(`Meilenstein von Stadtteil ${feature.properties.name} geändert`);
+      dist.milestone = newMs;
+      saveState();
+      refreshAllStyles();
+      refreshMarkers();
+      container.querySelectorAll('.qpop-ms-btn').forEach(b => b.classList.toggle('active', b.dataset.ms === newMs));
+      const drawer = document.getElementById('details-drawer');
+      if (drawer && !drawer.classList.contains('collapsed') && AppState.selectedDistrictId === districtId) {
+        updateMilestoneHeaderAndSelection();
+      }
+    });
+  });
+
+  const arrowBtn = container.querySelector('#qpop-dist-btn-arrow');
+  if (arrowBtn) {
+    arrowBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      AppState.map.closePopup();
+      setMode('arrow');
+      handleArrowSourceTargetClick(districtId, true);
+    });
+  }
+
+  const detailsBtn = container.querySelector('#qpop-dist-btn-details');
+  if (detailsBtn) {
+    detailsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      AppState.map.closePopup();
+      selectDistrict(districtId, false);
+    });
+  }
+
+  L.popup({
+    className: 'apple-quick-popover-wrapper',
+    closeButton: true,
+    autoPan: true,
+    autoPanPadding: [30, 30],
+    maxWidth: 320,
+    offset: [0, -6]
+  })
+  .setLatLng(targetCoords)
+  .setContent(container)
+  .openOn(AppState.map);
+}
+
+function handleTownClick(townId, latlng) {
   if (AppState.currentMode === 'inspect') {
-    selectTown(townId, true);
+    const drawer = document.getElementById('details-drawer');
+    const isDrawerOpen = drawer && !drawer.classList.contains('collapsed');
+    if (isDrawerOpen) {
+      selectTown(townId, false);
+    }
+    showTownQuickPopover(townId, latlng);
   } else if (AppState.currentMode === 'paint') {
     applyPaintToTown(townId);
   } else if (AppState.currentMode === 'arrow') {
@@ -1467,9 +1768,14 @@ function handleTownClick(townId) {
   }
 }
 
-function handleDistrictClick(districtId) {
+function handleDistrictClick(districtId, latlng) {
   if (AppState.currentMode === 'inspect') {
-    selectDistrict(districtId, true);
+    const drawer = document.getElementById('details-drawer');
+    const isDrawerOpen = drawer && !drawer.classList.contains('collapsed');
+    if (isDrawerOpen) {
+      selectDistrict(districtId, false);
+    }
+    showDistrictQuickPopover(districtId, latlng);
   } else if (AppState.currentMode === 'paint') {
     applyPaintToDistrict(districtId);
   } else if (AppState.currentMode === 'arrow') {
@@ -2615,76 +2921,109 @@ function initUIEventListeners() {
 
   const searchInput = document.getElementById('town-search-input');
   const searchResults = document.getElementById('town-search-results');
+  const searchClearBtn = document.getElementById('btn-search-clear');
 
-  searchInput.addEventListener('input', (e) => {
-    const q = e.target.value.trim().toLowerCase();
-    if (!q) {
-      searchResults.classList.remove('visible');
-      return;
-    }
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      const q = e.target.value.trim().toLowerCase();
+      if (searchClearBtn) searchClearBtn.style.display = q ? 'block' : 'none';
 
-    const matchedTowns = Object.values(AppState.townFeaturesById).filter(f =>
-      f.properties.name.toLowerCase().includes(q) || f.properties.fullName.toLowerCase().includes(q)
-    );
-    const matchedDistricts = Object.values(AppState.districtFeaturesById).filter(df =>
-      df.properties.name.toLowerCase().includes(q)
-    );
-
-    searchResults.innerHTML = '';
-    
-    matchedTowns.slice(0, 5).forEach(f => {
-      const item = document.createElement('div');
-      item.className = 'search-item';
-      item.innerHTML = `<span><strong>${escapeHtml(f.properties.name)}</strong></span> <span style="font-size:10px; color:#64748b;">${escapeHtml(f.properties.kreis)}</span>`;
-      item.addEventListener('click', () => {
+      if (!q) {
         searchResults.classList.remove('visible');
-        searchInput.value = f.properties.name;
-        selectTown(f.properties.id, true);
-      });
-      searchResults.appendChild(item);
-    });
-
-    matchedDistricts.slice(0, 5).forEach(df => {
-      const item = document.createElement('div');
-      item.className = 'search-item';
-      item.innerHTML = `
-        <div>
-          <strong>${escapeHtml(df.properties.name)}</strong>
-          <span class="search-subpoint-badge">↳ Nachbarschaft von ${escapeHtml(df.properties.townName)}</span>
-        </div>
-        <span style="font-size:10px; color:#64748b;">Stadtteil</span>
-      `;
-      item.addEventListener('click', () => {
-        searchResults.classList.remove('visible');
-        searchInput.value = `${df.properties.townName} › ${df.properties.name}`;
-        focusDistrictOnMap(df.properties.id);
-      });
-      searchResults.appendChild(item);
-    });
-
-    searchResults.classList.add('visible');
-  });
-
-  // Spotlight search keyboard accessibility
-  searchInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      const firstItem = searchResults.querySelector('.search-item');
-      if (firstItem) {
-        e.preventDefault();
-        firstItem.click();
+        return;
       }
-    } else if (e.key === 'Escape') {
-      searchResults.classList.remove('visible');
-      searchInput.blur();
+
+      const matchedTowns = Object.values(AppState.townFeaturesById).filter(f =>
+        f.properties.name.toLowerCase().includes(q) || f.properties.fullName.toLowerCase().includes(q)
+      );
+      const matchedDistricts = Object.values(AppState.districtFeaturesById).filter(df =>
+        df.properties.name.toLowerCase().includes(q)
+      );
+
+      searchResults.innerHTML = '';
+      
+      matchedTowns.slice(0, 5).forEach(f => {
+        const item = document.createElement('div');
+        item.className = 'search-item';
+        const tState = AppState.towns[f.properties.id];
+        const ms = tState ? tState.milestone : 'none';
+        const msBadge = ms !== 'none' ? `<span class="ms-pill-dot ${ms}" style="display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;"></span>` : '';
+
+        item.innerHTML = `<span style="display:flex;align-items:center;">${msBadge}<strong>${escapeHtml(f.properties.name)}</strong></span> <span style="font-size:10px; color:#64748b;">${escapeHtml(f.properties.kreis)}</span>`;
+        item.addEventListener('click', () => {
+          searchResults.classList.remove('visible');
+          searchInput.value = f.properties.name;
+          selectTown(f.properties.id, true);
+        });
+        searchResults.appendChild(item);
+      });
+
+      matchedDistricts.slice(0, 5).forEach(df => {
+        const item = document.createElement('div');
+        item.className = 'search-item';
+        item.innerHTML = `
+          <div>
+            <strong>${escapeHtml(df.properties.name)}</strong>
+            <span class="search-subpoint-badge">↳ Nachbarschaft von ${escapeHtml(df.properties.townName)}</span>
+          </div>
+          <span style="font-size:10px; color:#64748b;">Stadtteil</span>
+        `;
+        item.addEventListener('click', () => {
+          searchResults.classList.remove('visible');
+          searchInput.value = `${df.properties.townName} › ${df.properties.name}`;
+          focusDistrictOnMap(df.properties.id);
+        });
+        searchResults.appendChild(item);
+      });
+
+      if (matchedTowns.length === 0 && matchedDistricts.length === 0) {
+        searchResults.innerHTML = '<div style="padding:10px 14px;font-size:11px;color:#8e8e93;text-align:center;">Keine Treffer gefunden</div>';
+      }
+
+      searchResults.classList.add('visible');
+    });
+
+    if (searchClearBtn) {
+      searchClearBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        searchClearBtn.style.display = 'none';
+        searchResults.classList.remove('visible');
+        searchInput.focus();
+      });
     }
-  });
+
+    // Global ⌘K / Ctrl+K shortcut to focus search
+    window.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        searchInput.focus();
+        searchInput.select();
+      }
+    });
+
+    // Spotlight search keyboard accessibility
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const firstItem = searchResults.querySelector('.search-item');
+        if (firstItem) {
+          e.preventDefault();
+          firstItem.click();
+        }
+      } else if (e.key === 'Escape') {
+        searchResults.classList.remove('visible');
+        searchInput.blur();
+      }
+    });
+  }
 
   // Close search when clicking outside
   document.addEventListener('click', (e) => {
-    if (!e.target.closest('.spotlight-search')) searchResults.classList.remove('visible');
+    if (!e.target.closest('.spotlight-search-capsule') && searchResults) {
+      searchResults.classList.remove('visible');
+    }
   });
 
-  // Collapsible Legend Header
+  // Collapsible Layers & Legend Header
   const legendToggle = document.getElementById('legend-header-toggle');
   if (legendToggle) {
     legendToggle.addEventListener('click', () => {
@@ -2693,7 +3032,7 @@ function initUIEventListeners() {
       if (hud) {
         hud.classList.toggle('collapsed');
         const isCollapsed = hud.classList.contains('collapsed');
-        if (chevron) chevron.textContent = isCollapsed ? '▸' : '▾';
+        if (chevron) chevron.textContent = isCollapsed ? '▴' : '▾';
       }
     });
   }
@@ -2842,6 +3181,9 @@ function updateClusterStats() {
   const totalTowns = Object.keys(AppState.townFeaturesById).length || 133;
   
   let reachedTowns = 0;
+  let countIpgPlus = 0;
+  let countIpg = 0;
+  let countPg = 0;
   let totalNuclei = 0;
   let totalDevotionals = 0;
   let totalStudyCircles = 0;
@@ -2850,7 +3192,12 @@ function updateClusterStats() {
   let totalCenters = 0;
 
   towns.forEach(t => {
-    if (t.milestone && t.milestone !== 'none') reachedTowns++;
+    if (t.milestone && t.milestone !== 'none') {
+      reachedTowns++;
+      if (t.milestone === 'ipg_plus') countIpgPlus++;
+      else if (t.milestone === 'ipg') countIpg++;
+      else countPg++;
+    }
     if (t.isCenter) totalCenters++;
     totalNuclei += (t.nuclei || 0);
     if (t.activities) {
@@ -2874,11 +3221,30 @@ function updateClusterStats() {
   const totalActs = totalDevotionals + totalStudyCircles + totalChildren + totalJuniorYouth;
   const totalDeployments = AppState.deployments.length;
 
-  document.getElementById('stat-towns').textContent = `${reachedTowns} / ${totalTowns}`;
-  document.getElementById('stat-nuclei').textContent = totalNuclei;
-  document.getElementById('stat-activities').textContent = totalActs;
-  document.getElementById('stat-deployments').textContent = totalDeployments;
-  document.getElementById('stat-centers').textContent = totalCenters;
+  const statTownsEl = document.getElementById('stat-towns');
+  if (statTownsEl) statTownsEl.textContent = `${reachedTowns} / ${totalTowns} aktiv`;
+
+  const percentEl = document.getElementById('vitality-percent');
+  const pct = Math.round((reachedTowns / totalTowns) * 100);
+  if (percentEl) percentEl.textContent = `(${pct}%)`;
+
+  const vSegIpgPlus = document.getElementById('vseg-ipg-plus');
+  const vSegIpg = document.getElementById('vseg-ipg');
+  const vSegPg = document.getElementById('vseg-pg');
+  if (vSegIpgPlus && vSegIpg && vSegPg) {
+    vSegIpgPlus.style.width = `${(countIpgPlus / totalTowns) * 100}%`;
+    vSegIpg.style.width = `${(countIpg / totalTowns) * 100}%`;
+    vSegPg.style.width = `${(countPg / totalTowns) * 100}%`;
+  }
+
+  const elNuclei = document.getElementById('stat-nuclei');
+  if (elNuclei) elNuclei.textContent = totalNuclei;
+  const elActs = document.getElementById('stat-activities');
+  if (elActs) elActs.textContent = totalActs;
+  const elDeps = document.getElementById('stat-deployments');
+  if (elDeps) elDeps.textContent = totalDeployments;
+  const elCenters = document.getElementById('stat-centers');
+  if (elCenters) elCenters.textContent = totalCenters;
 }
 
 function openClusterReportModal() {

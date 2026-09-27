@@ -54,25 +54,25 @@
         <div class="subtitle">Aktionskarte · Region Süd</div>
       </div>
     </div>
-    </div>
 
-    <!-- Right: Cluster Key Statistics & Toolbar Buttons -->
+    <!-- Right: Cluster Vitality Pill & Toolbar Buttons -->
     <div class="header-right">
-      <div class="cluster-metrics-pill">
-        <div class="metric-entry" title="Ortschaften mit Fortschritten (PG / IPG / IPG+) von 133 Kommunen">
-          Orte: <strong id="stat-towns">0 / 133</strong>
+      <div class="cluster-vitality-pill" id="cluster-vitality-pill" title="Cluster-Fortschritt & Meilensteine">
+        <div class="vitality-bar-mini" id="vitality-bar-mini">
+          <div class="vseg vseg-ipg-plus" id="vseg-ipg-plus" style="width: 0%;"></div>
+          <div class="vseg vseg-ipg" id="vseg-ipg" style="width: 0%;"></div>
+          <div class="vseg vseg-pg" id="vseg-pg" style="width: 0%;"></div>
         </div>
-        <div class="metric-entry" title="Gesamtzahl der Nuklei">
-          Nuklei: <strong id="stat-nuclei" style="color: var(--system-green);">0</strong>
+        <div class="vitality-label">
+          <span class="vitality-main" id="stat-towns">0 / 133 aktiv</span>
+          <span class="vitality-percent" id="vitality-percent">(0%)</span>
         </div>
-        <div class="metric-entry" title="Summe aller Kernaktivitäten">
-          Aktivitäten: <strong id="stat-activities" style="color: var(--system-blue);">0</strong>
-        </div>
-        <div class="metric-entry" title="Pfeilverbindungen / Entsendungen">
-          Pfeile: <strong id="stat-deployments" style="color: var(--system-indigo);">0</strong>
-        </div>
-        <div class="metric-entry" title="Entsende-Zentren">
-          Zentren: <strong id="stat-centers" style="color: var(--system-orange);">0</strong>
+        <div class="vitality-divider"></div>
+        <div class="vitality-chips">
+          <span class="vchip vchip-center" title="Entsende-Zentren"><span class="vchip-star">★</span> <strong id="stat-centers">0</strong></span>
+          <span class="vchip vchip-arrows" title="Entsende-Pfeile">➔ <strong id="stat-deployments">0</strong></span>
+          <span class="vchip vchip-nuclei" title="Nuklei">👥 <strong id="stat-nuclei">0</strong></span>
+          <span class="vchip vchip-acts" title="Kernaktivitäten">⚡️ <strong id="stat-activities">0</strong></span>
         </div>
       </div>
 
@@ -181,18 +181,33 @@
         </div>
       </div>
 
-      <!-- Top Left Apple Navigation Breadcrumb HUD -->
-      <div class="hud-nav-bar apple-hud" id="zoom-nav-bar" style="display: none;">
-        <button class="hud-pill-btn" id="btn-zoom-cluster" title="Auf Gesamtansicht zurücksetzen">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;">
-            <polyline points="15 18 9 12 15 6"></polyline>
+      <!-- Top Left Floating Capsule Stack (Breadcrumb + Spotlight Search) -->
+      <div class="top-left-floating-stack">
+        <!-- Spotlight Search Capsule -->
+        <div class="spotlight-search-capsule apple-hud" id="spotlight-search-capsule">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
-          Gesamtkarte
-        </button>
-        <span class="nav-separator" id="nav-separator" style="display: none;">›</span>
-        <div class="focus-crumb" id="focus-banner" style="display: none;">
-          <span id="focus-banner-text">Stadtteile</span>
-          <button class="focus-dismiss" id="btn-exit-focus" title="Zurück zur Gesamtkarte">✕</button>
+          <input type="text" id="town-search-input" placeholder="Ortschaft suchen... (⌘K)" autocomplete="off" />
+          <span class="search-shortcut-badge" title="Tastenkombination">⌘K</span>
+          <button type="button" class="search-clear-btn" id="btn-search-clear" style="display:none;" title="Suche leeren">✕</button>
+          <div class="search-results-menu" id="town-search-results"></div>
+        </div>
+
+        <!-- Apple Navigation Breadcrumb HUD (When in district view) -->
+        <div class="hud-nav-bar apple-hud" id="zoom-nav-bar" style="display: none;">
+          <button class="hud-pill-btn" id="btn-zoom-cluster" title="Auf Gesamtansicht zurücksetzen">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+            Gesamtkarte
+          </button>
+          <span class="nav-separator" id="nav-separator" style="display: none;">›</span>
+          <div class="focus-crumb" id="focus-banner" style="display: none;">
+            <span id="focus-banner-text">Stadtteile</span>
+            <button class="focus-dismiss" id="btn-exit-focus" title="Zurück zur Gesamtkarte">✕</button>
+          </div>
         </div>
       </div>
 
@@ -274,71 +289,61 @@
         </div>
       </div>
 
-      <!-- Bottom Left HUD Stack: Spotlight Search & Legend -->
-      <div class="bottom-left-stack">
-        <!-- Spotlight Search Box -->
-        <div class="spotlight-search apple-hud">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-          <input type="text" id="town-search-input" placeholder="Ortschaft suchen..." autocomplete="off" />
-          <div class="search-results-menu" id="town-search-results"></div>
-        </div>
-
-        <!-- Minimalist Apple Legend (Collapsible) -->
-        <div class="legend-hud apple-hud" id="legend-hud">
-          <div class="legend-header" id="legend-header-toggle" title="Legende einklappen / ausklappen" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none; margin-bottom: 0;">
-            <span>Cluster-Stufen</span>
-            <span id="legend-chevron" style="font-size: 10px; color: var(--text-tertiary); transition: transform 0.2s ease;">▾</span>
+      <!-- Bottom Left Floating Dock: Collapsible Layers & Legend -->
+      <div class="layers-legend-capsule apple-hud collapsed" id="legend-hud">
+        <div class="legend-capsule-header" id="legend-header-toggle" title="Ebenen &amp; Legende einblenden / ausblenden">
+          <div class="legend-header-title">
+            <span class="legend-icon">🧭</span>
+            <span class="legend-title-text">Ebenen &amp; Legende</span>
           </div>
-          <div class="legend-body" id="legend-body" style="margin-top: 10px;">
-            <div class="legend-row">
-              <div class="legend-dot ipg-plus"></div>
-              <span><strong>IPG+</strong> (Fortgeschritten)</span>
-            </div>
-            <div class="legend-row">
-              <div class="legend-dot ipg"></div>
-              <span><strong>IPG</strong> (Intensiv)</span>
-            </div>
-            <div class="legend-row">
-              <div class="legend-dot pg"></div>
-              <span><strong>PG</strong> (Wachstumsprogramm)</span>
-            </div>
-            <div class="legend-row">
-              <div class="legend-dot none"></div>
-              <span style="color: var(--text-tertiary);">Noch nicht begonnen</span>
-            </div>
-            <div class="legend-row">
-              <span style="color: var(--system-orange); font-size: 13px; line-height: 1; width: 12px; text-align: center;">★</span>
-              <span>Entsende-Zentrum</span>
-            </div>
+          <span id="legend-chevron" class="legend-chevron">▴</span>
+        </div>
+        <div class="legend-body" id="legend-body">
+          <div class="legend-row">
+            <div class="legend-dot ipg-plus"></div>
+            <span><strong>IPG+</strong> (Fortgeschritten)</span>
+          </div>
+          <div class="legend-row">
+            <div class="legend-dot ipg"></div>
+            <span><strong>IPG</strong> (Intensiv)</span>
+          </div>
+          <div class="legend-row">
+            <div class="legend-dot pg"></div>
+            <span><strong>PG</strong> (Wachstumsprogramm)</span>
+          </div>
+          <div class="legend-row">
+            <div class="legend-dot none"></div>
+            <span style="color: var(--text-tertiary);">Noch nicht begonnen</span>
+          </div>
+          <div class="legend-row">
+            <span style="color: var(--system-orange); font-size: 13px; line-height: 1; width: 12px; text-align: center;">★</span>
+            <span>Entsende-Zentrum</span>
+          </div>
 
-            <div class="legend-toggles">
-              <div style="margin-bottom: 4px;">
-                <select id="select-visual-view" class="form-select" style="padding: 3px 6px; font-size: 11px;">
-                  <option value="milestone">Ansicht: Meilensteine (PG/IPG/IPG+)</option>
-                  <option value="activities">Ansicht: Kernaktivitäten (Zahl)</option>
-                  <option value="nuclei">Ansicht: Anzahl Nuklei</option>
-                </select>
-              </div>
-              <label class="legend-checkbox-label">
-                <input type="checkbox" id="toggle-labels" checked />
-                <span>Orts- &amp; Stadtteilnamen</span>
-              </label>
-              <label class="legend-checkbox-label">
-                <input type="checkbox" id="toggle-surrounding" checked />
-                <span>Nachbarregionen</span>
-              </label>
-              <label class="legend-checkbox-label">
-                <input type="checkbox" id="toggle-rivers" checked />
-                <span>Rhein, Neckar &amp; Landmarken</span>
-              </label>
-              <label class="legend-checkbox-label">
-                <input type="checkbox" id="toggle-arrows" checked />
-                <span>Entsende-Pfeile</span>
-              </label>
+          <div class="legend-toggles">
+            <div style="margin-bottom: 6px;">
+              <select id="select-visual-view" class="form-select" style="padding: 4px 6px; font-size: 11px;">
+                <option value="milestone">Ansicht: Meilensteine (PG/IPG/IPG+)</option>
+                <option value="activities">Ansicht: Kernaktivitäten (Zahl)</option>
+                <option value="nuclei">Ansicht: Anzahl Nuklei</option>
+              </select>
             </div>
+            <label class="legend-checkbox-label">
+              <input type="checkbox" id="toggle-labels" checked />
+              <span>Orts- &amp; Stadtteilnamen</span>
+            </label>
+            <label class="legend-checkbox-label">
+              <input type="checkbox" id="toggle-surrounding" checked />
+              <span>Nachbarregionen</span>
+            </label>
+            <label class="legend-checkbox-label">
+              <input type="checkbox" id="toggle-rivers" checked />
+              <span>Rhein, Neckar &amp; Landmarken</span>
+            </label>
+            <label class="legend-checkbox-label">
+              <input type="checkbox" id="toggle-arrows" checked />
+              <span>Entsende-Pfeile</span>
+            </label>
           </div>
         </div>
       </div>
@@ -466,7 +471,10 @@
             </div>
             <div class="apple-group">
               <div class="activity-row">
-                <span class="act-title">Andachten</span>
+                <div class="act-name-col">
+                  <span class="activity-icon-badge devotions">📖</span>
+                  <span class="act-title">Andachten</span>
+                </div>
                 <div class="apple-stepper">
                   <button class="stepper-btn" id="btn-dec-act-devotionals">-</button>
                   <input type="number" class="stepper-val" id="drawer-act-devotionals" value="0" min="0" />
@@ -474,7 +482,10 @@
                 </div>
               </div>
               <div class="activity-row">
-                <span class="act-title">Studienkreise</span>
+                <div class="act-name-col">
+                  <span class="activity-icon-badge study">👥</span>
+                  <span class="act-title">Studienkreise</span>
+                </div>
                 <div class="apple-stepper">
                   <button class="stepper-btn" id="btn-dec-act-studycircles">-</button>
                   <input type="number" class="stepper-val" id="drawer-act-studycircles" value="0" min="0" />
@@ -482,7 +493,10 @@
                 </div>
               </div>
               <div class="activity-row">
-                <span class="act-title">Kinderklassen</span>
+                <div class="act-name-col">
+                  <span class="activity-icon-badge children">🧒</span>
+                  <span class="act-title">Kinderklassen</span>
+                </div>
                 <div class="apple-stepper">
                   <button class="stepper-btn" id="btn-dec-act-children">-</button>
                   <input type="number" class="stepper-val" id="drawer-act-children" value="0" min="0" />
@@ -490,7 +504,10 @@
                 </div>
               </div>
               <div class="activity-row">
-                <span class="act-title">Juniorengruppen</span>
+                <div class="act-name-col">
+                  <span class="activity-icon-badge junior">⚡️</span>
+                  <span class="act-title">Juniorengruppen</span>
+                </div>
                 <div class="apple-stepper">
                   <button class="stepper-btn" id="btn-dec-act-junioryouth">-</button>
                   <input type="number" class="stepper-val" id="drawer-act-junioryouth" value="0" min="0" />

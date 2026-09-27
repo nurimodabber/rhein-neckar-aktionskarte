@@ -30,14 +30,14 @@ Die Anwendung öffnet sich unter `http://localhost:8080`.
 
 ## 🌟 Funktionsumfang
 
-### 1. Interaktive Karte aller 133 Kommunen & 129 Stadtteile
+### 1. Interaktive Karte aller 133 Kommunen & 154 Stadtteile
 * Umfasst **133 Städte & Gemeinden** des Metropol- und Vorderpfalz-Clusters:
   * **6 Kreisfreie Städte**: Mannheim, Heidelberg, Ludwigshafen am Rhein, Frankenthal (Pfalz), Speyer, Neustadt an der Weinstraße
   * **Rhein-Neckar-Kreis (54 Gemeinden)**
   * **Rhein-Pfalz-Kreis (25 Gemeinden)**
   * **Landkreis Bad Dürkheim (48 Gemeinden)**
 * **4 Entsende-Zentren (★)**: Mannheim, Heidelberg, Speyer, Leimen
-* **129 offizielle Nachbarschaften & Stadtteile** in 22 Städten (u. a. Mannheim, Heidelberg, Ludwigshafen am Rhein, Neustadt an der Weinstraße, Frankenthal, Speyer, Bad Dürkheim, Weinheim, Sinsheim, Wiesloch, Leimen u.v.m.) für detaillierte Innenstadt- und Quartiersplanung.
+* **154 offizielle Nachbarschaften & Stadtteile** in 33 Städten und Gemeinden (u. a. hochaufgelöste amtliche Stadtteilgrenzen für Heidelberg, Mannheim, Ludwigshafen, Neustadt, Frankenthal, Speyer, Bad Dürkheim, Weinheim, Sinsheim, Wiesloch, Edingen-Neckarhausen, St. Leon-Rot, Hirschberg, Rauenberg, Mühlhausen u.v.m.) für detaillierte Innenstadt- und Quartiersplanung.
 * Angrenzende Regionen dezent im Hintergrund.
 
 ### 2. Arbeitsmodi & Interaktionen

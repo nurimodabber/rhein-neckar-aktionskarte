@@ -94,6 +94,17 @@
         Bild
       </button>
 
+      <button class="btn btn-secondary" id="btn-share-link" title="Karte als teilbaren Link freigeben">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="18" cy="5" r="3"></circle>
+          <circle cx="6" cy="12" r="3"></circle>
+          <circle cx="18" cy="19" r="3"></circle>
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+        </svg>
+        Teilen
+      </button>
+
       <!-- Unified Apple-style Projekt Menu Dropdown -->
       <div class="dropdown" id="project-dropdown-container">
         <button class="btn btn-secondary" id="btn-project-menu" aria-haspopup="true" aria-expanded="false" title="Projekt- &amp; Datenverwaltung">
@@ -105,6 +116,11 @@
           Projekt ▾
         </button>
         <div class="dropdown-menu" id="project-dropdown-menu">
+          <button type="button" class="dropdown-item" id="menu-item-share">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+            Karte teilen (Link &amp; QR)...
+          </button>
+          <div class="dropdown-divider"></div>
           <button type="button" class="dropdown-item" id="menu-item-export">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
             Projekt exportieren (JSON)
@@ -149,6 +165,21 @@
     <!-- Map Container -->
     <div id="map-container">
       <div id="map"></div>
+
+      <!-- Share Link Import Notification Banner -->
+      <div id="share-import-banner" class="share-import-banner">
+        <div class="share-banner-main">
+          <div class="share-banner-badge">🔗 Geteilte Karte</div>
+          <div class="share-banner-text">
+            <span id="share-banner-details">Ein geteilter Cluster-Stand wurde geladen.</span>
+          </div>
+        </div>
+        <div class="share-banner-buttons">
+          <button class="btn btn-primary btn-sm" id="btn-apply-shared-data">In meine Karte übernehmen</button>
+          <button class="btn btn-secondary btn-sm" id="btn-preview-shared-data">Vorschau</button>
+          <button class="btn-banner-close" id="btn-dismiss-shared-data" title="Schließen">✕</button>
+        </div>
+      </div>
 
       <!-- Top Left Apple Navigation Breadcrumb HUD -->
       <div class="hud-nav-bar apple-hud" id="zoom-nav-bar" style="display: none;">
@@ -692,6 +723,80 @@
       <div class="sheet-footer">
         <button class="btn btn-secondary" id="btn-create-manual-backup">Aktuellen Stand jetzt sichern</button>
         <button class="btn btn-primary" id="btn-close-backups-sheet">Schließen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Share Link & Cloud Status (Apple HIG Sheet) -->
+  <div class="modal-backdrop" id="share-modal">
+    <div class="apple-sheet" style="max-width: 540px;">
+      <div class="sheet-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--apple-blue);">
+            <circle cx="18" cy="5" r="3"></circle>
+            <circle cx="6" cy="12" r="3"></circle>
+            <circle cx="18" cy="19" r="3"></circle>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+          </svg>
+          <h3 style="margin: 0;">Karte teilen</h3>
+        </div>
+        <button class="inspector-close-btn" id="btn-close-share-modal">✕</button>
+      </div>
+      <div class="sheet-body">
+        <!-- Online sync info notice -->
+        <div class="share-sync-notice">
+          <div class="sync-status-indicator">
+            <span class="sync-dot local"></span>
+            <strong>Status:</strong> Lokale Arbeitskopie (Offline-First / PWA)
+          </div>
+          <div style="font-size: 12.5px; color: var(--text-secondary); margin-top: 5px; line-height: 1.4;">
+            Die Karte speichert deine Arbeitsstände sicher lokal im Browser. Mit diesem <strong>teilbaren Link</strong> kannst du deinen aktuellen Stand inklusive aller Meilensteine, Entsende-Pfeile, Zentren und Notizen sofort an andere weitergeben.
+          </div>
+        </div>
+
+        <!-- Summary Chip Card -->
+        <div class="share-stats-summary" id="share-stats-summary">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- Link input group -->
+        <div class="form-group" style="margin-top: 14px;">
+          <label style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-weight: 500; font-size: 13px;">Teilbarer Link (enthält gesamten Stand)</span>
+            <span id="share-copied-indicator" class="copied-feedback" style="display:none; color: #16a34a; font-weight: 600; font-size: 12px;">✓ In Zwischenablage kopiert!</span>
+          </label>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="share-link-input" class="form-input" readonly style="font-family: monospace; font-size: 12px; background: #f8fafc; cursor: pointer;" />
+            <button class="btn btn-primary" id="btn-copy-share-link" style="white-space: nowrap;">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              Kopieren
+            </button>
+          </div>
+        </div>
+
+        <!-- Native Share / QR Code row -->
+        <div class="share-options-row" style="display: flex; gap: 10px; margin-top: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+          <button class="btn btn-secondary" id="btn-native-share" style="display: none;">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+            Per WhatsApp / AirDrop teilen
+          </button>
+          <button class="btn btn-ghost" id="btn-toggle-qr" style="font-size: 12.5px;">
+            📱 QR-Code anzeigen
+          </button>
+        </div>
+
+        <!-- Collapsible QR Code view -->
+        <div id="share-qr-container" style="display: none; text-align: center; margin-top: 14px; padding: 12px; background: #f8fafc; border-radius: 12px; border: 1px solid rgba(0,0,0,0.06);">
+          <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">Mit Handy-Kamera scannen, um die Karte sofort mobil zu öffnen:</div>
+          <img id="share-qr-image" alt="QR-Code für Link" style="width: 160px; height: 160px; margin: 0 auto; display: block; border-radius: 8px; background: white; padding: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);" />
+        </div>
+      </div>
+      <div class="sheet-footer">
+        <button class="btn btn-secondary" id="btn-close-share-sheet">Schließen</button>
       </div>
     </div>
   </div>

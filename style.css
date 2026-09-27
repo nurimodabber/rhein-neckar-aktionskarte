@@ -2191,3 +2191,143 @@ input:checked + .slider:before {
   gap: 6px;
 }
 
+/* ==========================================================================
+   Sharable Links & Cloud Sync Styles
+   ========================================================================== */
+.btn-sm {
+  padding: 5px 12px;
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+
+/* Share Import Banner (Notification Pill at Top of Map) */
+.share-import-banner {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-24px);
+  z-index: 1500;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(0, 122, 255, 0.32);
+  box-shadow: 0 10px 32px rgba(0, 122, 255, 0.16), 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 8px 16px;
+  border-radius: 9999px;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: 92vw;
+}
+
+.share-import-banner.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+
+.share-banner-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.share-banner-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0, 122, 255, 0.12);
+  color: var(--apple-blue);
+  font-weight: 600;
+  font-size: 11.5px;
+  padding: 3px 8px;
+  border-radius: 9999px;
+}
+
+.share-banner-buttons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-banner-close {
+  background: transparent;
+  border: none;
+  font-size: 15px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 3px 7px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: color 0.15s, background 0.15s;
+}
+
+.btn-banner-close:hover {
+  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.07);
+}
+
+/* Share Modal Specifics */
+.share-sync-notice {
+  background: rgba(0, 122, 255, 0.05);
+  border: 1px solid rgba(0, 122, 255, 0.15);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+
+.sync-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--apple-blue);
+}
+
+.sync-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.sync-dot.local {
+  background: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+}
+
+.share-stats-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.share-stat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--bg-hover);
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.share-stat-chip strong {
+  color: var(--text-primary);
+}
+
+

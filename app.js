@@ -82,6 +82,10 @@ document.addEventListener('DOMContentLoaded', () => {
   } catch (e) {
     console.warn('URL focus parse error:', e);
   }
+
+  // Check URL for shared cluster state (#share=... or ?share=...)
+  setTimeout(() => checkShareUrlOnStartup(), 250);
+  window.addEventListener('hashchange', checkShareUrlOnStartup);
 });
 
 // --- Data Persistence ---
@@ -2765,6 +2769,30 @@ function initUIEventListeners() {
   }
 
   document.getElementById('json-file-input').addEventListener('change', handleImportJson);
+
+  // Sharable Links & Cloud Share Event Listeners
+  document.getElementById('btn-share-link')?.addEventListener('click', openShareModal);
+  document.getElementById('menu-item-share')?.addEventListener('click', () => {
+    const projMenu = document.getElementById('project-dropdown-menu');
+    const projBtn = document.getElementById('btn-project-menu');
+    if (projMenu) projMenu.classList.remove('visible');
+    if (projBtn) projBtn.setAttribute('aria-expanded', 'false');
+    openShareModal();
+  });
+  document.getElementById('btn-close-share-modal')?.addEventListener('click', closeShareModal);
+  document.getElementById('btn-close-share-sheet')?.addEventListener('click', closeShareModal);
+  document.getElementById('btn-copy-share-link')?.addEventListener('click', copyShareLink);
+  document.getElementById('btn-native-share')?.addEventListener('click', nativeShare);
+  document.getElementById('btn-toggle-qr')?.addEventListener('click', toggleShareQr);
+  document.getElementById('share-link-input')?.addEventListener('click', (e) => e.target.select());
+  document.getElementById('share-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'share-modal') closeShareModal();
+  });
+
+  // Share Import Banner Listeners
+  document.getElementById('btn-apply-shared-data')?.addEventListener('click', applySharedDataFromBanner);
+  document.getElementById('btn-preview-shared-data')?.addEventListener('click', previewSharedDataFromBanner);
+  document.getElementById('btn-dismiss-shared-data')?.addEventListener('click', dismissSharedDataBanner);
 }
 
 function initStepper(name, onChange) {
@@ -2993,6 +3021,352 @@ function handleImportJson(e) {
   e.target.value = '';
 }
 
+// ==========================================================================
+// Sharable Links & Cloud Share Engine
+// ==========================================================================
+
+function getExportableData() {
+  const activeTowns = {};
+  for (const [id, t] of Object.entries(AppState.towns)) {
+    if (!t) continue;
+    const item = {};
+    if (t.milestone && t.milestone !== 'none') item.m = t.milestone;
+    if (t.nuclei) item.n = t.nuclei;
+    if (t.isCenter) item.c = 1;
+    if (t.notes && t.notes.trim()) item.nt = t.notes.trim();
+    if (t.milestone === 'custom' && t.customColor) item.col = t.customColor;
+    if (Object.keys(item).length > 0) {
+      activeTowns[id] = item;
+    }
+  }
+
+  const activeDistricts = {};
+  for (const [id, d] of Object.entries(AppState.districts)) {
+    if (!d) continue;
+    const item = {};
+    if (d.milestone && d.milestone !== 'none') item.m = d.milestone;
+    if (d.nuclei) item.n = d.nuclei;
+    if (d.isCenter) item.c = 1;
+    if (d.notes && d.notes.trim()) item.nt = d.notes.trim();
+    if (Object.keys(item).length > 0) {
+      activeDistricts[id] = item;
+    }
+  }
+
+  const deps = (AppState.deployments || []).map(d => {
+    const item = { f: d.fromId, t: d.toId };
+    if (d.count && d.count !== 1) item.c = d.count;
+    if (d.status && d.status !== 'active') item.s = d.status;
+    if (d.color) item.col = d.color;
+    if (d.notes && d.notes.trim()) item.nt = d.notes.trim();
+    return item;
+  });
+
+  return {
+    v: 1,
+    t: activeTowns,
+    d: activeDistricts,
+    dp: deps,
+    ts: Date.now()
+  };
+}
+
+async function encodeShareData(data) {
+  const jsonStr = JSON.stringify(data);
+  if (typeof CompressionStream !== 'undefined') {
+    try {
+      const stream = new Blob([jsonStr]).stream();
+      const compStream = stream.pipeThrough(new CompressionStream('deflate-raw'));
+      const buffer = await new Response(compStream).arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return 'z_' + btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    } catch (e) {
+      console.warn('CompressionStream fallback:', e);
+    }
+  }
+  const utf8 = unescape(encodeURIComponent(jsonStr));
+  return 'b_' + btoa(utf8).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+async function decodeShareData(encoded) {
+  if (!encoded || typeof encoded !== 'string') throw new Error('Ungültiger Parameter');
+  
+  if (encoded.startsWith('z_')) {
+    const rawB64 = encoded.slice(2).replace(/-/g, '+').replace(/_/g, '/');
+    const binary = atob(rawB64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    if (typeof DecompressionStream !== 'undefined') {
+      const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+      const text = await new Response(stream).text();
+      return JSON.parse(text);
+    }
+    throw new Error('DecompressionStream wird auf diesem Browser nicht unterstützt.');
+  } else if (encoded.startsWith('b_')) {
+    const rawB64 = encoded.slice(2).replace(/-/g, '+').replace(/_/g, '/');
+    const binary = atob(rawB64);
+    const jsonStr = decodeURIComponent(escape(binary));
+    return JSON.parse(jsonStr);
+  } else {
+    return JSON.parse(decodeURIComponent(encoded));
+  }
+}
+
+async function generateShareUrl() {
+  const data = getExportableData();
+  const encoded = await encodeShareData(data);
+  const base = window.location.origin + window.location.pathname;
+  return `${base}#share=${encoded}`;
+}
+
+async function openShareModal() {
+  const modal = document.getElementById('share-modal');
+  if (!modal) return;
+
+  const input = document.getElementById('share-link-input');
+  const indicator = document.getElementById('share-copied-indicator');
+  const summary = document.getElementById('share-stats-summary');
+  const qrContainer = document.getElementById('share-qr-container');
+  const btnNativeShare = document.getElementById('btn-native-share');
+
+  if (indicator) indicator.style.display = 'none';
+  if (qrContainer) qrContainer.style.display = 'none';
+
+  const townsActive = Object.values(AppState.towns).filter(t => t.milestone && t.milestone !== 'none').length;
+  const nucleiCount = Object.values(AppState.towns).reduce((s, t) => s + (t.nuclei || 0), 0);
+  const centersCount = Object.values(AppState.towns).filter(t => t.isCenter).length;
+  const arrowCount = (AppState.deployments || []).length;
+
+  if (summary) {
+    summary.innerHTML = `
+      <div class="share-stat-chip">🏘️ <strong>${townsActive}</strong> aktive Orte</div>
+      <div class="share-stat-chip">➔ <strong>${arrowCount}</strong> Pfeile</div>
+      <div class="share-stat-chip">★ <strong>${centersCount}</strong> Zentren</div>
+      ${nucleiCount > 0 ? `<div class="share-stat-chip">🌱 <strong>${nucleiCount}</strong> Nuklei</div>` : ''}
+    `;
+  }
+
+  try {
+    input.value = "Erstelle teilbaren Link...";
+    const shareUrl = await generateShareUrl();
+    input.value = shareUrl;
+
+    if (btnNativeShare) {
+      btnNativeShare.style.display = (navigator.share ? 'inline-flex' : 'none');
+    }
+  } catch (err) {
+    console.error("Share-Fehler:", err);
+    input.value = window.location.href;
+  }
+
+  modal.classList.add('visible');
+}
+
+function closeShareModal() {
+  const modal = document.getElementById('share-modal');
+  if (modal) modal.classList.remove('visible');
+}
+
+async function copyShareLink() {
+  const input = document.getElementById('share-link-input');
+  const indicator = document.getElementById('share-copied-indicator');
+  if (!input || !input.value) return;
+
+  input.select();
+  input.setSelectionRange(0, 99999);
+
+  let success = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(input.value);
+      success = true;
+    }
+  } catch (e) {}
+
+  if (!success) {
+    try {
+      success = document.execCommand('copy');
+    } catch (e) {}
+  }
+
+  if (indicator) {
+    indicator.style.display = 'inline';
+    setTimeout(() => {
+      if (indicator) indicator.style.display = 'none';
+    }, 3000);
+  }
+}
+
+async function nativeShare() {
+  const input = document.getElementById('share-link-input');
+  if (!input || !input.value || !navigator.share) return;
+  try {
+    await navigator.share({
+      title: 'Rhein-Neckar Cluster – Aktionskarte',
+      text: 'Hier ist der aktuelle Stand der Rhein-Neckar Aktionskarte:',
+      url: input.value
+    });
+  } catch (e) {
+    if (e.name !== 'AbortError') console.warn('Share fehlgeschlagen:', e);
+  }
+}
+
+function toggleShareQr() {
+  const container = document.getElementById('share-qr-container');
+  const img = document.getElementById('share-qr-image');
+  const input = document.getElementById('share-link-input');
+  if (!container || !img || !input) return;
+
+  const isHidden = container.style.display === 'none' || !container.style.display;
+  if (isHidden) {
+    container.style.display = 'block';
+    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(input.value)}`;
+  } else {
+    container.style.display = 'none';
+  }
+}
+
+function applySharedPayload(payload, persist = true) {
+  if (!payload) return;
+
+  const newTowns = {};
+  Object.keys(AppState.townFeaturesById).forEach(id => {
+    newTowns[id] = { milestone: 'none', nuclei: 0, isCenter: false, notes: '' };
+  });
+
+  if (payload.t) {
+    for (const [id, t] of Object.entries(payload.t)) {
+      if (!newTowns[id]) {
+        newTowns[id] = { milestone: 'none', nuclei: 0, isCenter: false, notes: '' };
+      }
+      if (t.m) newTowns[id].milestone = t.m;
+      if (t.n) newTowns[id].nuclei = t.n;
+      if (t.c) newTowns[id].isCenter = true;
+      if (t.nt) newTowns[id].notes = t.nt;
+      if (t.col) newTowns[id].customColor = t.col;
+    }
+  }
+  AppState.towns = newTowns;
+
+  const newDistricts = {};
+  if (payload.d) {
+    for (const [id, d] of Object.entries(payload.d)) {
+      newDistricts[id] = {
+        milestone: d.m || 'none',
+        nuclei: d.n || 0,
+        isCenter: !!d.c,
+        notes: d.nt || ''
+      };
+    }
+  }
+  AppState.districts = newDistricts;
+
+  const newDeployments = [];
+  if (payload.dp && Array.isArray(payload.dp)) {
+    payload.dp.forEach((d, idx) => {
+      newDeployments.push({
+        id: 'dep_share_' + (idx + 1) + '_' + Date.now().toString(36),
+        fromId: d.f,
+        toId: d.t,
+        count: d.c || 1,
+        status: d.s || 'active',
+        color: d.col || '',
+        notes: d.nt || ''
+      });
+    });
+  }
+  AppState.deployments = newDeployments;
+
+  if (persist) {
+    saveState();
+  }
+  refreshAllStyles();
+  refreshMarkers();
+  renderArrows();
+  updateClusterStats();
+}
+
+let pendingSharedPayload = null;
+
+async function checkShareUrlOnStartup() {
+  try {
+    let rawParam = null;
+    if (window.location.hash && window.location.hash.includes('share=')) {
+      const match = window.location.hash.match(/share=([^&]+)/);
+      if (match) rawParam = match[1];
+    } else {
+      const urlParams = new URLSearchParams(window.location.search);
+      rawParam = urlParams.get('share');
+    }
+
+    if (!rawParam) return;
+
+    const payload = await decodeShareData(rawParam);
+    if (!payload || !payload.t) return;
+
+    pendingSharedPayload = payload;
+
+    const banner = document.getElementById('share-import-banner');
+    const details = document.getElementById('share-banner-details');
+    if (!banner || !details) return;
+
+    const activeTownCount = Object.values(payload.t).filter(t => t.m && t.m !== 'none').length;
+    const arrowCount = (payload.dp || []).length;
+    const dateStr = payload.ts ? new Date(payload.ts).toLocaleDateString('de-DE') : 'kürzlich';
+
+    const townText = activeTownCount > 0 ? `${activeTownCount} aktive Orte` : `${Object.keys(payload.t).length} Orte`;
+    details.innerHTML = `Geteilter Stand (${dateStr}): <strong>${townText}</strong> · <strong>${arrowCount} Pfeile</strong>`;
+    banner.classList.add('visible');
+
+    // Automatically preview on the map
+    applySharedPayload(payload, false);
+  } catch (err) {
+    console.warn("Konnte geteilten Link nicht laden:", err);
+  }
+}
+
+function applySharedDataFromBanner() {
+  if (!pendingSharedPayload) return;
+  saveAutoBackup("Vor Übernahme von geteiltem Link", true);
+  applySharedPayload(pendingSharedPayload, true);
+  pushHistory("Geteilten Stand übernommen");
+
+  history.replaceState(null, '', window.location.pathname + window.location.search);
+
+  const banner = document.getElementById('share-import-banner');
+  if (banner) banner.classList.remove('visible');
+
+  pendingSharedPayload = null;
+  alert("Geteilter Stand erfolgreich in deine lokale Karte übernommen! 🎉");
+}
+
+function previewSharedDataFromBanner() {
+  if (!pendingSharedPayload) return;
+  applySharedPayload(pendingSharedPayload, false);
+  const details = document.getElementById('share-banner-details');
+  if (details) {
+    details.innerHTML = `👀 <em>Vorschau aktiv</em> (deine lokalen Daten wurden noch nicht verändert)`;
+  }
+}
+
+function dismissSharedDataBanner() {
+  const banner = document.getElementById('share-import-banner');
+  if (banner) banner.classList.remove('visible');
+  loadStoredData();
+  refreshAllStyles();
+  refreshMarkers();
+  renderArrows();
+  updateClusterStats();
+  history.replaceState(null, '', window.location.pathname + window.location.search);
+  pendingSharedPayload = null;
+}
+
 async function exportMapAsPng() {
   if (typeof html2canvas === 'undefined') {
     alert("Export-Bibliothek nicht geladen.");
@@ -3017,7 +3391,8 @@ async function exportMapAsPng() {
     document.querySelector('.leaflet-control-zoom'),
     document.getElementById('arrow-quick-hud'),
     document.getElementById('arrow-instruction-banner'),
-    document.getElementById('project-dropdown-menu')
+    document.getElementById('project-dropdown-menu'),
+    document.getElementById('share-import-banner')
   ].filter(Boolean);
 
   const prevDisplays = uiElementsToHide.map(el => el.style.display);

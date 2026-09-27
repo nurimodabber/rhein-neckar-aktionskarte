@@ -30,12 +30,13 @@ Die Anwendung öffnet sich unter `http://localhost:8080`.
 
 ## 🌟 Funktionsumfang
 
-### 1. Interaktive Karte aller 132 Kommunen & 83 Stadtteile
-* Umfasst **132 Städte & Gemeinden** des Metropol- und Vorderpfalz-Clusters:
-  * **5 Kreisfreie Städte**: Mannheim, Heidelberg, Ludwigshafen am Rhein, Frankenthal (Pfalz), Speyer
+### 1. Interaktive Karte aller 133 Kommunen & 83 Stadtteile
+* Umfasst **133 Städte & Gemeinden** des Metropol- und Vorderpfalz-Clusters:
+  * **6 Kreisfreie Städte**: Mannheim, Heidelberg, Ludwigshafen am Rhein, Frankenthal (Pfalz), Speyer, Neustadt an der Weinstraße
   * **Rhein-Neckar-Kreis (54 Gemeinden)**
   * **Rhein-Pfalz-Kreis (25 Gemeinden)**
   * **Landkreis Bad Dürkheim (48 Gemeinden)**
+* **4 Entsende-Zentren (★)**: Mannheim, Heidelberg, Speyer, Leimen
 * **83 offizielle Nachbarschaften & Stadtteile** für detaillierte Innenstadt- und Quartiersplanung.
 * Angrenzende Regionen dezent im Hintergrund.
 
@@ -80,7 +81,7 @@ Die Anwendung öffnet sich unter `http://localhost:8080`.
 ├── sw.js                      # Offline-Service-Worker
 ├── icon.svg                   # Vektor-App-Icon
 ├── DEPLOYMENT.md              # Anleitung für GitHub Pages & Online-Release
-├── rhein_neckar_data.js       # Geometrien der 132 Kommunen (Rhein-Neckar & Vorderpfalz)
+├── rhein_neckar_data.js       # Geometrien der 133 Kommunen (Rhein-Neckar & Vorderpfalz)
 ├── rhein_neckar_districts.js  # Geometrien der 83 Stadtteile
 ├── surrounding_kreise.js      # Umgebende Nachbarkreise
 ├── rivers_data.js             # Rhein, Neckar und Gewässerläufe

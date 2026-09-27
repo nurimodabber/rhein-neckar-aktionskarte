@@ -111,12 +111,13 @@ function loadStoredData() {
       const id = f.properties.id;
       AppState.townFeaturesById[id] = f;
       if (!AppState.towns[id]) {
+        const isDefaultCenter = ['Mannheim', 'Heidelberg', 'Speyer', 'Leimen'].includes(f.properties.name);
         AppState.towns[id] = {
           milestone: 'none',
           customColor: '#86efac',
           nuclei: 0,
           activities: { devotionals: 0, studyCircles: 0, childrenClasses: 0, juniorYouth: 0 },
-          isCenter: false,
+          isCenter: isDefaultCenter,
           notes: ''
         };
       }
@@ -2229,7 +2230,7 @@ function updateCurrentActivity(actKey, val) {
 
 function updateClusterStats() {
   const towns = Object.values(AppState.towns);
-  const totalTowns = Object.keys(AppState.townFeaturesById).length || 132;
+  const totalTowns = Object.keys(AppState.townFeaturesById).length || 133;
   
   let reachedTowns = 0;
   let totalNuclei = 0;

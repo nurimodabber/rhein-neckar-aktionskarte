@@ -143,7 +143,9 @@ function loadStoredData() {
 
 function registerServiceWorker() {
   if ('serviceWorker' in navigator && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
-    navigator.serviceWorker.register('./sw.js').catch(err => {
+    navigator.serviceWorker.register('./sw.js').then((reg) => {
+      reg.update().catch(() => {});
+    }).catch(err => {
       console.log('Service worker note (offline fallback):', err);
     });
   }
@@ -358,16 +360,93 @@ function renderBackupsList() {
   });
 }
 
+// --- Silky Smooth 60fps Wheel & Trackpad Zoom Engine ---
+L.Map.mergeOptions({
+  smoothWheelZoom: true,
+  smoothSensitivity: 1.2
+});
+
+L.Map.SmoothWheelZoom = L.Handler.extend({
+  addHooks: function () {
+    L.DomEvent.on(this._map._container, 'wheel', this._onWheelScroll, this);
+  },
+
+  removeHooks: function () {
+    L.DomEvent.off(this._map._container, 'wheel', this._onWheelScroll, this);
+  },
+
+  _onWheelScroll: function (e) {
+    if (!this._map.options.smoothWheelZoom) return;
+    L.DomEvent.stop(e);
+
+    const map = this._map;
+    const container = map._container;
+    const rect = container.getBoundingClientRect();
+    const mousePos = L.point(e.clientX - rect.left, e.clientY - rect.top);
+
+    this._mousePos = mousePos;
+
+    // Normalize delta across Mac trackpads, Magic Mouse, and classic mouse wheels
+    let delta = -e.deltaY;
+    if (e.deltaMode === 1) delta *= 40; // Firefox line mode
+    else if (e.deltaMode === 2) delta *= 800; // Page mode
+
+    // Pinch gesture on Mac trackpad emits e.ctrlKey = true
+    const isPinch = e.ctrlKey;
+    const factor = isPinch ? 0.01 : 0.0028;
+    const sensitivity = map.options.smoothSensitivity || 1.2;
+    const dZoom = delta * factor * sensitivity;
+
+    const prevTarget = this._isZooming ? this._targetZoom : map.getZoom();
+    this._targetZoom = Math.min(
+      map.getMaxZoom(),
+      Math.max(map.getMinZoom(), prevTarget + dZoom)
+    );
+
+    if (!this._isZooming) {
+      this._isZooming = true;
+      this._zoomAnimation();
+    }
+  },
+
+  _zoomAnimation: function () {
+    if (!this._isZooming) return;
+
+    const map = this._map;
+    const currentZoom = map.getZoom();
+    const diff = this._targetZoom - currentZoom;
+
+    if (Math.abs(diff) < 0.004) {
+      map.setZoomAround(this._mousePos, this._targetZoom, { animate: false });
+      this._isZooming = false;
+      map.fire('zoomend');
+      return;
+    }
+
+    // 60fps exponential easing for fluid glide
+    const step = diff * 0.24;
+    map.setZoomAround(this._mousePos, currentZoom + step, { animate: false });
+
+    requestAnimationFrame(this._zoomAnimation.bind(this));
+  }
+});
+
+L.Map.addInitHook('addHandler', 'smoothWheelZoom', L.Map.SmoothWheelZoom);
+
 // --- Map Setup ---
 function initMap() {
   AppState.map = L.map('map', {
     zoomControl: false,
     attributionControl: false,
-    boxZoom: false,
+    boxZoom: true,
+    doubleClickZoom: true,
+    scrollWheelZoom: false, // SmoothWheelZoom handles mousewheel & trackpad
+    smoothWheelZoom: true,
+    smoothSensitivity: 1.2,
     minZoom: 8,
     maxZoom: 16,
-    zoomSnap: 0.1,
-    zoomDelta: 0.25
+    zoomSnap: 0,
+    zoomDelta: 1.0
   }).setView([49.405, 8.465], 10.4);
 
   L.control.zoom({ position: 'bottomright' }).addTo(AppState.map);
@@ -394,7 +473,7 @@ function initMap() {
     renderArrows();
   });
 
-  AppState.map.on('move zoom viewreset resize', () => {
+  AppState.map.on('move drag zoom viewreset resize', () => {
     renderArrows();
   });
 }
@@ -556,7 +635,7 @@ function exitDistrictFocus() {
 
 // --- SVG Arrow Layer ---
 function initArrowSvgLayer() {
-  const mapPane = AppState.map.getPanes().overlayPane;
+  const container = AppState.map.getContainer();
   
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("class", "arrow-svg-layer");
@@ -571,7 +650,7 @@ function initArrowSvgLayer() {
   const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
   svg.appendChild(defs);
   
-  mapPane.appendChild(svg);
+  container.appendChild(svg);
   AppState.arrowSvgLayer = svg;
   AppState.arrowDefs = defs;
 }
@@ -592,9 +671,9 @@ function isTownInDistrictMode(townId) {
   if (AppState.focusedTownId) {
     return townId === AppState.focusedTownId;
   }
-  // Otherwise only expand in deep local zoom (level 14+)
+  // When zooming in manually, reveal Stadtteile at zoom >= 12.0
   const currentZoom = AppState.map ? AppState.map.getZoom() : 10;
-  return currentZoom >= 14;
+  return currentZoom >= 12.0;
 }
 
 // --- Navigation Breadcrumb HUD Sync ---
@@ -1110,11 +1189,12 @@ function renderArrows() {
   const mapSize = AppState.map.getSize();
   svg.setAttribute("width", mapSize.x);
   svg.setAttribute("height", mapSize.y);
+  svg.setAttribute("viewBox", `0 0 ${mapSize.x} ${mapSize.y}`);
   svg.style.width = mapSize.x + "px";
   svg.style.height = mapSize.y + "px";
-
-  const topLeft = AppState.map.containerPointToLayerPoint([0, 0]);
-  L.DomUtil.setPosition(svg, topLeft);
+  svg.style.left = "0px";
+  svg.style.top = "0px";
+  svg.style.transform = "none";
 
   // Group deployments connecting the same pair of nodes (in either direction) to prevent overlapping lines
   const pairGroups = {};
@@ -1129,8 +1209,8 @@ function renderArrows() {
     const toFeat = AppState.districtFeaturesById[dep.toId] || AppState.townFeaturesById[dep.toId];
     if (!fromFeat || !toFeat) return;
 
-    const pA = AppState.map.latLngToLayerPoint(fromFeat.properties.center);
-    const pB = AppState.map.latLngToLayerPoint(toFeat.properties.center);
+    const pA = AppState.map.latLngToContainerPoint(fromFeat.properties.center);
+    const pB = AppState.map.latLngToContainerPoint(toFeat.properties.center);
 
     const dx = pB.x - pA.x;
     const dy = pB.y - pA.y;

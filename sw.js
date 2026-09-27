@@ -1,5 +1,5 @@
 // Rhein-Neckar Cluster Offline Service Worker
-const CACHE_NAME = 'rhein-neckar-cache-v1';
+const CACHE_NAME = 'rhein-neckar-cache-v2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -40,15 +40,14 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Offline-first strategy: Cache falling back to network
+  // Network-First with Cache-Fallback:
+  // Always fetch latest updates from network when online.
+  // Fall back to offline cache instantly when offline.
   if (event.request.method !== 'GET') return;
+
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request).then((networkResponse) => {
-        // Cache new local resources dynamically
+    fetch(event.request)
+      .then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -56,12 +55,16 @@ self.addEventListener('fetch', (event) => {
           });
         }
         return networkResponse;
-      }).catch(() => {
-        // Fallback to index.html if offline navigation fails
-        if (event.request.mode === 'navigate') {
-          return caches.match('./index.html');
-        }
-      });
-    })
+      })
+      .catch(() => {
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          if (event.request.mode === 'navigate') {
+            return caches.match('./index.html');
+          }
+        });
+      })
   );
 });

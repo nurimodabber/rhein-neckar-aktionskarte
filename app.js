@@ -1122,6 +1122,22 @@ function refreshMarkers() {
 
       const marker = L.marker(center, { icon: customIcon, interactive: false });
       AppState.markersLayer.addLayer(marker);
+
+      if (df.properties.exclaveCenter) {
+        const exclaveHtml = `
+          <div class="subtle-map-label district exclave" style="opacity: 0.75; font-style: italic;">
+            <span class="district-name" style="font-size: 11px;">${escapeHtml(df.properties.name)} (Exklave)</span>
+          </div>
+        `;
+        const exclaveIcon = L.divIcon({
+          className: 'subtle-marker-container',
+          html: exclaveHtml,
+          iconSize: [120, 18],
+          iconAnchor: [60, 9]
+        });
+        const exclaveMarker = L.marker(df.properties.exclaveCenter, { icon: exclaveIcon, interactive: false });
+        AppState.markersLayer.addLayer(exclaveMarker);
+      }
     });
   }
 

@@ -1089,16 +1089,9 @@ function refreshMarkers() {
       const totalActs = calculateTotalActivities(town.activities);
       const isCenter = town.isCenter;
       const isActive = (town.milestone && town.milestone !== 'none') || isCenter || totalActs > 0 || (town.nuclei > 0);
-      const isAnchor = CARTOGRAPHIC_ANCHORS.has(f.properties.name);
-      const isSelected = AppState.selectedTownId === id;
-
-      // Smart Cartographic LOD: Inactive smaller towns only show permanent labels when zoomed in (zoom >= 11.2) or selected
-      if (!isActive && !isAnchor && !isSelected && currentZoom < 11.2) {
-        return;
-      }
 
       const markerHtml = `
-        <div class="subtle-map-label ${isCenter ? 'center' : ''}">
+        <div class="subtle-map-label ${isCenter ? 'center' : ''} ${isActive ? 'active-cluster' : 'inactive-town'}">
           ${isCenter ? '<span class="center-star">★</span>' : ''}
           <span>${escapeHtml(f.properties.name)}</span>
           ${town.nuclei > 0 ? `<span class="subtle-badge nuclei">${town.nuclei}</span>` : ''}
@@ -1755,12 +1748,8 @@ function showDistrictQuickPopover(districtId, latlng) {
 
 function handleTownClick(townId, latlng) {
   if (AppState.currentMode === 'inspect') {
-    const drawer = document.getElementById('details-drawer');
-    const isDrawerOpen = drawer && !drawer.classList.contains('collapsed');
-    if (isDrawerOpen) {
-      selectTown(townId, false);
-    }
-    showTownQuickPopover(townId, latlng);
+    selectTown(townId, false);
+    if (latlng) showTownQuickPopover(townId, latlng);
   } else if (AppState.currentMode === 'paint') {
     applyPaintToTown(townId);
   } else if (AppState.currentMode === 'arrow') {
@@ -1770,12 +1759,8 @@ function handleTownClick(townId, latlng) {
 
 function handleDistrictClick(districtId, latlng) {
   if (AppState.currentMode === 'inspect') {
-    const drawer = document.getElementById('details-drawer');
-    const isDrawerOpen = drawer && !drawer.classList.contains('collapsed');
-    if (isDrawerOpen) {
-      selectDistrict(districtId, false);
-    }
-    showDistrictQuickPopover(districtId, latlng);
+    selectDistrict(districtId, false);
+    if (latlng) showDistrictQuickPopover(districtId, latlng);
   } else if (AppState.currentMode === 'paint') {
     applyPaintToDistrict(districtId);
   } else if (AppState.currentMode === 'arrow') {

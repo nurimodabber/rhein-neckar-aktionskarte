@@ -365,7 +365,7 @@ function initMap() {
     boxZoom: false,
     minZoom: 8,
     maxZoom: 16
-  }).setView([49.42, 9.01], 10);
+  }).setView([49.40, 8.46], 10);
 
   L.control.zoom({ position: 'bottomright' }).addTo(AppState.map);
 
@@ -406,10 +406,10 @@ function renderSurroundingRegions() {
   }).addTo(AppState.map);
 
   const regionalLabels = [
-    { name: "Rheinhessen-Pfalz", coords: [49.46, 8.32], isRegion: true },
-    { name: "Darmstadt-Aschaffenburg", coords: [49.68, 8.85], isRegion: true },
-    { name: "Heilbronn-Tauber", coords: [49.32, 9.45], isRegion: true },
-    { name: "Baden-Nordschwarzwald", coords: [49.10, 8.65], isRegion: true },
+    { name: "Rheinhessen-Pfalz", coords: [49.52, 7.82], isRegion: true },
+    { name: "Darmstadt-Aschaffenburg", coords: [49.65, 8.65], isRegion: true },
+    { name: "Heilbronn-Tauber", coords: [49.30, 9.15], isRegion: true },
+    { name: "Baden-Nordschwarzwald", coords: [49.12, 8.45], isRegion: true },
   ];
 
   regionalLabels.forEach(item => {
@@ -517,7 +517,7 @@ function exitDistrictFocus() {
   if (separator) separator.style.display = 'none';
 
   if (AppState.map) {
-    AppState.map.setView([49.42, 9.01], 10, { animate: true });
+    AppState.map.setView([49.40, 8.46], 10, { animate: true });
   }
 
   if (AppState.selectedTownId) {
@@ -2229,7 +2229,7 @@ function updateCurrentActivity(actKey, val) {
 
 function updateClusterStats() {
   const towns = Object.values(AppState.towns);
-  const totalTowns = Object.keys(AppState.townFeaturesById).length || 83;
+  const totalTowns = Object.keys(AppState.townFeaturesById).length || 132;
   
   let reachedTowns = 0;
   let totalNuclei = 0;

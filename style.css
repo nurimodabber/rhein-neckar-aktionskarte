@@ -1347,45 +1347,69 @@ input:checked + .slider:before {
 .district-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-top: 6px;
+  gap: 4px;
+  margin-top: 4px;
 }
 
 .district-subcard {
-  background: rgba(118, 118, 128, 0.05);
-  border-radius: var(--radius-sm);
-  border: 0.5px solid var(--separator);
-  transition: all 0.15s ease;
+  background: #ffffff;
+  border-radius: 9px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
   overflow: hidden;
+  position: relative;
+}
+
+.district-subcard:hover {
+  background: #fbfbfd;
+  border-color: rgba(0, 122, 255, 0.3);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
 }
 
 .district-subcard.active {
   border-color: var(--system-blue);
-  background: rgba(0, 122, 255, 0.04);
-  box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.25);
+  background: #ffffff;
+  box-shadow: 0 0 0 1px var(--system-blue), 0 2px 8px rgba(0, 122, 255, 0.08);
+}
+
+.district-subcard.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3.5px;
+  background: var(--system-blue);
+  border-radius: 9px 0 0 9px;
 }
 
 .district-subcard.paint-ready {
   cursor: pointer;
 }
 
+.district-subcard.paint-ready:hover {
+  border-color: var(--system-green);
+  box-shadow: 0 0 0 1px var(--system-green), 0 2px 8px rgba(52, 199, 89, 0.12);
+}
+
 .district-subcard.paint-ready .district-subcard-header:hover {
-  background: rgba(52, 199, 89, 0.12);
+  background: rgba(52, 199, 89, 0.06);
 }
 
 .subcard-color-dot {
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18), 0 0.5px 1px rgba(0, 0, 0, 0.08);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
   cursor: pointer;
 }
 
 .subcard-color-dot:hover {
-  transform: scale(1.3);
-  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.5);
+  transform: scale(1.35);
+  box-shadow: 0 0 0 2px var(--system-blue);
 }
 
 .district-subcard-header {
@@ -1395,72 +1419,126 @@ input:checked + .slider:before {
   padding: 8px 10px;
   cursor: pointer;
   user-select: none;
+  gap: 8px;
   transition: background 0.12s ease;
 }
 
 .district-subcard-header:hover {
-  background: rgba(0, 122, 255, 0.06);
+  background: rgba(0, 122, 255, 0.03);
 }
 
 .district-subcard-left {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
+  min-width: 0;
+  flex: 1;
 }
 
 .subcard-chevron {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--text-tertiary);
-  width: 12px;
+  width: 10px;
   text-align: center;
-  transition: transform 0.15s ease;
+  flex-shrink: 0;
+  line-height: 1;
+  transition: transform 0.15s ease, color 0.15s ease;
 }
 
 .district-subcard.expanded .subcard-chevron {
-  transform: rotate(90deg);
+  color: var(--system-blue);
 }
 
 .district-subcard-title {
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.subpoint-tag {
-  display: inline-block;
-  font-size: 9.5px;
+.district-subcard.active .district-subcard-title {
   font-weight: 600;
   color: var(--system-blue);
-  background: rgba(0, 122, 255, 0.1);
-  padding: 1px 5px;
-  border-radius: 4px;
-  margin-left: 4px;
 }
 
 .district-subcard-badges {
   display: flex;
   align-items: center;
-  gap: 4px;
-}
-
-.subcard-badge {
-  font-size: 10.5px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(118, 118, 128, 0.1);
-  color: var(--text-secondary);
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .subcard-badge.milestone {
+  font-size: 11px;
   font-weight: 600;
-  background: rgba(0, 122, 255, 0.1);
+  padding: 1.5px 6.5px;
+  border-radius: 5px;
+  letter-spacing: 0.1px;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.25;
+}
+
+.subcard-badge.milestone.none {
+  background: rgba(118, 118, 128, 0.08);
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+.subcard-badge.milestone.pg {
+  background: #dcfce7;
+  color: #166534;
+  border: 0.5px solid rgba(22, 101, 52, 0.2);
+}
+
+.subcard-badge.milestone.ipg {
+  background: #bbf7d0;
+  color: #14532d;
+  border: 0.5px solid rgba(20, 83, 45, 0.2);
+}
+
+.subcard-badge.milestone.ipg_plus {
+  background: #15803d;
+  color: #ffffff;
+}
+
+.subcard-stats-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1.5px 6px;
+  border-radius: 5px;
+  background: rgba(118, 118, 128, 0.06);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  letter-spacing: -0.1px;
+}
+
+.subcard-stats-pill .stat-sep {
+  opacity: 0.35;
+  font-size: 9px;
+}
+
+.subcard-stats-pill .highlight-nuclei {
+  color: var(--system-green);
+  font-weight: 600;
+}
+
+.subcard-stats-pill .highlight-acts {
   color: var(--system-blue);
+  font-weight: 600;
 }
 
 .district-subcard-body {
-  padding: 10px 12px;
-  border-top: 0.5px solid var(--separator);
-  background: #ffffff;
+  padding: 11px 12px;
+  border-top: 0.5px solid rgba(0, 0, 0, 0.06);
+  background: rgba(250, 250, 252, 0.85);
 }
 
 .subcard-section-label {

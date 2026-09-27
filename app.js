@@ -1551,18 +1551,24 @@ function renderDistrictsListForTown(townId) {
       card.title = `Klicken, um ${df.properties.name} mit ${getMilestoneLabel(AppState.activePaintMilestone)} einzufärben`;
     }
 
+    const m = dData.milestone || 'none';
+    const mLabel = (m && m !== 'none') ? getMilestoneLabel(m) : 'Keine';
+    const mClass = m;
+
     card.innerHTML = `
       <div class="district-subcard-header">
         <div class="district-subcard-left">
           <span class="subcard-chevron">${isSelected ? '▼' : '▶'}</span>
-          <span class="subcard-color-dot" style="background:${getMilestoneColor(dData.milestone)};"></span>
-          <span class="district-subcard-title">${escapeHtml(df.properties.name)}</span>
-          <span class="subpoint-tag">Unterpunkt</span>
+          <span class="subcard-color-dot ${mClass}" style="background:${getMilestoneColor(dData.milestone)};" title="Klick: Stufe ändern"></span>
+          <span class="district-subcard-title" title="${escapeHtml(df.properties.name)}">${escapeHtml(df.properties.name)}</span>
         </div>
         <div class="district-subcard-badges">
-          <span class="subcard-badge milestone">${getMilestoneLabel(dData.milestone)}</span>
-          <span class="subcard-badge">${dData.nuclei || 0} Nuklei</span>
-          <span class="subcard-badge">${actsTotal} Akt.</span>
+          <span class="subcard-badge milestone ${mClass}">${mLabel}</span>
+          <div class="subcard-stats-pill" title="${dData.nuclei || 0} Nuklei · ${actsTotal} Aktivitäten">
+            <span class="${dData.nuclei > 0 ? 'highlight-nuclei' : ''}">${dData.nuclei || 0} Nukl.</span>
+            <span class="stat-sep">·</span>
+            <span class="${actsTotal > 0 ? 'highlight-acts' : ''}">${actsTotal} Akt.</span>
+          </div>
         </div>
       </div>
       <div class="district-subcard-body" style="display: ${isSelected ? 'block' : 'none'};">

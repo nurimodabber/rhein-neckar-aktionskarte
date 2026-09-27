@@ -365,8 +365,10 @@ function initMap() {
     attributionControl: false,
     boxZoom: false,
     minZoom: 8,
-    maxZoom: 16
-  }).setView([49.40, 8.46], 10);
+    maxZoom: 16,
+    zoomSnap: 0.1,
+    zoomDelta: 0.25
+  }).setView([49.405, 8.465], 10.4);
 
   L.control.zoom({ position: 'bottomright' }).addTo(AppState.map);
 
@@ -506,9 +508,15 @@ function focusDistrictOnMap(districtId) {
   updateNavigationHUD();
 }
 
-function exitDistrictFocus() {
+function zoomToClusterOverview(animate = true) {
   AppState.focusedTownId = null;
+  AppState.selectedTownId = null;
   AppState.selectedDistrictId = null;
+
+  const drawer = document.getElementById('details-drawer');
+  if (drawer) {
+    drawer.classList.add('collapsed');
+  }
 
   const navBar = document.getElementById('zoom-nav-bar');
   if (navBar) navBar.style.display = 'none';
@@ -517,18 +525,21 @@ function exitDistrictFocus() {
   const separator = document.getElementById('nav-separator');
   if (separator) separator.style.display = 'none';
 
-  if (AppState.map) {
-    AppState.map.setView([49.40, 8.46], 10, { animate: true });
-  }
-
-  if (AppState.selectedTownId) {
-    selectTown(AppState.selectedTownId, false);
-    switchDrawerTab('overview');
+  if (AppState.map && AppState.geoJsonLayer) {
+    AppState.map.fitBounds(AppState.geoJsonLayer.getBounds(), {
+      padding: [12, 12],
+      animate: animate,
+      duration: 0.8
+    });
   }
 
   refreshAllStyles();
   refreshMarkers();
   updateNavigationHUD();
+}
+
+function exitDistrictFocus() {
+  zoomToClusterOverview(true);
 }
 
 // --- SVG Arrow Layer ---
@@ -814,7 +825,7 @@ function renderGeoJson() {
     }
   }).addTo(AppState.map);
 
-  AppState.map.fitBounds(AppState.geoJsonLayer.getBounds(), { padding: [25, 25] });
+  AppState.map.fitBounds(AppState.geoJsonLayer.getBounds(), { padding: [12, 12] });
 }
 
 function renderDistrictsGeoJson() {
@@ -1936,10 +1947,7 @@ function initUIEventListeners() {
   });
 
   document.getElementById('btn-close-drawer').addEventListener('click', () => {
-    document.getElementById('details-drawer').classList.add('collapsed');
-    AppState.selectedTownId = null;
-    AppState.selectedDistrictId = null;
-    refreshAllStyles();
+    zoomToClusterOverview(true);
   });
 
   const btnBack = document.getElementById('btn-back-to-parent-town');

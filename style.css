@@ -672,6 +672,13 @@ svg:focus-visible,
   display: inline-flex;
 }
 
+.mode-label-short {
+  display: none;
+}
+.mode-label-long {
+  display: inline;
+}
+
 .map-mode-control .segmented-btn {
   padding: 6px 14px;
   border-radius: 17px;
@@ -679,6 +686,9 @@ svg:focus-visible,
   font-weight: 500;
   color: var(--text-secondary);
   transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .map-mode-control .segmented-btn:hover {
@@ -691,6 +701,34 @@ svg:focus-visible,
   color: var(--text-primary);
   font-weight: 600;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12), 0 0.5px 1.5px rgba(0, 0, 0, 0.06);
+}
+
+@media (max-width: 1360px) {
+  .mode-label-long {
+    display: none;
+  }
+  .mode-label-short {
+    display: inline;
+  }
+  .map-mode-control .segmented-btn {
+    padding: 5px 10px;
+    font-size: 11.5px;
+    gap: 4px;
+  }
+  .spotlight-search-capsule {
+    width: 175px !important;
+    padding: 5px 10px !important;
+  }
+  .spotlight-search-capsule:focus-within {
+    width: 220px !important;
+  }
+  .top-left-floating-stack {
+    left: 12px !important;
+    top: 12px !important;
+  }
+  .map-floating-toolbar-container {
+    top: 12px !important;
+  }
 }
 
 /* Quick Paint Palette Sub-bar */

@@ -609,14 +609,14 @@ function initMap() {
     closeArrowQuickHUD();
   });
 
-  AppState.map.on('zoomend', () => {
+  AppState.map.on('zoomend moveend resize', () => {
     refreshAllStyles();
     refreshMarkers();
     updateNavigationHUD();
     renderArrows();
   });
 
-  AppState.map.on('move drag zoom viewreset resize', () => {
+  AppState.map.on('move drag zoom viewreset', () => {
     renderArrows();
   });
 }
@@ -1187,8 +1187,80 @@ function updateDistrictTooltip(districtId) {
 const CARTOGRAPHIC_ANCHORS = new Set([
   'Heidelberg', 'Mannheim', 'Ludwigshafen am Rhein', 'Speyer',
   'Weinheim', 'Sinsheim', 'Wiesloch', 'Schwetzingen', 'Bad Dürkheim',
-  'Frankenthal (Pfalz)', 'Leimen', 'Walldorf', 'Hockenheim', 'Eberbach'
+  'Frankenthal (Pfalz)', 'Leimen', 'Walldorf', 'Hockenheim', 'Eberbach',
+  'Neustadt an der Weinstraße', 'Grünstadt'
 ]);
+
+const MUNICIPALITY_POPULATION = {
+  'Mannheim': 315000, 'Ludwigshafen am Rhein': 172000, 'Heidelberg': 160000,
+  'Speyer': 51000, 'Frankenthal (Pfalz)': 49000, 'Neustadt an der Weinstraße': 54000,
+  'Weinheim': 45500, 'Sinsheim': 36000, 'Leimen': 27000, 'Wiesloch': 27000,
+  'Schwetzingen': 21800, 'Hockenheim': 21700, 'Bad Dürkheim': 18800, 'Haßloch': 20400,
+  'Schifferstadt': 20500, 'Walldorf': 15600, 'Grünstadt': 14000, 'Schriesheim': 15000,
+  'Sandhausen': 15400, 'Brühl': 14300, 'Edingen-Neckarhausen': 14200, 'Dossenheim': 12500,
+  'Ketsch': 13000, 'Mutterstadt': 13000, 'Nußloch': 11300, 'Ladenburg': 12500,
+  'Limburgerhof': 11600, 'Bobenheim-Roxheim': 10100, 'Böhl-Iggelheim': 10500,
+  'Eberbach': 14400, 'Römerberg': 9800, 'St. Leon-Rot': 13900, 'Oftersheim': 12200,
+  'Plankstadt': 10500, 'Heddesheim': 11800, 'Hemsbach': 11800, 'Hirschberg an der Bergstraße': 9800,
+  'Mühlhausen': 8700, 'Rauenberg': 8700, 'Dielheim': 9000, 'Bammental': 6600,
+  'Neckargemünd': 13500, 'Reilingen': 8000, 'Altlußheim': 6300, 'Neulußheim': 7100,
+  'Waldsee': 5900, 'Dudenhofen': 6000, 'Altrip': 7700, 'Maxdorf': 7200,
+  'Dannstadt-Schauernheim': 7400, 'Deidesheim': 3800, 'Freinsheim': 5000,
+  'Weisenheim am Sand': 4300, 'Weisenheim am Berg': 1700, 'Bobenheim am Berg': 850,
+  'Gerolsheim': 1800, 'Dackenheim': 450, 'Erpolzheim': 1350, 'Großkarlbach': 1150,
+  'Kleinkarlbach': 900, 'Bissersheim': 450, 'Battenberg (Pfalz)': 400,
+  'Altleiningen': 1750, 'Neuleiningen': 800, 'Carlsberg': 3500, 'Wattenheim': 1600,
+  'Hettenleidelheim': 3000, 'Tiefenthal': 850, 'Ebertsheim': 1250, 'Kindenheim': 1000,
+  'Bockenheim an der Weinstraße': 2200, 'Kirchheim an der Weinstraße': 1900,
+  'Obersülzen': 700, 'Dirmstein': 3000, 'Laumersheim': 900, 'Großniedesheim': 1350,
+  'Kleinniedesheim': 950, 'Heßheim': 3100, 'Heuchelheim bei Frankenthal': 1250,
+  'Beindersheim': 3350, 'Lambsheim': 7000, 'Birkenheide': 3200, 'Fußgönheim': 2600,
+  'Rödersheim-Gronau': 2900, 'Hochdorf-Assenheim': 3200, 'Neuhofen': 7200,
+  'Otterstadt': 3400, 'Harthausen': 3100, 'Hanhofen': 2600, 'Wachenheim an der Weinstraße': 4600,
+  'Kallstadt': 1200, 'Herxheim am Berg': 700,
+  'Ellerstadt': 2400, 'Friedelsheim': 1450, 'Gönnheim': 1600, 'Niederkirchen bei Deidesheim': 2350,
+  'Forst an der Weinstraße': 800, 'Ruppertsberg': 1450, 'Meckenheim': 3400,
+  'Lambrecht (Pfalz)': 4000, 'Lindenberg': 1100, 'Neidenfels': 800, 'Frankeneck': 800,
+  'Esthal': 1350, 'Weidenthal': 1800, 'Elmstein': 2400, 'Angelbachtal': 5100,
+  'Eppelheim': 15300, 'Eschelbronn': 2700, 'Epfenbach': 2400, 'Gaiberg': 2400,
+  'Heddesbach': 460, 'Heiligkreuzsteinach': 2600, 'Helmstadt-Bargen': 3800,
+  'Ilvesheim': 9300, 'Laudenbach': 6400, 'Lobbach': 2400, 'Malsch': 3500,
+  'Mauer': 4100, 'Meckesheim': 5200, 'Neckarbischofsheim': 4100, 'Neidenstein': 1800,
+  'Reichartshausen': 2100, 'Schönau': 4400, 'Schönbrunn': 2900, 'Spechbach': 1700,
+  'Waibstadt': 5700, 'Wiesenbach': 3100, 'Wilhelmsfeld': 3200, 'Zuzenhausen': 2200,
+  'Mertesheim': 400, 'Obrigheim (Pfalz)': 2800, 'Quirnheim': 800
+};
+
+function calculateTownLabelRank(feature, town) {
+  let rank = 0;
+  const name = feature.properties.name;
+
+  // 1. Entsende-Zentren have highest priority
+  if (town.isCenter) rank += 1000000;
+
+  // 2. Milestone achievements
+  if (town.milestone && town.milestone !== 'none') {
+    if (town.milestone === 'ipg_plus') rank += 600000;
+    else if (town.milestone === 'ipg') rank += 500000;
+    else if (town.milestone === 'pg') rank += 400000;
+    else rank += 350000;
+  }
+
+  // 3. Active nuclei and core activities
+  const totalActs = calculateTotalActivities(town.activities);
+  if (totalActs > 0) rank += 200000 + totalActs * 1000;
+  if (town.nuclei > 0) rank += 100000 + town.nuclei * 1000;
+
+  // 4. Anchor cities & kreisfreie Städte
+  if (CARTOGRAPHIC_ANCHORS.has(name)) rank += 50000;
+  if (feature.properties.isStadtkreis) rank += 30000;
+
+  // 5. Population weighting
+  const pop = MUNICIPALITY_POPULATION[name] || 2500;
+  rank += pop;
+
+  return rank;
+}
 
 function refreshMarkers() {
   if (!AppState.markersLayer) return;
@@ -1197,9 +1269,12 @@ function refreshMarkers() {
   if (!AppState.showLabels) return;
 
   const currentZoom = AppState.map ? AppState.map.getZoom() : 10.4;
+  const mapSize = AppState.map ? AppState.map.getSize() : { x: 1200, y: 800 };
 
-  // 1. Municipalities (Ortschaften)
+  // 1. Municipalities (Ortschaften) with Label Collision Detection & Ranking
   if (typeof RHEIN_NECKAR_GEOJSON !== 'undefined') {
+    const candidates = [];
+
     RHEIN_NECKAR_GEOJSON.features.forEach(f => {
       const id = f.properties.id;
       const center = f.properties.center;
@@ -1213,41 +1288,103 @@ function refreshMarkers() {
             ${escapeHtml(f.properties.name)}
           </div>
         `;
-
         const customIcon = L.divIcon({
           className: 'subtle-marker-container watermark-container',
           html: watermarkHtml,
           iconSize: [220, 32],
           iconAnchor: [110, 16]
         });
-
         const marker = L.marker(center, { icon: customIcon, interactive: false, zIndexOffset: -200 });
-        AppState.markersLayer.addLayer(marker);
+        candidates.push({ isWatermark: true, marker, rank: 9999999 });
         return;
       }
 
       const totalActs = calculateTotalActivities(town.activities);
       const isCenter = town.isCenter;
       const isActive = (town.milestone && town.milestone !== 'none') || isCenter || totalActs > 0 || (town.nuclei > 0);
+      const name = f.properties.name;
 
       const markerHtml = `
         <div class="subtle-map-label ${isCenter ? 'center' : ''} ${isActive ? 'active-cluster' : 'inactive-town'}">
           ${isCenter ? '<span class="center-star">★</span>' : ''}
-          <span>${escapeHtml(f.properties.name)}</span>
+          <span>${escapeHtml(name)}</span>
           ${town.nuclei > 0 ? `<span class="subtle-badge nuclei">${town.nuclei}</span>` : ''}
           ${totalActs > 0 ? `<span class="subtle-badge acts">${totalActs}</span>` : ''}
         </div>
       `;
 
+      // Estimated label dimensions in screen pixels
+      const hasBadges = town.nuclei > 0 || totalActs > 0;
+      const boxWidth = Math.max(54, name.length * 7.5 + (hasBadges ? 44 : 14) + (isCenter ? 18 : 0));
+      const boxHeight = 22;
+
       const customIcon = L.divIcon({
         className: 'subtle-marker-container',
         html: markerHtml,
-        iconSize: [120, 20],
-        iconAnchor: [60, 10]
+        iconSize: [boxWidth, boxHeight],
+        iconAnchor: [boxWidth / 2, boxHeight / 2]
       });
 
       const marker = L.marker(center, { icon: customIcon, interactive: false });
-      AppState.markersLayer.addLayer(marker);
+      const rank = calculateTownLabelRank(f, town);
+
+      candidates.push({
+        isWatermark: false,
+        marker,
+        center,
+        rank,
+        boxWidth,
+        boxHeight,
+        name
+      });
+    });
+
+    // Sort candidates: highest rank first
+    candidates.sort((a, b) => b.rank - a.rank);
+
+    const placedBoxes = [];
+    candidates.forEach(cand => {
+      if (cand.isWatermark) {
+        AppState.markersLayer.addLayer(cand.marker);
+        return;
+      }
+
+      if (!AppState.map) {
+        AppState.markersLayer.addLayer(cand.marker);
+        return;
+      }
+
+      const pt = AppState.map.latLngToContainerPoint(cand.center);
+      // Skip if completely outside container
+      if (pt.x < -120 || pt.x > mapSize.x + 120 || pt.y < -60 || pt.y > mapSize.y + 60) {
+        return;
+      }
+
+      // Check collision with already placed higher-priority labels
+      const pad = currentZoom < 11.2 ? 5 : (currentZoom < 12.5 ? 3 : 1);
+      const box = {
+        left: pt.x - cand.boxWidth / 2 - pad,
+        right: pt.x + cand.boxWidth / 2 + pad,
+        top: pt.y - cand.boxHeight / 2 - pad,
+        bottom: pt.y + cand.boxHeight / 2 + pad
+      };
+
+      let collides = false;
+      // At zoom 13+ there is plenty of space, so allow all labels to display
+      if (currentZoom < 13.0) {
+        for (let i = 0; i < placedBoxes.length; i++) {
+          const b = placedBoxes[i];
+          if (!(box.right < b.left || box.left > b.right || box.bottom < b.top || box.top > b.bottom)) {
+            collides = true;
+            break;
+          }
+        }
+      }
+
+      if (!collides) {
+        placedBoxes.push(box);
+        AppState.markersLayer.addLayer(cand.marker);
+      }
     });
   }
 

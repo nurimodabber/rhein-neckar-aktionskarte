@@ -386,6 +386,11 @@ function updateUndoRedoButtons() {
   const btnRedo = document.getElementById('btn-redo');
   if (btnUndo) btnUndo.disabled = (AppState.undoStack.length === 0);
   if (btnRedo) btnRedo.disabled = (AppState.redoStack.length === 0);
+
+  const mUndo = document.getElementById('mobile-act-undo');
+  const mRedo = document.getElementById('mobile-act-redo');
+  if (mUndo) mUndo.disabled = (AppState.undoStack.length === 0);
+  if (mRedo) mRedo.disabled = (AppState.redoStack.length === 0);
 }
 
 function getStoredBackups() {
@@ -3339,9 +3344,38 @@ function initUIEventListeners() {
     }
   });
 
+  // Mobile Expandable Search
+  const searchCapsule = document.getElementById('spotlight-search-capsule');
+  if (searchCapsule && searchInput) {
+    searchCapsule.addEventListener('click', () => {
+      if (window.innerWidth <= 768) {
+        searchCapsule.classList.add('mobile-expanded');
+        searchInput.focus();
+      }
+    });
+
+    searchInput.addEventListener('blur', () => {
+      if (window.innerWidth <= 768 && !searchInput.value.trim()) {
+        setTimeout(() => {
+          if (document.activeElement !== searchInput) {
+            searchCapsule.classList.remove('mobile-expanded');
+          }
+        }, 220);
+      }
+    });
+  }
+
   // Collapsible Layers & Legend Header
   const legendToggle = document.getElementById('legend-header-toggle');
   if (legendToggle) {
+    // On phone width, collapse legend by default on startup
+    if (window.innerWidth <= 768) {
+      const hud = document.getElementById('legend-hud');
+      const chevron = document.getElementById('legend-chevron');
+      if (hud) hud.classList.add('collapsed');
+      if (chevron) chevron.textContent = '▴';
+    }
+
     legendToggle.addEventListener('click', () => {
       const hud = document.getElementById('legend-hud');
       const chevron = document.getElementById('legend-chevron');
@@ -3349,6 +3383,85 @@ function initUIEventListeners() {
         hud.classList.toggle('collapsed');
         const isCollapsed = hud.classList.contains('collapsed');
         if (chevron) chevron.textContent = isCollapsed ? '▴' : '▾';
+      }
+    });
+  }
+
+  // Mobile More Actions Sheet
+  const btnMobileMenu = document.getElementById('btn-mobile-more-menu');
+  const mobileSheet = document.getElementById('mobile-actions-sheet');
+  const btnCloseMobileActions = document.getElementById('btn-close-mobile-actions');
+
+  if (btnMobileMenu && mobileSheet) {
+    const closeMobileActions = () => mobileSheet.classList.remove('visible');
+    btnMobileMenu.addEventListener('click', () => {
+      mobileSheet.classList.add('visible');
+    });
+    if (btnCloseMobileActions) btnCloseMobileActions.addEventListener('click', closeMobileActions);
+    mobileSheet.addEventListener('click', (e) => {
+      if (e.target === mobileSheet) closeMobileActions();
+    });
+
+    document.getElementById('mobile-act-report')?.addEventListener('click', () => {
+      closeMobileActions();
+      openClusterReportModal();
+    });
+    document.getElementById('mobile-act-png')?.addEventListener('click', () => {
+      closeMobileActions();
+      exportMapAsPng();
+    });
+    document.getElementById('mobile-act-share')?.addEventListener('click', () => {
+      closeMobileActions();
+      openShareModal();
+    });
+    document.getElementById('mobile-act-backups')?.addEventListener('click', () => {
+      closeMobileActions();
+      openBackupManagerModal();
+    });
+    document.getElementById('mobile-act-legal')?.addEventListener('click', () => {
+      closeMobileActions();
+      document.getElementById('legal-modal')?.classList.add('visible');
+    });
+    document.getElementById('mobile-act-undo')?.addEventListener('click', () => {
+      undo();
+    });
+    document.getElementById('mobile-act-redo')?.addEventListener('click', () => {
+      redo();
+    });
+    document.getElementById('mobile-act-reset')?.addEventListener('click', () => {
+      closeMobileActions();
+      document.getElementById('menu-item-reset')?.click();
+    });
+  }
+
+  // Draggable Bottom Sheet Handler on Mobile
+  const dragHandle = document.getElementById('drawer-drag-handle');
+  const detailsDrawer = document.getElementById('details-drawer');
+  if (dragHandle && detailsDrawer) {
+    let touchStartY = 0;
+    let touchCurrentY = 0;
+
+    dragHandle.addEventListener('touchstart', (e) => {
+      if (e.touches.length > 0) {
+        touchStartY = e.touches[0].clientY;
+        touchCurrentY = touchStartY;
+      }
+    }, { passive: true });
+
+    dragHandle.addEventListener('touchmove', (e) => {
+      if (e.touches.length > 0) {
+        touchCurrentY = e.touches[0].clientY;
+      }
+    }, { passive: true });
+
+    dragHandle.addEventListener('touchend', () => {
+      const diffY = touchCurrentY - touchStartY;
+      if (diffY > 55) {
+        // Dragged down -> close drawer
+        zoomToClusterOverview(true);
+      } else if (diffY < -40) {
+        // Dragged up -> expand tall
+        detailsDrawer.classList.toggle('expanded-tall');
       }
     });
   }

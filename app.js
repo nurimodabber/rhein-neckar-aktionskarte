@@ -601,6 +601,7 @@ function initMap() {
   AppState.markersLayer = L.layerGroup().addTo(AppState.map);
 
   AppState.map.on('click', (e) => {
+    closeQuickPopover();
     if (e && e.originalEvent && e.originalEvent.target) {
       if (e.originalEvent.target.closest && (e.originalEvent.target.closest('#arrow-quick-hud') || e.originalEvent.target.closest('.arrow-svg-layer'))) {
         return;
@@ -743,6 +744,7 @@ function focusDistrictOnMap(districtId) {
 }
 
 function zoomToClusterOverview(animate = true) {
+  closeQuickPopover();
   AppState.focusedTownId = null;
   AppState.selectedTownId = null;
   AppState.selectedDistrictId = null;
@@ -2023,23 +2025,70 @@ function showDistrictQuickPopover(districtId, latlng) {
   .openOn(AppState.map);
 }
 
+function closeQuickPopover() {
+  if (AppState.map) {
+    AppState.map.closePopup();
+  }
+}
+
+function ensureFeatureVisibleWithDrawer(targetCoords) {
+  if (!AppState.map || !targetCoords) return;
+  const isMobile = window.innerWidth <= 768;
+  const pt = AppState.map.latLngToContainerPoint(targetCoords);
+  const mapSize = AppState.map.getSize();
+
+  if (isMobile) {
+    // On mobile, the details drawer bottom-sheet covers the lower 52% of the screen
+    const visibleHeight = mapSize.y * 0.46;
+    if (pt.y > visibleHeight - 30 || pt.y < 30) {
+      const targetY = visibleHeight * 0.52;
+      const dy = pt.y - targetY;
+      AppState.map.panBy([0, dy], { animate: true, duration: 0.35 });
+    }
+  } else {
+    // On desktop, the drawer slides over from the right side (width: 380px)
+    const drawerWidth = 380;
+    const visibleWidth = mapSize.x - drawerWidth;
+    if (pt.x > visibleWidth - 40 || pt.x < 40) {
+      const targetX = visibleWidth / 2;
+      const dx = pt.x - targetX;
+      AppState.map.panBy([dx, 0], { animate: true, duration: 0.35 });
+    }
+  }
+}
+
 function handleTownClick(townId, latlng) {
+  closeQuickPopover();
   if (AppState.currentMode === 'inspect') {
     selectTown(townId, false);
-    if (latlng) showTownQuickPopover(townId, latlng);
+    const feature = AppState.townFeaturesById[townId];
+    const coords = latlng || (feature && feature.properties ? feature.properties.center : null);
+    ensureFeatureVisibleWithDrawer(coords);
   } else if (AppState.currentMode === 'paint') {
-    applyPaintToTown(townId);
+    // In Schnell-Einfärben mode: use quick popover for instant coloring
+    if (latlng) {
+      showTownQuickPopover(townId, latlng);
+    } else {
+      applyPaintToTown(townId);
+    }
   } else if (AppState.currentMode === 'arrow') {
     handleArrowSourceTargetClick(townId, false);
   }
 }
 
 function handleDistrictClick(districtId, latlng) {
+  closeQuickPopover();
   if (AppState.currentMode === 'inspect') {
     selectDistrict(districtId, false);
-    if (latlng) showDistrictQuickPopover(districtId, latlng);
+    const feature = AppState.districtFeaturesById[districtId];
+    const coords = latlng || (feature && feature.properties ? feature.properties.center : null);
+    ensureFeatureVisibleWithDrawer(coords);
   } else if (AppState.currentMode === 'paint') {
-    applyPaintToDistrict(districtId);
+    if (latlng) {
+      showDistrictQuickPopover(districtId, latlng);
+    } else {
+      applyPaintToDistrict(districtId);
+    }
   } else if (AppState.currentMode === 'arrow') {
     handleArrowSourceTargetClick(districtId, true);
   }
@@ -3129,6 +3178,7 @@ function initUIEventListeners() {
   // Global Keyboard Shortcuts (⌘Z / ⇧⌘Z / ⌘Y / Escape)
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      closeQuickPopover();
       const openModal = document.querySelector('.modal-backdrop.visible');
       if (openModal) {
         openModal.classList.remove('visible');
@@ -3136,6 +3186,10 @@ function initUIEventListeners() {
           cancelArrowDrawing();
           setMode('inspect');
         }
+      }
+      const drawer = document.getElementById('details-drawer');
+      if (drawer && !drawer.classList.contains('collapsed')) {
+        zoomToClusterOverview(true);
       }
       closeArrowQuickHUD();
       const projMenu = document.getElementById('project-dropdown-menu');

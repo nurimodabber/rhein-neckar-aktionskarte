@@ -54,6 +54,82 @@ const AppState = {
   activeQuickDeployment: null
 };
 
+// --- Central Terminology & Label Dictionary (Single Source of Truth) ---
+const APP_TERMS = {
+  milestones: {
+    none: {
+      key: 'none',
+      code: '—',
+      short: 'Kein',
+      standard: 'Noch nicht begonnen',
+      full: 'Noch nicht begonnen',
+      color: '#ffffff',
+      border: '#cbd5e1'
+    },
+    pg: {
+      key: 'pg',
+      code: 'PG',
+      short: 'PG',
+      standard: 'Programm des Wachstums',
+      full: 'Programm des Wachstums (PG)',
+      color: '#86efac',
+      border: '#22c55e'
+    },
+    ipg: {
+      key: 'ipg',
+      code: 'IPG',
+      short: 'IPG',
+      standard: 'Intensives Programm',
+      full: 'Intensives Programm des Wachstums (IPG)',
+      color: '#34c759',
+      border: '#15803d'
+    },
+    ipg_plus: {
+      key: 'ipg_plus',
+      code: 'IPG+',
+      short: 'IPG+',
+      standard: 'Fortgeschrittenes Programm',
+      full: 'Fortgeschrittenes Intensives Programm (IPG+)',
+      color: '#15803d',
+      border: '#052e16'
+    },
+    custom: {
+      key: 'custom',
+      code: 'Indiv.',
+      short: 'Farbe',
+      standard: 'Individuelle Farbe',
+      full: 'Individuelle Farbanpassung',
+      color: '#cbd5e1',
+      border: '#64748b'
+    }
+  },
+  activities: {
+    devotionals: 'Andachtstreffen',
+    studyCircles: 'Studienkreise',
+    childrenClasses: 'Kinderklassen',
+    juniorYouth: 'Juniorengruppen'
+  },
+  deployments: {
+    types: {
+      'Pioniere': 'Pioniere / Umzügler',
+      'Wanderlehrer': 'Wanderlehrer / Besuchsteam',
+      'Projektbegleitung': 'Projektbegleitung',
+      'Kinderklassen-Lehrer': 'Kinderklassen-Lehrer',
+      'Junioren-Animateur': 'Junioren-Animateur',
+      'Studienkreis-Tutor': 'Studienkreis-Tutor'
+    },
+    statuses: {
+      'active': 'Aktiv',
+      'planned': 'Geplant',
+      'established': 'Etabliert'
+    }
+  },
+  units: {
+    town: 'Ortschaft',
+    district: 'Stadtteil'
+  }
+};
+
 const STORAGE_KEY = 'rhein_neckar_cluster_clean_v7';
 const BACKUPS_STORAGE_KEY = 'rn_cluster_backups_v1';
 const META_STORAGE_KEY = 'rn_cluster_meta_v1';
@@ -1796,17 +1872,17 @@ function showTownQuickPopover(townId, latlng) {
 
     <div class="qpop-section-label">Wachstumsstufe (1 Klick)</div>
     <div class="qpop-milestones-row">
-      <button class="qpop-ms-btn ${ms === 'none' ? 'active' : ''}" data-ms="none" title="Keine Aktivität">
-        <span class="ms-pill-dot none"></span>Kein
+      <button class="qpop-ms-btn ${ms === 'none' ? 'active' : ''}" data-ms="none" title="${APP_TERMS.milestones.none.standard}">
+        <span class="ms-pill-dot none"></span>${APP_TERMS.milestones.none.short}
       </button>
-      <button class="qpop-ms-btn ${ms === 'pg' ? 'active' : ''}" data-ms="pg" title="PG – Programm des Wachstums">
-        <span class="ms-pill-dot pg"></span>PG
+      <button class="qpop-ms-btn ${ms === 'pg' ? 'active' : ''}" data-ms="pg" title="${APP_TERMS.milestones.pg.full}">
+        <span class="ms-pill-dot pg"></span>${APP_TERMS.milestones.pg.code}
       </button>
-      <button class="qpop-ms-btn ${ms === 'ipg' ? 'active' : ''}" data-ms="ipg" title="IPG – Intensives Programm">
-        <span class="ms-pill-dot ipg"></span>IPG
+      <button class="qpop-ms-btn ${ms === 'ipg' ? 'active' : ''}" data-ms="ipg" title="${APP_TERMS.milestones.ipg.full}">
+        <span class="ms-pill-dot ipg"></span>${APP_TERMS.milestones.ipg.code}
       </button>
-      <button class="qpop-ms-btn ${ms === 'ipg_plus' ? 'active' : ''}" data-ms="ipg_plus" title="IPG+ – Fortgeschrittenes Programm">
-        <span class="ms-pill-dot ipg-plus"></span>IPG+
+      <button class="qpop-ms-btn ${ms === 'ipg_plus' ? 'active' : ''}" data-ms="ipg_plus" title="${APP_TERMS.milestones.ipg_plus.full}">
+        <span class="ms-pill-dot ipg-plus"></span>${APP_TERMS.milestones.ipg_plus.code}
       </button>
     </div>
 
@@ -1946,17 +2022,17 @@ function showDistrictQuickPopover(districtId, latlng) {
 
     <div class="qpop-section-label">Wachstumsstufe (1 Klick)</div>
     <div class="qpop-milestones-row">
-      <button class="qpop-ms-btn ${ms === 'none' ? 'active' : ''}" data-ms="none">
-        <span class="ms-pill-dot none"></span>Kein
+      <button class="qpop-ms-btn ${ms === 'none' ? 'active' : ''}" data-ms="none" title="${APP_TERMS.milestones.none.standard}">
+        <span class="ms-pill-dot none"></span>${APP_TERMS.milestones.none.short}
       </button>
-      <button class="qpop-ms-btn ${ms === 'pg' ? 'active' : ''}" data-ms="pg">
-        <span class="ms-pill-dot pg"></span>PG
+      <button class="qpop-ms-btn ${ms === 'pg' ? 'active' : ''}" data-ms="pg" title="${APP_TERMS.milestones.pg.full}">
+        <span class="ms-pill-dot pg"></span>${APP_TERMS.milestones.pg.code}
       </button>
-      <button class="qpop-ms-btn ${ms === 'ipg' ? 'active' : ''}" data-ms="ipg">
-        <span class="ms-pill-dot ipg"></span>IPG
+      <button class="qpop-ms-btn ${ms === 'ipg' ? 'active' : ''}" data-ms="ipg" title="${APP_TERMS.milestones.ipg.full}">
+        <span class="ms-pill-dot ipg"></span>${APP_TERMS.milestones.ipg.code}
       </button>
-      <button class="qpop-ms-btn ${ms === 'ipg_plus' ? 'active' : ''}" data-ms="ipg_plus">
-        <span class="ms-pill-dot ipg-plus"></span>IPG+
+      <button class="qpop-ms-btn ${ms === 'ipg_plus' ? 'active' : ''}" data-ms="ipg_plus" title="${APP_TERMS.milestones.ipg_plus.full}">
+        <span class="ms-pill-dot ipg-plus"></span>${APP_TERMS.milestones.ipg_plus.code}
       </button>
     </div>
 
@@ -4741,18 +4817,16 @@ function calculateTotalActivities(acts) {
   return (acts.devotionals || 0) + (acts.studyCircles || 0) + (acts.childrenClasses || 0) + (acts.juniorYouth || 0);
 }
 
-function getMilestoneLabel(m) {
-  switch (m) {
-    case 'pg': return 'PG';
-    case 'ipg': return 'IPG';
-    case 'ipg_plus': return 'IPG+';
-    case 'custom': return 'Eigene Farbe';
-    default: return 'Noch nicht begonnen';
-  }
+function getMilestoneLabel(m, format = 'standard') {
+  const item = APP_TERMS.milestones[m] || APP_TERMS.milestones.none;
+  if (format === 'short' || format === 'code') return item.code;
+  if (format === 'full') return item.full;
+  return item.standard;
 }
 
 function getMilestoneColor(m) {
-  return MILESTONE_COLORS[m] ? MILESTONE_COLORS[m].fill : '#ffffff';
+  const item = APP_TERMS.milestones[m] || APP_TERMS.milestones.none;
+  return item.color;
 }
 
 function darkenColor(hex, percent) {

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rhein-Neckar Aktionskarte – Plattform-Umzug</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      background: #f5f5f7;
+      color: #1d1d1f;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .card {
+      background: white;
+      border-radius: 18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      max-width: 480px;
+      width: 100%;
+      padding: 32px;
+      text-align: center;
+    }
+    .icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      margin: 0 0 10px;
+    }
+    p {
+      font-size: 14px;
+      line-height: 1.5;
+      color: #6e6e73;
+      margin: 0 0 20px;
+    }
+    .status-box {
+      background: #fbfbfd;
+      border: 1px solid #e5e5ea;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: #1d1d1f;
+      margin-bottom: 24px;
+      text-align: left;
+    }
+    .btn {
+      display: inline-block;
+      background: #0071e3;
+      color: white;
+      font-size: 15px;
+      font-weight: 600;
+      padding: 12px 24px;
+      border-radius: 12px;
+      text-decoration: none;
+      transition: background 0.15s ease;
+      cursor: pointer;
+      border: none;
+    }
+    .btn:hover {
+      background: #0077ed;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">✨</div>
+    <h1>Die Aktionskarte zieht um!</h1>
+    <p>Die Rhein-Neckar Aktionskarte ist auf unsere neue, schnellere und kollaborative Plattform umgezogen.</p>
+    
+    <div class="status-box" id="migration-status">
+      🔍 Lokale Daten werden überprüft...
+    </div>
+
+    <a href="#" id="target-link" class="btn" style="display: none;">Jetzt zur neuen Seite wechseln →</a>
+  </div>
+
+  <script>
+    // Target domain on Vercel (configured after Vercel project creation)
+    const TARGET_BASE_URL = "https://rhein-neckar-aktionskarte.vercel.app";
+
+    const STORAGE_KEY = 'rhein_neckar_cluster_clean_v7';
+    const BACKUPS_STORAGE_KEY = 'rn_cluster_backups_v1';
+
+    const statusEl = document.getElementById('migration-status');
+    const targetLink = document.getElementById('target-link');
+
+    try {
+      const localData = localStorage.getItem(STORAGE_KEY);
+      const localBackups = localStorage.getItem(BACKUPS_STORAGE_KEY);
+
+      let targetUrl = TARGET_BASE_URL;
+
+      if (localData) {
+        statusEl.innerHTML = "✅ Lokale Kartendaten gefunden! Deine Daten werden automatisch übertragen.";
+        // Pack data safely into hash payload
+        const bundle = {
+          data: JSON.parse(localData),
+          backups: localBackups ? JSON.parse(localBackups) : [],
+          migratedAt: Date.now()
+        };
+        const encoded = encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(bundle)))));
+        targetUrl = `${TARGET_BASE_URL}#migrate=${encoded}`;
+      } else {
+        statusEl.innerHTML = "ℹ️ Keine lokalen Entwürfe auf diesem Gerät vorhanden. Weiterleitung zur neuen Seite...";
+      }
+
+      targetLink.href = targetUrl;
+      targetLink.style.display = "inline-block";
+
+      // Automatic redirect after 2 seconds
+      setTimeout(() => {
+        window.location.href = targetUrl;
+      }, 2000);
+
+    } catch (e) {
+      statusEl.innerHTML = "Fehler beim Vorbereiten des Umzugs: " + e.message;
+      targetLink.href = TARGET_BASE_URL;
+      targetLink.style.display = "inline-block";
+    }
+  </script>
+</body>
+</html>

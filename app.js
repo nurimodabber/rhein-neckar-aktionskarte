@@ -55,10 +55,144 @@ const AppState = {
 };
 
 const STORAGE_KEY = 'rhein_neckar_cluster_clean_v7';
+const BACKUPS_STORAGE_KEY = 'rn_cluster_backups_v1';
+const META_STORAGE_KEY = 'rn_cluster_meta_v1';
+const MAX_UNDO_STACK = 45;
+const MAX_BACKUPS = 12;
+
+// --- AppStorage: IndexedDB with Transparent LocalStorage Migration ---
+const AppStorage = {
+  db: null,
+  dbName: 'RheinNeckarClusterDB',
+  dbVersion: 1,
+
+  async init() {
+    if (!window.indexedDB) {
+      console.warn('IndexedDB not supported, using localStorage');
+      return false;
+    }
+    return new Promise((resolve) => {
+      try {
+        const req = indexedDB.open(this.dbName, this.dbVersion);
+        req.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains('state')) {
+            db.createObjectStore('state', { keyPath: 'key' });
+          }
+          if (!db.objectStoreNames.contains('backups')) {
+            const bs = db.createObjectStore('backups', { keyPath: 'id' });
+            bs.createIndex('timestamp', 'timestamp', { unique: false });
+          }
+        };
+        req.onsuccess = async (e) => {
+          this.db = e.target.result;
+          await this.migrateFromLocalStorage();
+          resolve(true);
+        };
+        req.onerror = (e) => {
+          console.warn('IndexedDB open error:', e);
+          resolve(false);
+        };
+      } catch (err) {
+        console.warn('IndexedDB initialization failed:', err);
+        resolve(false);
+      }
+    });
+  },
+
+  async migrateFromLocalStorage() {
+    if (!this.db) return;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        await this.saveState(parsed);
+      }
+      const rawBackups = localStorage.getItem(BACKUPS_STORAGE_KEY);
+      if (rawBackups) {
+        const backups = JSON.parse(rawBackups);
+        for (const b of backups) {
+          await this.saveBackup(b);
+        }
+      }
+    } catch (e) {
+      console.warn('IndexedDB migration notice:', e);
+    }
+  },
+
+  async getState() {
+    if (!this.db) {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    }
+    return new Promise((resolve) => {
+      try {
+        const tx = this.db.transaction('state', 'readonly');
+        const req = tx.objectStore('state').get('current');
+        req.onsuccess = () => resolve(req.result ? req.result.data : null);
+        req.onerror = () => {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          resolve(raw ? JSON.parse(raw) : null);
+        };
+      } catch (e) {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        resolve(raw ? JSON.parse(raw) : null);
+      }
+    });
+  },
+
+  async saveState(data) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (e) {}
+
+    if (!this.db) return;
+    return new Promise((resolve) => {
+      try {
+        const tx = this.db.transaction('state', 'readwrite');
+        tx.objectStore('state').put({ key: 'current', data: data, updatedAt: Date.now() });
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => resolve(false);
+      } catch (e) {
+        resolve(false);
+      }
+    });
+  },
+
+  async saveBackup(backupItem) {
+    if (!this.db) return;
+    return new Promise((resolve) => {
+      try {
+        const tx = this.db.transaction('backups', 'readwrite');
+        tx.objectStore('backups').put(backupItem);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => resolve(false);
+      } catch (e) {
+        resolve(false);
+      }
+    });
+  },
+
+  async checkPersistence() {
+    if (navigator.storage && navigator.storage.persisted) {
+      return await navigator.storage.persisted();
+    }
+    return false;
+  },
+
+  async requestPersistence() {
+    if (navigator.storage && navigator.storage.persist) {
+      return await navigator.storage.persist();
+    }
+    return false;
+  }
+};
 
 // --- Initialization ---
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   registerServiceWorker();
+  await AppStorage.init();
+  checkMigrationOnStartup();
   loadStoredData();
   initMap();
   initArrowSvgLayer();
@@ -70,6 +204,8 @@ document.addEventListener('DOMContentLoaded', () => {
   initUIEventListeners();
   updateClusterStats();
   updateUndoRedoButtons();
+  updateExportIndicators();
+  updatePersistenceStatus();
   saveAutoBackup("Sitzungsstart", false);
 
   // Check URL params for direct town focus (e.g. ?focus=heidelberg or #heidelberg)
@@ -83,9 +219,15 @@ document.addEventListener('DOMContentLoaded', () => {
     console.warn('URL focus parse error:', e);
   }
 
-  // Check URL for shared cluster state (#share=... or ?share=...)
-  setTimeout(() => checkShareUrlOnStartup(), 250);
-  window.addEventListener('hashchange', checkShareUrlOnStartup);
+  // Check URL for shared cluster state or platform migration
+  setTimeout(() => {
+    checkMigrationOnStartup();
+    checkShareUrlOnStartup();
+  }, 250);
+  window.addEventListener('hashchange', () => {
+    checkMigrationOnStartup();
+    checkShareUrlOnStartup();
+  });
 });
 
 // --- Data Persistence ---
@@ -155,26 +297,18 @@ function registerServiceWorker() {
 }
 
 function saveState() {
-  try {
-    const dataToSave = {
-      towns: AppState.towns,
-      districts: AppState.districts,
-      deployments: AppState.deployments,
-      updatedAt: new Date().toISOString()
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
-  } catch (e) {
-    console.warn('Could not save to localStorage:', e);
-  }
+  const dataToSave = {
+    towns: AppState.towns,
+    districts: AppState.districts,
+    deployments: AppState.deployments,
+    updatedAt: new Date().toISOString()
+  };
+  AppStorage.saveState(dataToSave);
   updateClusterStats();
   saveAutoBackup('Automatische Sicherung', false);
 }
 
 // --- History (Undo / Redo) & Local Auto-Backups ---
-const MAX_UNDO_STACK = 45;
-const BACKUPS_STORAGE_KEY = 'rn_cluster_backups_v1';
-const MAX_BACKUPS = 12;
-
 function snapshotCurrentData() {
   return {
     towns: JSON.parse(JSON.stringify(AppState.towns)),
@@ -301,7 +435,10 @@ function saveAutoBackup(desc, force = false) {
 
     backups.unshift(newBackup);
     if (backups.length > MAX_BACKUPS) backups.pop();
-    localStorage.setItem(BACKUPS_STORAGE_KEY, JSON.stringify(backups));
+    try {
+      localStorage.setItem(BACKUPS_STORAGE_KEY, JSON.stringify(backups));
+    } catch (e) {}
+    AppStorage.saveBackup(newBackup);
   } catch (e) {
     console.warn('Could not save auto backup:', e);
   }
@@ -333,6 +470,8 @@ function restoreBackup(backupId) {
 }
 
 function renderBackupsList() {
+  updatePersistenceStatus();
+  updateExportIndicators();
   const container = document.getElementById('backups-list-container');
   if (!container) return;
   const backups = getStoredBackups();
@@ -380,6 +519,7 @@ L.Map.SmoothWheelZoom = L.Handler.extend({
 
   _onWheelScroll: function (e) {
     if (!this._map.options.smoothWheelZoom) return;
+    if (this._map._animatingZoom) return; // Do not disrupt programmatic flyToBounds animations
     L.DomEvent.stop(e);
 
     const map = this._map;
@@ -448,8 +588,8 @@ function initMap() {
     smoothSensitivity: 1.2,
     minZoom: 8,
     maxZoom: 16,
-    zoomSnap: 0,
-    zoomDelta: 1.0
+    zoomSnap: 0.2,
+    zoomDelta: 0.5
   }).setView([49.405, 8.465], 10.4);
 
   L.control.zoom({ position: 'bottomright' }).addTo(AppState.map);
@@ -3085,12 +3225,50 @@ function initUIEventListeners() {
       document.getElementById('backups-modal').classList.add('visible');
     });
 
+    document.getElementById('menu-item-legal')?.addEventListener('click', () => {
+      projectDropdownMenu.classList.remove('visible');
+      btnProjectMenu.setAttribute('aria-expanded', 'false');
+      document.getElementById('legal-modal').classList.add('visible');
+    });
+
     document.getElementById('menu-item-reset')?.addEventListener('click', () => {
       projectDropdownMenu.classList.remove('visible');
       btnProjectMenu.setAttribute('aria-expanded', 'false');
       resetToCleanData();
     });
   }
+
+  // Legal & Privacy modal
+  const openLegalModal = () => document.getElementById('legal-modal')?.classList.add('visible');
+  const closeLegalModal = () => document.getElementById('legal-modal')?.classList.remove('visible');
+  document.getElementById('btn-open-legal-legend')?.addEventListener('click', openLegalModal);
+  document.getElementById('btn-close-legal-modal')?.addEventListener('click', closeLegalModal);
+  document.getElementById('btn-close-legal-sheet')?.addEventListener('click', closeLegalModal);
+  document.getElementById('legal-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'legal-modal') closeLegalModal();
+  });
+
+  // Storage Persistence & Quick Export
+  document.getElementById('btn-request-persistence')?.addEventListener('click', async () => {
+    await AppStorage.requestPersistence();
+    await updatePersistenceStatus();
+  });
+  document.getElementById('btn-quick-json-export')?.addEventListener('click', () => {
+    exportDataJson();
+  });
+
+  // Import Diff Resolution Modal
+  const closeImportDiff = () => {
+    document.getElementById('import-diff-modal')?.classList.remove('visible');
+    pendingImportData = null;
+  };
+  document.getElementById('btn-close-import-diff-modal')?.addEventListener('click', closeImportDiff);
+  document.getElementById('btn-cancel-import-diff')?.addEventListener('click', closeImportDiff);
+  document.getElementById('import-diff-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'import-diff-modal') closeImportDiff();
+  });
+  document.getElementById('btn-execute-import-merge')?.addEventListener('click', executeImportMerge);
+  document.getElementById('btn-execute-import-replace')?.addEventListener('click', executeImportReplace);
 
   document.getElementById('json-file-input').addEventListener('change', handleImportJson);
 
@@ -3327,6 +3505,342 @@ window.jumpToDistrictFromReport = function(townId, districtId) {
   focusDistrictOnMap(districtId);
 };
 
+// --- Metadata Tracking & Export Reminders ---
+function recordExportTimestamp() {
+  try {
+    const meta = getStoredMeta();
+    meta.lastExportedAt = Date.now();
+    localStorage.setItem(META_STORAGE_KEY, JSON.stringify(meta));
+  } catch (e) {}
+  updateExportIndicators();
+}
+
+function getStoredMeta() {
+  try {
+    const raw = localStorage.getItem(META_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : { lastExportedAt: null };
+  } catch (e) {
+    return { lastExportedAt: null };
+  }
+}
+
+function updateExportIndicators() {
+  const meta = getStoredMeta();
+  const daysEl = document.getElementById('export-days-indicator');
+  const menuEl = document.getElementById('menu-export-status-text');
+
+  if (!meta.lastExportedAt) {
+    if (daysEl) daysEl.textContent = 'Zuletzt exportiert: Nie';
+    if (menuEl) {
+      menuEl.textContent = 'Noch nie gesichert ⚠️';
+      menuEl.style.color = 'var(--system-orange)';
+    }
+    return;
+  }
+
+  const days = Math.floor((Date.now() - meta.lastExportedAt) / (1000 * 60 * 60 * 24));
+  let text = '';
+  if (days === 0) text = 'Heute';
+  else if (days === 1) text = 'Gestern';
+  else text = `Vor ${days} Tagen`;
+
+  if (daysEl) daysEl.textContent = `Zuletzt exportiert: ${text}`;
+  if (menuEl) {
+    menuEl.textContent = `${text} ${days >= 7 ? '⚠️' : '✓'}`;
+    menuEl.style.color = (days >= 7 ? 'var(--system-orange)' : 'var(--text-secondary)');
+  }
+}
+
+async function updatePersistenceStatus() {
+  const labelEl = document.getElementById('storage-persistence-label');
+  const btnReq = document.getElementById('btn-request-persistence');
+  if (!labelEl) return;
+
+  if (navigator.storage && navigator.storage.persisted) {
+    const isPersisted = await navigator.storage.persisted();
+    if (isPersisted) {
+      labelEl.textContent = 'Dauerhafter Speicher aktiv (Geschützt vor Bereinigung)';
+      labelEl.parentElement.style.color = 'var(--system-green)';
+      if (btnReq) {
+        btnReq.textContent = '✓ Dauerhaft geschützt';
+        btnReq.disabled = true;
+      }
+    } else {
+      labelEl.textContent = 'Standard-Speicher (Safari-Warnung nach 7 Tagen)';
+      labelEl.parentElement.style.color = 'var(--apple-blue)';
+      if (btnReq) {
+        btnReq.textContent = 'Dauerhaften Speicher anfordern';
+        btnReq.disabled = false;
+      }
+    }
+  }
+}
+
+function checkMigrationOnStartup() {
+  let rawParam = null;
+  if (window.location.hash && window.location.hash.includes('migrate=')) {
+    const match = window.location.hash.match(/migrate=([^&]+)/);
+    if (match) rawParam = match[1];
+  } else if (window.location.search && window.location.search.includes('migrate=')) {
+    const urlParams = new URLSearchParams(window.location.search);
+    rawParam = urlParams.get('migrate');
+  }
+  if (!rawParam) return;
+
+  try {
+    const raw = decodeURIComponent(rawParam);
+    let jsonStr;
+    try {
+      jsonStr = decodeURIComponent(escape(atob(raw)));
+    } catch (e) {
+      jsonStr = atob(raw);
+    }
+    const bundle = JSON.parse(jsonStr);
+
+    if (bundle && bundle.data) {
+      saveAutoBackup('Vor Plattform-Migration', true);
+      if (bundle.data.towns) AppState.towns = bundle.data.towns;
+      if (bundle.data.districts) AppState.districts = bundle.data.districts;
+      if (bundle.data.deployments) AppState.deployments = bundle.data.deployments;
+      saveState();
+
+      if (bundle.backups && Array.isArray(bundle.backups) && bundle.backups.length > 0) {
+        const curBackups = getStoredBackups();
+        const merged = [...curBackups, ...bundle.backups].slice(0, MAX_BACKUPS);
+        try {
+          localStorage.setItem(BACKUPS_STORAGE_KEY, JSON.stringify(merged));
+        } catch (e) {}
+      }
+
+      refreshAllStyles();
+      refreshMarkers();
+      renderArrows();
+      updateClusterStats();
+
+      // Clean hash
+      history.replaceState(null, '', window.location.pathname);
+      alert("✅ Deine Daten und Sicherungen von der vorherigen Plattform wurden erfolgreich übertragen!");
+    }
+  } catch (err) {
+    console.error("Migration handover parse error:", err);
+  }
+}
+
+// --- Safe Import & Diff Resolution ---
+let pendingImportData = null; // { sourceName, towns, districts, deployments }
+
+function showImportDiffModal(sourceName, incomingTowns, incomingDistricts, incomingDeployments) {
+  let newTowns = 0;
+  let updatedTowns = 0;
+  let unchangedTowns = 0;
+
+  const currentTownIds = new Set(Object.keys(AppState.towns));
+  const incomingTownIds = new Set(Object.keys(incomingTowns || {}));
+
+  for (const [id, inc] of Object.entries(incomingTowns || {})) {
+    const cur = AppState.towns[id] || { milestone: 'none', nuclei: 0, activities: {}, notes: '', isCenter: false };
+    const curActive = (cur.milestone && cur.milestone !== 'none') || (cur.nuclei > 0);
+    const incActive = (inc.milestone && inc.milestone !== 'none') || (inc.nuclei > 0);
+
+    const hasDiff = cur.milestone !== (inc.milestone || 'none') ||
+      (cur.nuclei || 0) !== (inc.nuclei || 0) ||
+      (cur.notes || '').trim() !== (inc.notes || '').trim() ||
+      !!cur.isCenter !== !!inc.isCenter;
+
+    if (!curActive && incActive) {
+      newTowns++;
+    } else if (hasDiff) {
+      updatedTowns++;
+    } else {
+      unchangedTowns++;
+    }
+  }
+
+  currentTownIds.forEach(id => {
+    if (!incomingTownIds.has(id)) {
+      unchangedTowns++;
+    }
+  });
+
+  const depCount = (incomingDeployments || []).length;
+
+  const elNew = document.getElementById('diff-count-new');
+  if (elNew) elNew.textContent = newTowns;
+  const elUpd = document.getElementById('diff-count-updated');
+  if (elUpd) elUpd.textContent = updatedTowns;
+  const elUnc = document.getElementById('diff-count-unchanged');
+  if (elUnc) elUnc.textContent = unchangedTowns;
+  const elDep = document.getElementById('diff-count-deployments');
+  if (elDep) elDep.textContent = depCount;
+
+  const sourceInfoEl = document.getElementById('import-diff-source-info');
+  if (sourceInfoEl) {
+    sourceInfoEl.textContent = `Datensatz aus "${sourceName}" geladen. Wähle, wie dieser mit deiner bisherigen Karte abgeglichen werden soll:`;
+  }
+
+  pendingImportData = {
+    sourceName,
+    towns: incomingTowns,
+    districts: incomingDistricts || {},
+    deployments: incomingDeployments || []
+  };
+
+  const modal = document.getElementById('import-diff-modal');
+  if (modal) modal.classList.add('visible');
+}
+
+function executeImportMerge() {
+  if (!pendingImportData) return;
+  saveAutoBackup(`Vor Zusammenführen (${pendingImportData.sourceName})`, true);
+  pushHistory(`Zusammenführen: ${pendingImportData.sourceName}`);
+
+  // Merge towns
+  for (const [id, inc] of Object.entries(pendingImportData.towns)) {
+    if (!AppState.towns[id]) {
+      AppState.towns[id] = JSON.parse(JSON.stringify(inc));
+      continue;
+    }
+    const cur = AppState.towns[id];
+    if (inc.milestone && inc.milestone !== 'none' && (!cur.milestone || cur.milestone === 'none')) {
+      cur.milestone = inc.milestone;
+    }
+    if ((inc.nuclei || 0) > (cur.nuclei || 0)) {
+      cur.nuclei = inc.nuclei;
+    }
+    if (inc.activities) {
+      cur.activities = cur.activities || {};
+      ['devotionals', 'studyCircles', 'childrenClasses', 'juniorYouth'].forEach(k => {
+        cur.activities[k] = Math.max(cur.activities[k] || 0, inc.activities[k] || 0);
+      });
+    }
+    if (inc.isCenter) cur.isCenter = true;
+    if (inc.notes && inc.notes.trim()) {
+      if (!cur.notes || !cur.notes.trim()) {
+        cur.notes = inc.notes.trim();
+      } else if (!cur.notes.includes(inc.notes.trim())) {
+        cur.notes += `\n[${pendingImportData.sourceName}]: ${inc.notes.trim()}`;
+      }
+    }
+  }
+
+  // Merge districts
+  for (const [id, inc] of Object.entries(pendingImportData.districts)) {
+    if (!AppState.districts[id]) {
+      AppState.districts[id] = JSON.parse(JSON.stringify(inc));
+      continue;
+    }
+    const cur = AppState.districts[id];
+    if (inc.milestone && inc.milestone !== 'none' && (!cur.milestone || cur.milestone === 'none')) {
+      cur.milestone = inc.milestone;
+    }
+    if ((inc.nuclei || 0) > (cur.nuclei || 0)) {
+      cur.nuclei = inc.nuclei;
+    }
+    if (inc.notes && inc.notes.trim() && !cur.notes.includes(inc.notes.trim())) {
+      cur.notes = cur.notes ? `${cur.notes}\n${inc.notes.trim()}` : inc.notes.trim();
+    }
+  }
+
+  // Merge deployments
+  (pendingImportData.deployments || []).forEach(incDep => {
+    const exists = AppState.deployments.some(d => d.fromId === incDep.fromId && d.toId === incDep.toId && d.type === incDep.type);
+    if (!exists) {
+      AppState.deployments.push({
+        ...incDep,
+        id: 'dep_mrg_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 6)
+      });
+    }
+  });
+
+  saveState();
+  refreshAllStyles();
+  refreshMarkers();
+  renderArrows();
+  updateClusterStats();
+
+  const modal = document.getElementById('import-diff-modal');
+  if (modal) modal.classList.remove('visible');
+  const banner = document.getElementById('share-import-banner');
+  if (banner) banner.classList.remove('visible');
+
+  pendingImportData = null;
+  pendingSharedPayload = null;
+  alert("Daten wurden erfolgreich zusammengeführt! ✓");
+}
+
+function executeImportReplace() {
+  if (!pendingImportData) return;
+  saveAutoBackup(`Vor Ersetzen (${pendingImportData.sourceName})`, true);
+  pushHistory(`Ersetzen: ${pendingImportData.sourceName}`);
+
+  AppState.towns = pendingImportData.towns;
+  AppState.districts = pendingImportData.districts;
+  AppState.deployments = pendingImportData.deployments;
+
+  saveState();
+  refreshAllStyles();
+  refreshMarkers();
+  renderArrows();
+  updateClusterStats();
+
+  const modal = document.getElementById('import-diff-modal');
+  if (modal) modal.classList.remove('visible');
+  const banner = document.getElementById('share-import-banner');
+  if (banner) banner.classList.remove('visible');
+
+  pendingImportData = null;
+  pendingSharedPayload = null;
+  alert("Projektstand wurde erfolgreich übernommen! ✓");
+}
+
+function parseSharedPayloadToEntities(payload) {
+  const towns = {};
+  Object.keys(AppState.townFeaturesById).forEach(id => {
+    towns[id] = { milestone: 'none', nuclei: 0, isCenter: false, notes: '', activities: {} };
+  });
+
+  if (payload.t) {
+    for (const [id, t] of Object.entries(payload.t)) {
+      if (!towns[id]) towns[id] = { milestone: 'none', nuclei: 0, isCenter: false, notes: '', activities: {} };
+      if (t.m) towns[id].milestone = t.m;
+      if (t.n) towns[id].nuclei = t.n;
+      if (t.c) towns[id].isCenter = true;
+      if (t.nt) towns[id].notes = t.nt;
+      if (t.col) towns[id].customColor = t.col;
+    }
+  }
+
+  const districts = {};
+  if (payload.d) {
+    for (const [id, d] of Object.entries(payload.d)) {
+      districts[id] = {
+        milestone: d.m || 'none',
+        nuclei: d.n || 0,
+        isCenter: !!d.c,
+        notes: d.nt || '',
+        activities: {}
+      };
+    }
+  }
+
+  const deps = [];
+  if (payload.dp && Array.isArray(payload.dp)) {
+    payload.dp.forEach((d, idx) => {
+      deps.push({
+        id: 'dep_share_' + (idx + 1) + '_' + Date.now().toString(36),
+        fromId: d.f,
+        toId: d.t,
+        count: d.c || 1,
+        status: d.s || 'active',
+        color: d.col || '#007aff',
+        notes: d.nt || ''
+      });
+    });
+  }
+
+  return { towns, districts, deployments: deps };
+}
+
 function exportDataJson() {
   const exportObject = {
     clusterName: "Rhein-Neckar",
@@ -3344,6 +3858,8 @@ function exportDataJson() {
   a.download = `rhein_neckar_cluster_${dateStr}.json`;
   a.click();
   URL.revokeObjectURL(url);
+
+  recordExportTimestamp();
 }
 
 function handleImportJson(e) {
@@ -3355,14 +3871,9 @@ function handleImportJson(e) {
     try {
       const data = JSON.parse(event.target.result);
       if (data.towns && Array.isArray(data.deployments)) {
-        AppState.towns = data.towns;
-        AppState.districts = data.districts || {};
-        AppState.deployments = data.deployments;
-        saveState();
-        refreshAllStyles();
-        alert("Projekt erfolgreich importiert!");
+        showImportDiffModal(file.name, data.towns, data.districts || {}, data.deployments);
       } else {
-        alert("Ungültiges Dateiformat.");
+        alert("Ungültiges Dateiformat. Die JSON muss 'towns' und 'deployments' enthalten.");
       }
     } catch (err) {
       alert("Fehler beim Lesen der JSON: " + err.message);
@@ -3577,7 +4088,18 @@ function toggleShareQr() {
   const isHidden = container.style.display === 'none' || !container.style.display;
   if (isHidden) {
     container.style.display = 'block';
-    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(input.value)}`;
+    try {
+      if (typeof qrcode === 'function') {
+        const qr = qrcode(0, 'M');
+        qr.addData(input.value);
+        qr.make();
+        img.src = qr.createDataURL(4, 6);
+      } else {
+        console.error('Local QR generator library not loaded');
+      }
+    } catch (err) {
+      console.error('Error generating local QR code:', err);
+    }
   } else {
     container.style.display = 'none';
   }
@@ -3684,17 +4206,9 @@ async function checkShareUrlOnStartup() {
 
 function applySharedDataFromBanner() {
   if (!pendingSharedPayload) return;
-  saveAutoBackup("Vor Übernahme von geteiltem Link", true);
-  applySharedPayload(pendingSharedPayload, true);
-  pushHistory("Geteilten Stand übernommen");
-
-  history.replaceState(null, '', window.location.pathname + window.location.search);
-
-  const banner = document.getElementById('share-import-banner');
-  if (banner) banner.classList.remove('visible');
-
-  pendingSharedPayload = null;
-  alert("Geteilter Stand erfolgreich in deine lokale Karte übernommen! 🎉");
+  const parsed = parseSharedPayloadToEntities(pendingSharedPayload);
+  const dateStr = pendingSharedPayload.ts ? new Date(pendingSharedPayload.ts).toLocaleDateString('de-DE') : 'kürzlich';
+  showImportDiffModal(`Geteilter Stand (${dateStr})`, parsed.towns, parsed.districts, parsed.deployments);
 }
 
 function previewSharedDataFromBanner() {

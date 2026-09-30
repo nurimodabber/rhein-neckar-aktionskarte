@@ -82,9 +82,9 @@ Die Anwendung öffnet sich unter `http://localhost:8080`.
 ├── icon.svg                   # Vektor-App-Icon
 ├── DEPLOYMENT.md              # Anleitung für GitHub Pages & Online-Release
 ├── rhein_neckar_data.js       # Geometrien der 133 Kommunen (Rhein-Neckar & Vorderpfalz)
-├── rhein_neckar_districts.js  # Geometrien der 83 Stadtteile
+├── rhein_neckar_districts.js  # Geometrien der 154 Stadtteile / Nachbarschaften
 ├── surrounding_kreise.js      # Umgebende Nachbarkreise
 ├── rivers_data.js             # Rhein, Neckar und Gewässerläufe
 ├── geographic_landmarks.js    # Autobahnen & Landmarken
-└── lib/                       # Offline-Bibliotheken (Leaflet, html2canvas)
+└── lib/                       # Offline-Bibliotheken (Leaflet, html2canvas, qrcode)
 ```

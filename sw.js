@@ -1,5 +1,5 @@
 // Rhein-Neckar Cluster Offline Service Worker
-const CACHE_NAME = 'rhein-neckar-cache-v2';
+const CACHE_NAME = 'rhein-neckar-cache-v3';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -10,6 +10,7 @@ const ASSETS_TO_CACHE = [
   './lib/leaflet.css',
   './lib/leaflet.js',
   './lib/html2canvas.min.js',
+  './lib/qrcode.min.js',
   './surrounding_kreise.js',
   './rivers_data.js',
   './geographic_landmarks.js',

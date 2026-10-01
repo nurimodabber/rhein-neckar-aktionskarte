@@ -508,9 +508,9 @@ svg:focus-visible,
 
 /* Top Left Navigation Bar (Breadcrumb & Reset) */
 .hud-nav-bar {
-  position: absolute;
-  top: 14px;
-  left: 14px;
+  position: relative;
+  top: auto;
+  left: auto;
   padding: 3px 6px;
   display: flex;
   align-items: center;
@@ -519,6 +519,7 @@ svg:focus-visible,
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
   z-index: 800;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  width: fit-content;
 }
 
 .hud-pill-btn {

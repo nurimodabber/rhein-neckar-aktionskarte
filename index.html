@@ -59,9 +59,9 @@
         <div class="vitality-divider"></div>
         <div class="vitality-chips">
           <span class="vchip vchip-center" title="Entsende-Zentren"><span class="vchip-star">★</span> <strong id="stat-centers">0</strong></span>
-          <span class="vchip vchip-arrows" title="Entsende-Pfeile">➔ <strong id="stat-deployments">0</strong></span>
-          <span class="vchip vchip-nuclei" title="Nuklei">👥 <strong id="stat-nuclei">0</strong></span>
-          <span class="vchip vchip-acts" title="Kernaktivitäten">⚡️ <strong id="stat-activities">0</strong></span>
+          <span class="vchip vchip-arrows" title="Entsende-Pfeile"><strong id="stat-deployments">0</strong> Pfeile</span>
+          <span class="vchip vchip-nuclei" title="Nuklei"><strong id="stat-nuclei">0</strong> Nuklei</span>
+          <span class="vchip vchip-acts" title="Kernaktivitäten"><strong id="stat-activities">0</strong> Aktivitäten</span>
         </div>
       </div>
 
@@ -179,7 +179,7 @@
       <!-- Share Link Import Notification Banner -->
       <div id="share-import-banner" class="share-import-banner">
         <div class="share-banner-main">
-          <div class="share-banner-badge">🔗 Geteilte Karte</div>
+          <div class="share-banner-badge">Geteilte Karte</div>
           <div class="share-banner-text">
             <span id="share-banner-details">Ein geteilter Cluster-Stand wurde geladen.</span>
           </div>
@@ -273,7 +273,7 @@
         <div class="arrow-quick-header">
           <div class="arrow-quick-title">
             <span class="arrow-quick-dot" id="quick-dep-dot"></span>
-            <strong id="quick-dep-names">Start ➔ Ziel</strong>
+            <strong id="quick-dep-names">Start → Ziel</strong>
             <span class="arrow-quick-badge" id="quick-dep-type">Pioniere</span>
           </div>
           <button class="focus-dismiss" id="btn-close-quick-arrow" title="Schließen">✕</button>
@@ -283,7 +283,7 @@
             <div class="quick-status-selector">
               <button type="button" class="quick-status-pill" data-status="active">● Aktiv</button>
               <button type="button" class="quick-status-pill" data-status="planned">⏳ Geplant</button>
-              <button type="button" class="quick-status-pill" data-status="established">✓ Etabliert</button>
+              <button type="button" class="quick-status-pill" data-status="established">Etabliert</button>
             </div>
             <div class="quick-count-stepper" style="display: inline-flex; align-items: center; background: rgba(118, 118, 128, 0.12); border-radius: 8px; padding: 2px 6px; gap: 4px;">
               <button type="button" id="quick-count-minus" style="border: none; background: transparent; font-weight: bold; cursor: pointer; padding: 0 4px; font-size: 14px; line-height: 1;">−</button>
@@ -293,7 +293,7 @@
           </div>
           <div class="arrow-quick-actions" style="width: 100%; display: flex; gap: 6px; margin-top: 4px;">
             <button type="button" class="btn btn-secondary" id="quick-btn-more-details" style="padding: 4px 10px; font-size: 11px; flex: 1; justify-content: center;">
-              ✏️ Bearbeiten &amp; Notizen...
+              Bearbeiten &amp; Notizen
             </button>
             <button type="button" class="btn btn-destructive" id="quick-btn-delete" style="padding: 4px 10px; font-size: 11px;" title="Entsendung entfernen">
               Löschen
@@ -306,7 +306,7 @@
       <div class="layers-legend-capsule apple-hud" id="legend-hud">
         <div class="legend-capsule-header" id="legend-header-toggle" title="Ebenen &amp; Legende einblenden / ausblenden">
           <div class="legend-header-title">
-            <span class="legend-icon">🧭</span>
+            
             <span class="legend-title-text">Ebenen &amp; Legende</span>
           </div>
           <span id="legend-chevron" class="legend-chevron">▾</span>
@@ -498,7 +498,7 @@
             <div class="apple-group">
               <div class="activity-row">
                 <div class="act-name-col">
-                  <span class="activity-icon-badge devotions">📖</span>
+                  <span class="activity-icon-badge devotions">A</span>
                   <span class="act-title">Andachten</span>
                 </div>
                 <div class="apple-stepper">
@@ -509,7 +509,7 @@
               </div>
               <div class="activity-row">
                 <div class="act-name-col">
-                  <span class="activity-icon-badge study">👥</span>
+                  <span class="activity-icon-badge study">S</span>
                   <span class="act-title">Studienkreise</span>
                 </div>
                 <div class="apple-stepper">
@@ -520,7 +520,7 @@
               </div>
               <div class="activity-row">
                 <div class="act-name-col">
-                  <span class="activity-icon-badge children">🧒</span>
+                  <span class="activity-icon-badge children">K</span>
                   <span class="act-title">Kinderklassen</span>
                 </div>
                 <div class="apple-stepper">
@@ -531,7 +531,7 @@
               </div>
               <div class="activity-row">
                 <div class="act-name-col">
-                  <span class="activity-icon-badge junior">⚡️</span>
+                  <span class="activity-icon-badge junior">J</span>
                   <span class="act-title">Juniorengruppen</span>
                 </div>
                 <div class="apple-stepper">
@@ -566,8 +566,7 @@
             <div class="apple-group">
               <textarea class="apple-textarea" id="drawer-notes" placeholder="Nächste Schritte, Ideen, Termine oder Reflexionsnotizen eintragen..."></textarea>
             </div>
-            <div class="privacy-notes-hint" style="font-size: 11px; color: var(--text-secondary); margin-top: 5px; line-height: 1.35; display: flex; align-items: flex-start; gap: 4px;">
-              <span style="opacity: 0.8;">🔒</span>
+            <div class="privacy-notes-hint" style="font-size: 11px; color: var(--text-secondary); margin-top: 5px; line-height: 1.35;">
               <span>Bitte keine Namen oder Kontaktdaten eintragen – die Notizen sind für das ganze Team sichtbar.</span>
             </div>
           </div>
@@ -636,8 +635,7 @@
         <div class="form-group">
           <label class="form-label">Zielsetzung / Details</label>
           <textarea class="form-input" id="new-arrow-notes" rows="2" placeholder="Nächste Schritte, Termine, Begleitungsfokus..."></textarea>
-          <div class="privacy-notes-hint" style="font-size: 11px; color: var(--text-secondary); margin-top: 5px; line-height: 1.35; display: flex; align-items: flex-start; gap: 4px;">
-            <span style="opacity: 0.8;">🔒</span>
+          <div class="privacy-notes-hint" style="font-size: 11px; color: var(--text-secondary); margin-top: 5px; line-height: 1.35;">
             <span>Bitte keine Namen oder Kontaktdaten eintragen – die Notizen sind für das ganze Team sichtbar.</span>
           </div>
         </div>
@@ -713,8 +711,7 @@
         <div class="form-group">
           <label class="form-label">Zielsetzung / Details &amp; Notizen</label>
           <textarea class="form-input" id="edit-dep-notes" rows="3" placeholder="Nächste Schritte, Termine, Begleitungsfokus..."></textarea>
-          <div class="privacy-notes-hint" style="font-size: 11px; color: var(--text-secondary); margin-top: 5px; line-height: 1.35; display: flex; align-items: flex-start; gap: 4px;">
-            <span style="opacity: 0.8;">🔒</span>
+          <div class="privacy-notes-hint" style="font-size: 11px; color: var(--text-secondary); margin-top: 5px; line-height: 1.35;">
             <span>Bitte keine Namen oder Kontaktdaten eintragen – die Notizen sind für das ganze Team sichtbar.</span>
           </div>
         </div>
@@ -784,8 +781,8 @@
           </div>
           <div class="report-actions-group" style="display: flex; gap: 6px;">
             <button type="button" class="btn btn-secondary btn-sm" id="btn-report-toggle-all">Unterpunkte aufklappen</button>
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-export-report-csv">📥 CSV-Export</button>
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-print-report">🖨️ Drucken / PDF</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-export-report-csv">CSV-Export</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-print-report">Drucken / PDF</button>
           </div>
         </div>
 
@@ -825,7 +822,7 @@
         <div id="storage-status-banner" style="background: rgba(0, 122, 255, 0.05); border: 1px solid rgba(0, 122, 255, 0.15); border-radius: 12px; padding: 10px 14px; margin-bottom: 14px; font-size: 12px; line-height: 1.45;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
             <strong style="color: var(--apple-blue); display: flex; align-items: center; gap: 5px;">
-              <span>💾</span> <span id="storage-persistence-label">Lokaler Speicher geschützt (IndexedDB)</span>
+              <span id="storage-persistence-label">Lokaler Speicher geschützt (IndexedDB)</span>
             </strong>
             <span id="export-days-indicator" style="font-size: 11px; color: var(--text-secondary);">Zuletzt exportiert: Nie</span>
           </div>
@@ -888,7 +885,7 @@
         </div>
 
         <div style="background: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.06); border-radius: 10px; padding: 10px 12px; margin-bottom: 16px; font-size: 12px; line-height: 1.4; color: var(--text-secondary);">
-          🛡️ <strong>Automatische Sicherung:</strong> Vor der Durchführung wird dein bisheriger lokaler Stand automatisch im Revisionsverlauf gesichert. Du kannst diesen Schritt jederzeit rückgängig machen.
+          <strong>Automatische Sicherung:</strong> Vor der Durchführung wird dein bisheriger lokaler Stand automatisch im Revisionsverlauf gesichert. Du kannst diesen Schritt jederzeit rückgängig machen.
         </div>
       </div>
       <div class="sheet-footer" style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
@@ -914,7 +911,7 @@
       </div>
       <div class="sheet-body" style="font-size: 13px; line-height: 1.5; color: var(--text-primary); overflow-y: auto; padding-right: 12px;">
         <h4 style="margin: 0 0 6px; font-size: 14px;">1. Angaben gemäß § 5 TMG (Impressum)</h4>
-        <p style="color: var(--text-secondary); margin-bottom: 12px;">
+        <p id="legal-impressum-content" style="color: var(--text-secondary); margin-bottom: 12px;">
           <strong>Betreiber der Webseite:</strong><br />
           [Vorname Nachname / Bahá'í-Gemeinde]<br />
           [Straße und Hausnummer]<br />
@@ -930,8 +927,7 @@
         <ul style="color: var(--text-secondary); padding-left: 20px; margin-bottom: 12px;">
           <li><strong>Keine Speicherung personenbezogener Namen oder Adressen:</strong> Es werden ausschließlich aggregierte Zählwerte (Nuklei, Aktivitäten) und Ortsbezeichnungen erfasst.</li>
           <li><strong>Lokale Datenverarbeitung:</strong> Alle Eingaben werden standardmäßig ausschließlich im lokalen Speicher deines Browsers auf deinem Endgerät verarbeitet. Es findet ohne deine ausdrückliche Freigabe keine Übertragung an externe Server Dritter statt.</li>
-          <li><strong>Teilen von Ständen:</strong> Wenn du die Freigabe-Funktion nutzt, werden die von dir freigegebenen Ortsdaten clientseitig komprimiert und verschlüsselt in den Freigabe-Link eingebettet.</li>
-          <li><strong>Serverstandort:</strong> Für künftige Team-Synchronisationen werden ausschließlich Rechenzentren innerhalb der Europäischen Union (Frankfurt am Main) eingesetzt.</li>
+          <li><strong>Teilen von Ständen:</strong> Wenn du die Freigabe-Funktion nutzt, werden die von dir freigegebenen Ortsdaten clientseitig komprimiert (Deflate-Raw / Base64url) direkt in den Freigabe-Link eingebettet. Der Link enthält den Stand und ist nicht verschlüsselt.</li>
         </ul>
 
         <h4 style="margin: 14px 0 6px; font-size: 14px;">3. Kartendaten &amp; Lizenzen</h4>
@@ -983,7 +979,7 @@
         <div class="form-group" style="margin-top: 14px;">
           <label style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
             <span style="font-weight: 500; font-size: 13px;">Teilbarer Link (enthält gesamten Stand)</span>
-            <span id="share-copied-indicator" class="copied-feedback" style="display:none; color: #16a34a; font-weight: 600; font-size: 12px;">✓ In Zwischenablage kopiert!</span>
+            <span id="share-copied-indicator" class="copied-feedback" style="display:none; color: #16a34a; font-weight: 600; font-size: 12px;">In Zwischenablage kopiert!</span>
           </label>
           <div style="display: flex; gap: 8px;">
             <input type="text" id="share-link-input" class="form-input" readonly style="font-family: monospace; font-size: 12px; background: #f8fafc; cursor: pointer;" />
@@ -1004,7 +1000,7 @@
             Per WhatsApp / AirDrop teilen
           </button>
           <button class="btn btn-ghost" id="btn-toggle-qr" style="font-size: 12.5px;">
-            📱 QR-Code anzeigen
+            QR-Code anzeigen
           </button>
         </div>
 
@@ -1033,22 +1029,18 @@
       <div class="sheet-body" style="padding: 12px 16px 20px;">
         <div class="mobile-actions-grid">
           <button type="button" class="mobile-action-card" id="mobile-act-report">
-            <span class="m-act-icon">📊</span>
             <span class="m-act-label">Bericht</span>
             <span class="m-act-sub">Cluster-Gesamtübersicht</span>
           </button>
           <button type="button" class="mobile-action-card" id="mobile-act-png">
-            <span class="m-act-icon">📸</span>
             <span class="m-act-label">Bild exportieren</span>
             <span class="m-act-sub">Karte als PNG speichern</span>
           </button>
           <button type="button" class="mobile-action-card" id="mobile-act-share">
-            <span class="m-act-icon">🔗</span>
             <span class="m-act-label">Teilen</span>
             <span class="m-act-sub">Link &amp; QR-Code</span>
           </button>
           <button type="button" class="mobile-action-card" id="mobile-act-backups">
-            <span class="m-act-icon">💾</span>
             <span class="m-act-label">Projekt &amp; Daten</span>
             <span class="m-act-sub">Sicherungen &amp; JSON</span>
           </button>
@@ -1056,24 +1048,24 @@
 
         <div class="mobile-undo-redo-bar">
           <button type="button" class="btn btn-secondary mobile-undo-btn" id="mobile-act-undo" disabled>
-            ↩️ Rückgängig
+            Rückgängig
           </button>
           <button type="button" class="btn btn-secondary mobile-undo-btn" id="mobile-act-redo" disabled>
-            ↪️ Wiederholen
+            Wiederholen
           </button>
         </div>
 
         <div class="mobile-list-group">
           <button type="button" class="mobile-list-item" id="mobile-act-onboarding">
-            <span>💡 Kurzanleitung &amp; Einführung</span>
+            <span>Kurzanleitung &amp; Einführung</span>
             <span class="m-arrow">›</span>
           </button>
           <button type="button" class="mobile-list-item" id="mobile-act-legal">
-            <span>🛡️ Impressum &amp; Datenschutz</span>
+            <span>Impressum &amp; Datenschutz</span>
             <span class="m-arrow">›</span>
           </button>
           <button type="button" class="mobile-list-item destructive" id="mobile-act-reset">
-            <span>⚠️ Auf Anfangszustand zurücksetzen</span>
+            <span>Auf Anfangszustand zurücksetzen</span>
             <span class="m-arrow">›</span>
           </button>
         </div>
@@ -1086,7 +1078,7 @@
     <div class="apple-sheet" style="max-width: 480px;">
       <div class="sheet-header">
         <h3 style="display: flex; align-items: center; gap: 8px;">
-          <span>👋</span> Willkommen zur Aktionskarte!
+          Willkommen zur Aktionskarte!
         </h3>
         <button type="button" class="inspector-close-btn" id="btn-close-onboarding">✕</button>
       </div>
@@ -1128,7 +1120,7 @@
         </div>
 
         <div style="background: rgba(118, 118, 128, 0.08); border-radius: 10px; padding: 10px 12px; font-size: 11.5px; color: var(--text-secondary); line-height: 1.4;">
-          💡 <em>Tipp:</em> Über das Menü <strong>„Projekt"</strong> kannst du jederzeit Sicherungen anlegen, die Karte per Link teilen oder als hochauflösendes Bild exportieren.
+          <em>Tipp:</em> Über das Menü <strong>„Projekt"</strong> kannst du jederzeit Sicherungen anlegen, die Karte per Link teilen oder als hochauflösendes Bild exportieren.
         </div>
       </div>
       <div class="sheet-footer">

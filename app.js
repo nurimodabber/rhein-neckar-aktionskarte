@@ -54,6 +54,16 @@ const AppState = {
   activeQuickDeployment: null
 };
 
+// TODO: Betreiberdaten vor Veröffentlichung oder Übergabe an den Auftraggeber anpassen
+const APP_CONFIG = {
+  impressum: {
+    operator: "[Vorname Nachname / Bahá'í-Gemeinde]",
+    address: "[Straße und Hausnummer]",
+    city: "[PLZ und Ort]",
+    email: "[kontakt@beispiel.de]"
+  }
+};
+
 // --- Central Terminology & Label Dictionary (Single Source of Truth) ---
 const APP_TERMS = {
   milestones: {
@@ -790,7 +800,7 @@ function restoreBackup(backupId) {
 
       const modal = document.getElementById('backups-modal');
       if (modal) modal.classList.remove('visible');
-      showInAppAlert('Sicherungsstand erfolgreich wiederhergestellt ✓', 'success');
+      showInAppAlert('Sicherungsstand erfolgreich wiederhergestellt', 'success');
     }
   });
 }
@@ -2155,14 +2165,14 @@ function showTownQuickPopover(townId, latlng) {
     <div class="qpop-actions-row">
       ${distCount > 0 ? `
         <button class="btn btn-secondary btn-sm" id="qpop-btn-districts" style="color:var(--system-blue);font-weight:600;">
-          🔍 Stadtteile (${distCount})
+          Stadtteile (${distCount})
         </button>
       ` : ''}
       <button class="btn btn-secondary btn-sm" id="qpop-btn-arrow" title="Entsende-Pfeil von hier starten">
-        ➔ Entsendung
+        Entsendung
       </button>
       <button class="btn btn-primary btn-sm" id="qpop-btn-details" title="Details &amp; Notizen im Inspektor öffnen">
-        Details ➔
+        Details
       </button>
     </div>
   `;
@@ -2292,10 +2302,10 @@ function showDistrictQuickPopover(districtId, latlng) {
 
     <div class="qpop-actions-row">
       <button class="btn btn-secondary btn-sm" id="qpop-dist-btn-arrow">
-        ➔ Entsendung
+        Entsendung
       </button>
       <button class="btn btn-primary btn-sm" id="qpop-dist-btn-details">
-        Details ➔
+        Details
       </button>
     </div>
   `;
@@ -2866,7 +2876,9 @@ function renderDeploymentsList(targetId) {
         <div class="dep-info-sub">${escapeHtml(d.type)} • <span class="dep-status-pill ${d.status}">${statusText}</span></div>
       </div>
       <div class="dep-actions" style="display:flex; gap:4px; align-items:center;">
-        <button type="button" class="btn-icon-edit" title="Entsendung bearbeiten" style="background:none; border:none; cursor:pointer; font-size:12px; padding:2px 4px;">✏️</button>
+        <button type="button" class="btn-icon-edit" title="Entsendung bearbeiten" style="background:none; border:none; cursor:pointer; padding:2px 4px; display:inline-flex; align-items:center;">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+        </button>
         <button type="button" class="btn-icon-del" title="Entsendung löschen">✕</button>
       </div>
     `;
@@ -2878,6 +2890,7 @@ function renderDeploymentsList(targetId) {
     card.querySelector('.btn-icon-del').onclick = (e) => {
       e.stopPropagation();
       deleteDeployment(d.id);
+      renderDeploymentsList(targetId);
     };
     container.appendChild(card);
   });
@@ -2896,7 +2909,9 @@ function renderDeploymentsList(targetId) {
         <div class="dep-info-sub">${escapeHtml(d.type)} • <span class="dep-status-pill ${d.status}">${statusText}</span></div>
       </div>
       <div class="dep-actions" style="display:flex; gap:4px; align-items:center;">
-        <button type="button" class="btn-icon-edit" title="Entsendung bearbeiten" style="background:none; border:none; cursor:pointer; font-size:12px; padding:2px 4px;">✏️</button>
+        <button type="button" class="btn-icon-edit" title="Entsendung bearbeiten" style="background:none; border:none; cursor:pointer; padding:2px 4px; display:inline-flex; align-items:center;">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+        </button>
         <button type="button" class="btn-icon-del" title="Entsendung löschen">✕</button>
       </div>
     `;
@@ -3680,7 +3695,9 @@ function initUIEventListeners() {
         item.innerHTML = `<span style="display:flex;align-items:center;">${msBadge}<strong>${escapeHtml(f.properties.name)}</strong></span> <span style="font-size:10px; color:#64748b;">${escapeHtml(f.properties.kreis)}</span>`;
         item.addEventListener('click', () => {
           searchResults.classList.remove('visible');
-          searchInput.value = f.properties.name;
+          searchInput.value = '';
+          if (searchClearBtn) searchClearBtn.style.display = 'none';
+          searchInput.blur();
           selectTown(f.properties.id, true);
         });
         searchResults.appendChild(item);
@@ -3698,7 +3715,9 @@ function initUIEventListeners() {
         `;
         item.addEventListener('click', () => {
           searchResults.classList.remove('visible');
-          searchInput.value = `${df.properties.townName} › ${df.properties.name}`;
+          searchInput.value = '';
+          if (searchClearBtn) searchClearBtn.style.display = 'none';
+          searchInput.blur();
           focusDistrictOnMap(df.properties.id);
         });
         searchResults.appendChild(item);
@@ -4000,7 +4019,19 @@ function initUIEventListeners() {
   } catch (e) {}
 
   // Legal & Privacy modal
-  const openLegalModal = () => document.getElementById('legal-modal')?.classList.add('visible');
+  const openLegalModal = () => {
+    const impEl = document.getElementById('legal-impressum-content');
+    if (impEl && APP_CONFIG && APP_CONFIG.impressum) {
+      impEl.innerHTML = `
+        <strong>Betreiber der Webseite:</strong><br />
+        ${escapeHtml(APP_CONFIG.impressum.operator)}<br />
+        ${escapeHtml(APP_CONFIG.impressum.address)}<br />
+        ${escapeHtml(APP_CONFIG.impressum.city)}<br />
+        E-Mail: ${escapeHtml(APP_CONFIG.impressum.email)}
+      `;
+    }
+    document.getElementById('legal-modal')?.classList.add('visible');
+  };
   const closeLegalModal = () => document.getElementById('legal-modal')?.classList.remove('visible');
   document.getElementById('btn-open-legal-legend')?.addEventListener('click', openLegalModal);
   document.getElementById('btn-close-legal-modal')?.addEventListener('click', closeLegalModal);
@@ -4459,7 +4490,7 @@ function exportReportToCsv() {
   a.download = `rhein_neckar_cluster_bericht_${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
   URL.revokeObjectURL(url);
-  showInAppAlert('Bericht erfolgreich als CSV exportiert ✓', 'success');
+  showInAppAlert('Bericht erfolgreich als CSV exportiert', 'success');
 }
 
 window.toggleReportSubpoints = function(townId, btn) {
@@ -4508,7 +4539,7 @@ function updateExportIndicators() {
   if (!meta.lastExportedAt) {
     if (daysEl) daysEl.textContent = 'Zuletzt exportiert: Nie';
     if (menuEl) {
-      menuEl.textContent = 'Noch nie gesichert ⚠️';
+      menuEl.textContent = 'Noch nie gesichert';
       menuEl.style.color = 'var(--system-orange)';
     }
     return;
@@ -4522,7 +4553,7 @@ function updateExportIndicators() {
 
   if (daysEl) daysEl.textContent = `Zuletzt exportiert: ${text}`;
   if (menuEl) {
-    menuEl.textContent = `${text} ${days >= 7 ? '⚠️' : '✓'}`;
+    menuEl.textContent = text;
     menuEl.style.color = (days >= 7 ? 'var(--system-orange)' : 'var(--text-secondary)');
   }
 }
@@ -4538,7 +4569,7 @@ async function updatePersistenceStatus() {
       labelEl.textContent = 'Dauerhafter Speicher aktiv (Geschützt vor Bereinigung)';
       labelEl.parentElement.style.color = 'var(--system-green)';
       if (btnReq) {
-        btnReq.textContent = '✓ Dauerhaft geschützt';
+        btnReq.textContent = 'Dauerhaft geschützt';
         btnReq.disabled = true;
       }
     } else {
@@ -4741,7 +4772,7 @@ function executeImportMerge() {
 
   pendingImportData = null;
   pendingSharedPayload = null;
-  showInAppAlert('Daten wurden erfolgreich zusammengeführt! ✓', 'success');
+  showInAppAlert('Daten wurden erfolgreich zusammengeführt!', 'success');
 }
 
 function executeImportReplace() {
@@ -4766,7 +4797,7 @@ function executeImportReplace() {
 
   pendingImportData = null;
   pendingSharedPayload = null;
-  showInAppAlert('Projektstand wurde erfolgreich übernommen! ✓', 'success');
+  showInAppAlert('Projektstand wurde erfolgreich übernommen!', 'success');
 }
 
 function parseSharedPayloadToEntities(payload) {
@@ -4988,10 +5019,10 @@ async function openShareModal() {
 
   if (summary) {
     summary.innerHTML = `
-      <div class="share-stat-chip">🏘️ <strong>${townsActive}</strong> aktive Orte</div>
-      <div class="share-stat-chip">➔ <strong>${arrowCount}</strong> Pfeile</div>
+      <div class="share-stat-chip"><strong>${townsActive}</strong> aktive Orte</div>
+      <div class="share-stat-chip"><strong>${arrowCount}</strong> Pfeile</div>
       <div class="share-stat-chip">★ <strong>${centersCount}</strong> Zentren</div>
-      ${nucleiCount > 0 ? `<div class="share-stat-chip">🌱 <strong>${nucleiCount}</strong> Nuklei</div>` : ''}
+      ${nucleiCount > 0 ? `<div class="share-stat-chip"><strong>${nucleiCount}</strong> Nuklei</div>` : ''}
     `;
   }
 
@@ -5213,7 +5244,7 @@ function previewSharedDataFromBanner() {
   applySharedPayload(pendingSharedPayload, false);
   const details = document.getElementById('share-banner-details');
   if (details) {
-    details.innerHTML = `👀 <em>Vorschau aktiv</em> (deine lokalen Daten wurden noch nicht verändert)`;
+    details.innerHTML = `<em>Vorschau aktiv</em> (deine lokalen Daten wurden noch nicht verändert)`;
   }
 }
 
@@ -5490,7 +5521,7 @@ function showInAppAlert(message, type = 'info') {
 
   const toast = document.createElement('div');
   toast.className = `app-toast app-toast-${type}`;
-  const iconMap = { success: '✓', error: '✕', info: 'ℹ', warning: '⚠' };
+  const iconMap = { success: '', error: '✕', info: '', warning: '' };
   const icon = document.createElement('span');
   icon.className = 'toast-icon';
   icon.textContent = iconMap[type] || 'ℹ';

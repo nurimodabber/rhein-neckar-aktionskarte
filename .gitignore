@@ -2,3 +2,4 @@
 scratch/
 *.png
 node_modules/
+.vercel

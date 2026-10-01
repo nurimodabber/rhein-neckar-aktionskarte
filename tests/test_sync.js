@@ -262,6 +262,34 @@ async function run() {
       throw new Error("Modal did not render connected room properly");
     }
 
+    console.log("Test 4b: Custom Slug editing in modal...");
+    const newCustomSlug = 'custom-slug-heidelberg';
+    await send('Runtime.evaluate', {
+      expression: `(() => {
+        const editInput = document.getElementById('edit-room-slug-input');
+        const updateBtn = document.getElementById('btn-update-room-slug');
+        editInput.value = '${newCustomSlug}';
+        updateBtn.click();
+      })()`
+    });
+    await new Promise(r => setTimeout(r, 2000));
+
+    const slugCheck = await send('Runtime.evaluate', {
+      expression: `(() => {
+        const linkInput = document.getElementById('room-link-input');
+        return JSON.stringify({
+          roomId: SyncEngine.roomId,
+          hash: window.location.hash,
+          linkValue: linkInput ? linkInput.value : null
+        });
+      })()`
+    });
+    const c4b = JSON.parse(slugCheck.result.value);
+    console.log("After custom slug edit:", c4b);
+    if (c4b.roomId !== newCustomSlug || !c4b.hash.includes(newCustomSlug) || !c4b.linkValue.includes(newCustomSlug)) {
+      throw new Error("Custom slug was not updated properly");
+    }
+
     console.log("Test 5: Leaving room returns to local mode...");
     await send('Runtime.evaluate', {
       expression: `SyncEngine.leaveRoom();`

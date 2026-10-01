@@ -5972,6 +5972,20 @@ const SyncEngine = {
     }
   },
 
+  slugify(text) {
+    if (!text || typeof text !== 'string') return '';
+    return text
+      .trim()
+      .toLowerCase()
+      .replace(/ä/g, 'ae')
+      .replace(/ö/g, 'oe')
+      .replace(/ü/g, 'ue')
+      .replace(/ß/g, 'ss')
+      .replace(/[^a-z0-9_-]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .substring(0, 64);
+  },
+
   updateModalUI() {
     const isConnected = !!SyncEngine.roomId;
     const connectedView = document.getElementById('room-connected-view');
@@ -5979,6 +5993,8 @@ const SyncEngine = {
     const statusDot = document.getElementById('room-status-dot');
     const statusHeadline = document.getElementById('room-status-headline');
     const linkInput = document.getElementById('room-link-input');
+    const editSlugInput = document.getElementById('edit-room-slug-input');
+    const createSlugInput = document.getElementById('create-room-slug-input');
 
     if (connectedView) connectedView.style.display = isConnected ? 'block' : 'none';
     if (disconnectedView) disconnectedView.style.display = isConnected ? 'none' : 'flex';
@@ -5996,6 +6012,14 @@ const SyncEngine = {
     if (linkInput && isConnected) {
       const roomUrl = `${window.location.origin}${window.location.pathname}#room=${SyncEngine.roomId}`;
       linkInput.value = roomUrl;
+    }
+
+    if (editSlugInput && isConnected) {
+      editSlugInput.value = SyncEngine.roomId;
+    }
+
+    if (createSlugInput && !isConnected && !createSlugInput.value) {
+      createSlugInput.value = 'rn-planung-' + Math.random().toString(36).substring(2, 6);
     }
   },
 
@@ -6028,10 +6052,52 @@ const SyncEngine = {
     }
 
     const btnCreate = document.getElementById('btn-create-room');
+    const createSlugInput = document.getElementById('create-room-slug-input');
     if (btnCreate) {
       btnCreate.addEventListener('click', () => {
-        const randomId = 'rn-' + Math.random().toString(36).substring(2, 8);
-        SyncEngine.joinRoom(randomId, true);
+        let rawSlug = createSlugInput ? createSlugInput.value : '';
+        if (rawSlug.includes('room=')) {
+          const match = rawSlug.match(/room=([a-zA-Z0-9_-]+)/);
+          if (match) rawSlug = match[1];
+        }
+        let cleanSlug = SyncEngine.slugify(rawSlug);
+        if (!cleanSlug) {
+          cleanSlug = 'rn-' + Math.random().toString(36).substring(2, 8);
+        }
+        SyncEngine.joinRoom(cleanSlug, true);
+      });
+      if (createSlugInput) {
+        createSlugInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') btnCreate.click();
+        });
+      }
+    }
+
+    const btnUpdateSlug = document.getElementById('btn-update-room-slug');
+    const editSlugInput = document.getElementById('edit-room-slug-input');
+    if (btnUpdateSlug && editSlugInput) {
+      const handleUpdateSlug = () => {
+        let rawSlug = editSlugInput.value;
+        if (rawSlug.includes('room=')) {
+          const match = rawSlug.match(/room=([a-zA-Z0-9_-]+)/);
+          if (match) rawSlug = match[1];
+        }
+        const cleanSlug = SyncEngine.slugify(rawSlug);
+        if (!cleanSlug) {
+          showInAppAlert('Bitte einen gültigen Raum-Slug eingeben (z. B. rn-planung-2026).', 'warning');
+          return;
+        }
+        if (cleanSlug === SyncEngine.roomId) {
+          showInAppAlert('Dieser Slug ist bereits aktiv.', 'info');
+          return;
+        }
+        SyncEngine.joinRoom(cleanSlug, true);
+        showInAppAlert(`Raum-Slug erfolgreich auf „${cleanSlug}“ geändert!`, 'success');
+      };
+
+      btnUpdateSlug.addEventListener('click', handleUpdateSlug);
+      editSlugInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') handleUpdateSlug();
       });
     }
 
@@ -6044,9 +6110,12 @@ const SyncEngine = {
           const match = val.match(/room=([a-zA-Z0-9_-]+)/);
           if (match) val = match[1];
         }
+        val = SyncEngine.slugify(val);
         if (val) {
           SyncEngine.joinRoom(val, false);
           inputJoin.value = '';
+        } else {
+          showInAppAlert('Bitte einen gültigen Raum-Namen oder Link eingeben.', 'warning');
         }
       });
       inputJoin.addEventListener('keydown', (e) => {

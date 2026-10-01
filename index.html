@@ -1010,6 +1010,24 @@
               </div>
             </div>
 
+            <div class="custom-slug-box" style="margin-top: 10px; background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: 12px; padding: 10px 12px;">
+              <div style="font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 3px;">
+                Link-Slug anpassen (umbenennen):
+              </div>
+              <div style="font-size: 11.5px; color: var(--text-secondary); margin-bottom: 8px;">
+                Passe den Link-Namen an, um einen aussagekräftigen Link zu teilen (z. B. <code>rn-planung-speyer</code>).
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 4px; background: white; border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0 8px; flex: 1;">
+                  <span style="font-size: 11.5px; color: var(--text-tertiary); font-family: monospace;">#room=</span>
+                  <input type="text" id="edit-room-slug-input" class="form-input" placeholder="neuer-raum-slug" style="border: none; background: transparent; padding: 6px 0; font-family: monospace; font-size: 12px; flex: 1; box-shadow: none;" />
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-update-room-slug" style="white-space: nowrap;">
+                  Slug ändern
+                </button>
+              </div>
+            </div>
+
             <div class="share-options-row" style="display: flex; gap: 10px; margin-top: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
               <button class="btn btn-secondary" id="btn-native-share-room" style="display: none;">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
@@ -1036,6 +1054,20 @@
               <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; line-height: 1.4;">
                 Lädt deinen aktuellen Stand online hoch und generiert einen Link, über den andere jederzeit mitarbeiten können.
               </div>
+
+              <div style="margin-bottom: 12px;">
+                <label style="font-size: 12px; font-weight: 500; display: block; margin-bottom: 5px; color: var(--text-primary);">
+                  Individueller Raum-Name (Slug / Link):
+                </label>
+                <div style="display: flex; align-items: center; gap: 4px; background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0 10px;">
+                  <span style="font-size: 11.5px; color: var(--text-tertiary); font-family: monospace;">...#room=</span>
+                  <input type="text" id="create-room-slug-input" class="form-input" placeholder="z. B. rn-planung-2026" style="border: none; background: transparent; padding: 7px 0; font-family: monospace; font-size: 12px; flex: 1; box-shadow: none;" />
+                </div>
+                <div style="font-size: 11px; color: var(--text-tertiary); margin-top: 4px;">
+                  Erlaubt: Buchstaben, Zahlen, Bindestriche (-) und Unterstriche (_).
+                </div>
+              </div>
+
               <button class="btn btn-primary" id="btn-create-room" style="width: 100%;">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
                 Gemeinsamen Raum starten

@@ -1,10 +1,10 @@
-// Rhein-Neckar Cluster Offline Service Worker (v6)
-const CACHE_NAME = 'rhein-neckar-cache-v6';
+// Rhein-Neckar Cluster Offline Service Worker (v7)
+const CACHE_NAME = 'rhein-neckar-cache-v7';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
-  './style.css?v=6',
-  './app.js?v=6',
+  './style.css?v=7',
+  './app.js?v=7',
   './icon.svg',
   './manifest.json',
   './lib/leaflet.css',
@@ -53,6 +53,9 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
+
+  // Always bypass cache for API routes
+  if (url.pathname.startsWith('/api/')) return;
 
   const isHtml = event.request.mode === 'navigate' ||
                  (event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html')) ||

@@ -138,6 +138,15 @@ The **Rhein-Neckar Aktionskarte** (`rhein-neckar-aktionskarte`) is an offline-fi
    - Universal Fallback: URI-encoded Base64url → prefix with **`b_`**.
 3. Typical size: 180–400 characters for typical active cluster stages, well within SMS/WhatsApp URL limits.
 
+### Collaborative Online Room Synchronization Protocol
+- **URL Structure**: `https://<domain>/#room=<roomId>`
+- **Storage Backend**: Vercel Serverless Function `/api/sync` backed by private Vercel Blob (`rooms/<roomId>.json`, Frankfurt `fra1` region).
+- **Engine**: `SyncEngine` in `app.js`:
+  - **Multi-Device & Long-Term Persistence**: Persistent cloud room storage allowing teams to edit together simultaneously or asynchronously across days and weeks on phone, tablet, and PC.
+  - **Debounced Auto-Save Push**: 1.2s debounce after local edits, updating cloud state with version increments.
+  - **Low-Overhead Polling**: 4.0s background check via HTTP `ETag` / `If-None-Match` (304 Not Modified when idle, zero bandwidth waste). Instant sync on window focus (`visibilitychange`).
+  - **Safety First**: Automatic local backup (`rn_cluster_backups_v1`) created before joining any new room to guarantee zero data loss.
+
 ---
 
 ## 5. Critical Gotchas & Edge Cases

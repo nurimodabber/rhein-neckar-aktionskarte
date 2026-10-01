@@ -1,0 +1,28 @@
+{
+  "name": "rhein-neckar-aktionskarte",
+  "version": "1.0.0",
+  "description": "Eine vollwertige, offline-fähige Aktions- und Wachstumsplanung für den **Cluster Rhein-Neckar** (133 Städte und Gemeinden: Mannheim, Heidelberg, Ludwigshafen am Rhein, Speyer, Frankenthal (Pfalz), Neustadt an der Weinstraße, Rhein-Neckar-Kreis, Rhein-Pfalz-Kreis und Landkreis Bad Dürkheim) zur strategischen Begleitung des Wachstums (Nuklei, Kernaktivitäten, Meilensteine PG/IPG/IPG+ und Entsendungen von Pionieren und Teams).",
+  "main": "app.js",
+  "directories": {
+    "lib": "lib",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "node tests/test_phase0.js && node --env-file=.env.local tests/test_sync.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nurimodabber/rhein-neckar-aktionskarte.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/nurimodabber/rhein-neckar-aktionskarte/issues"
+  },
+  "homepage": "https://github.com/nurimodabber/rhein-neckar-aktionskarte#readme",
+  "dependencies": {
+    "@vercel/blob": "^2.8.0"
+  }
+}

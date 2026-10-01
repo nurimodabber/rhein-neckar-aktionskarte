@@ -8,7 +8,7 @@
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="lib/leaflet.css" />
   <!-- Apple HIG Custom Styling -->
-  <link rel="stylesheet" href="style.css?v=6" />
+  <link rel="stylesheet" href="style.css?v=7" />
   <!-- PWA & Apple Web App Meta -->
   <link rel="manifest" href="manifest.json" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -218,6 +218,13 @@
             <span id="focus-banner-text">Stadtteile</span>
             <button class="focus-dismiss" id="btn-exit-focus" title="Zurück zur Gesamtkarte">✕</button>
           </div>
+        </div>
+
+        <!-- Collaborative Online Sync Capsule -->
+        <div class="hud-nav-bar apple-hud live-sync-capsule" id="live-sync-capsule" style="display: none;" title="Online-Raum aktiv (Klicken für Details)">
+          <span class="sync-live-dot" id="sync-live-dot"></span>
+          <span id="sync-room-label" style="font-weight: 600; font-size: 12px;">Raum: ...</span>
+          <span class="sync-state-pill" id="sync-state-pill">Synchron</span>
         </div>
       </div>
 
@@ -959,55 +966,147 @@
         <button class="inspector-close-btn" id="btn-close-share-modal">✕</button>
       </div>
       <div class="sheet-body">
-        <!-- Online sync info notice -->
-        <div class="share-sync-notice">
-          <div class="sync-status-indicator">
-            <span class="sync-dot local"></span>
-            <strong>Status:</strong> Lokale Arbeitskopie (Offline-First / PWA)
+        <!-- Segmented Control: Live-Raum vs Snapshot -->
+        <div class="segmented-control" style="margin-bottom: 16px; width: 100%; display: flex;" role="tablist">
+          <button class="segmented-btn active" id="tab-btn-live-room" type="button" role="tab" style="flex: 1; justify-content: center;">
+            Live-Zusammenarbeit (Raum)
+          </button>
+          <button class="segmented-btn" id="tab-btn-snapshot" type="button" role="tab" style="flex: 1; justify-content: center;">
+            Fester Snapshot-Link
+          </button>
+        </div>
+
+        <!-- TAB 1: Live-Zusammenarbeit (Online-Raum) -->
+        <div id="share-tab-live-room">
+          <div class="share-sync-notice" id="room-status-box">
+            <div class="sync-status-indicator">
+              <span class="sync-dot local" id="room-status-dot"></span>
+              <span id="room-status-headline"><strong>Status:</strong> Lokale Arbeitskopie (Offline-First)</span>
+            </div>
+            <div id="room-status-desc" style="font-size: 12.5px; color: var(--text-secondary); margin-top: 5px; line-height: 1.4;">
+              Arbeite mit anderen zeitgleich oder über längere Zeit an derselben Karte. Alle Änderungen werden automatisch online synchronisiert – über mehrere Geräte und Nutzer hinweg.
+            </div>
           </div>
-          <div style="font-size: 12.5px; color: var(--text-secondary); margin-top: 5px; line-height: 1.4;">
-            Die Karte speichert deine Arbeitsstände sicher lokal im Browser. Mit diesem <strong>teilbaren Link</strong> kannst du deinen aktuellen Stand inklusive aller Meilensteine, Entsende-Pfeile, Zentren und Notizen sofort an andere weitergeben.
+
+          <!-- Connected View (if currently in a room) -->
+          <div id="room-connected-view" style="display: none; margin-top: 14px;">
+            <div class="form-group">
+              <label style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-weight: 500; font-size: 13px;">Gemeinsamer Raum-Link</span>
+                <span id="room-copied-indicator" class="copied-feedback" style="display:none; color: #16a34a; font-weight: 600; font-size: 12px;">Link kopiert!</span>
+              </label>
+              <div style="display: flex; gap: 8px;">
+                <input type="text" id="room-link-input" class="form-input" readonly style="font-family: monospace; font-size: 12px; background: #f8fafc; cursor: pointer;" />
+                <button class="btn btn-primary" id="btn-copy-room-link" style="white-space: nowrap;">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                  Kopieren
+                </button>
+              </div>
+              <div style="font-size: 11.5px; color: var(--text-tertiary); margin-top: 6px;">
+                Jeder mit diesem Link sieht und bearbeitet denselben Stand.
+              </div>
+            </div>
+
+            <div class="share-options-row" style="display: flex; gap: 10px; margin-top: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+              <button class="btn btn-secondary" id="btn-native-share-room" style="display: none;">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                Per WhatsApp teilen
+              </button>
+              <button class="btn btn-ghost" id="btn-toggle-room-qr" style="font-size: 12.5px;">
+                QR-Code anzeigen
+              </button>
+              <button class="btn btn-danger-ghost" id="btn-leave-room" style="font-size: 12.5px; margin-left: auto;">
+                Raum verlassen
+              </button>
+            </div>
+
+            <div id="room-qr-container" style="display: none; text-align: center; margin-top: 14px; padding: 12px; background: #f8fafc; border-radius: 12px; border: 1px solid rgba(0,0,0,0.06);">
+              <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">Mit Smartphone scannen, um dem Raum beizutreten:</div>
+              <img id="room-qr-image" alt="QR-Code für Raum" style="width: 160px; height: 160px; margin: 0 auto; display: block; border-radius: 8px; background: white; padding: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);" />
+            </div>
+          </div>
+
+          <!-- Disconnected View (local mode) -->
+          <div id="room-disconnected-view" style="margin-top: 14px; display: flex; flex-direction: column; gap: 12px;">
+            <div style="background: white; border: 1px solid var(--border-subtle); border-radius: 14px; padding: 14px;">
+              <div style="font-weight: 600; font-size: 13.5px; margin-bottom: 4px;">Neuen gemeinsamen Raum erstellen</div>
+              <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; line-height: 1.4;">
+                Lädt deinen aktuellen Stand online hoch und generiert einen Link, über den andere jederzeit mitarbeiten können.
+              </div>
+              <button class="btn btn-primary" id="btn-create-room" style="width: 100%;">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+                Gemeinsamen Raum starten
+              </button>
+            </div>
+
+            <div style="background: #fbfbfd; border: 1px solid var(--border-subtle); border-radius: 14px; padding: 14px;">
+              <div style="font-weight: 600; font-size: 13.5px; margin-bottom: 4px;">Bestehendem Raum beitreten</div>
+              <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; line-height: 1.4;">
+                Gib den Raum-Namen oder den erhaltenen Raum-Link ein:
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <input type="text" id="join-room-input" class="form-input" placeholder="z. B. rn-planung-2026 oder Link..." style="font-size: 12.5px;" />
+                <button class="btn btn-secondary" id="btn-join-room" style="white-space: nowrap;">Beitreten</button>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- Summary Chip Card -->
-        <div class="share-stats-summary" id="share-stats-summary">
-          <!-- Populated dynamically -->
-        </div>
+        <!-- TAB 2: Snapshot-Link (Unveränderlicher Schnappschuss) -->
+        <div id="share-tab-snapshot" style="display: none;">
+          <!-- Online sync info notice -->
+          <div class="share-sync-notice">
+            <div class="sync-status-indicator">
+              <span class="sync-dot local"></span>
+              <strong>Fester Schnappschuss:</strong> Unveränderlicher Stand
+            </div>
+            <div style="font-size: 12.5px; color: var(--text-secondary); margin-top: 5px; line-height: 1.4;">
+              Dieser <strong>teilbare Link</strong> enthält deinen aktuellen Stand als einmaligen Schnappschuss direkt in der Web-Adresse. Andere können ihn ansehen oder in ihre eigene Karte importieren.
+            </div>
+          </div>
 
-        <!-- Link input group -->
-        <div class="form-group" style="margin-top: 14px;">
-          <label style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <span style="font-weight: 500; font-size: 13px;">Teilbarer Link (enthält gesamten Stand)</span>
-            <span id="share-copied-indicator" class="copied-feedback" style="display:none; color: #16a34a; font-weight: 600; font-size: 12px;">In Zwischenablage kopiert!</span>
-          </label>
-          <div style="display: flex; gap: 8px;">
-            <input type="text" id="share-link-input" class="form-input" readonly style="font-family: monospace; font-size: 12px; background: #f8fafc; cursor: pointer;" />
-            <button class="btn btn-primary" id="btn-copy-share-link" style="white-space: nowrap;">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-              </svg>
-              Kopieren
+          <!-- Summary Chip Card -->
+          <div class="share-stats-summary" id="share-stats-summary">
+            <!-- Populated dynamically -->
+          </div>
+
+          <!-- Link input group -->
+          <div class="form-group" style="margin-top: 14px;">
+            <label style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span style="font-weight: 500; font-size: 13px;">Snapshot-Link (enthält gesamten Stand)</span>
+              <span id="share-copied-indicator" class="copied-feedback" style="display:none; color: #16a34a; font-weight: 600; font-size: 12px;">In Zwischenablage kopiert!</span>
+            </label>
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="share-link-input" class="form-input" readonly style="font-family: monospace; font-size: 12px; background: #f8fafc; cursor: pointer;" />
+              <button class="btn btn-primary" id="btn-copy-share-link" style="white-space: nowrap;">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                Kopieren
+              </button>
+            </div>
+          </div>
+
+          <!-- Native Share / QR Code row -->
+          <div class="share-options-row" style="display: flex; gap: 10px; margin-top: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+            <button class="btn btn-secondary" id="btn-native-share" style="display: none;">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+              Per WhatsApp / AirDrop teilen
+            </button>
+            <button class="btn btn-ghost" id="btn-toggle-qr" style="font-size: 12.5px;">
+              QR-Code anzeigen
             </button>
           </div>
-        </div>
 
-        <!-- Native Share / QR Code row -->
-        <div class="share-options-row" style="display: flex; gap: 10px; margin-top: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
-          <button class="btn btn-secondary" id="btn-native-share" style="display: none;">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-            Per WhatsApp / AirDrop teilen
-          </button>
-          <button class="btn btn-ghost" id="btn-toggle-qr" style="font-size: 12.5px;">
-            QR-Code anzeigen
-          </button>
-        </div>
-
-        <!-- Collapsible QR Code view -->
-        <div id="share-qr-container" style="display: none; text-align: center; margin-top: 14px; padding: 12px; background: #f8fafc; border-radius: 12px; border: 1px solid rgba(0,0,0,0.06);">
-          <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">Mit Handy-Kamera scannen, um die Karte sofort mobil zu öffnen:</div>
-          <img id="share-qr-image" alt="QR-Code für Link" style="width: 160px; height: 160px; margin: 0 auto; display: block; border-radius: 8px; background: white; padding: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);" />
+          <!-- Collapsible QR Code view -->
+          <div id="share-qr-container" style="display: none; text-align: center; margin-top: 14px; padding: 12px; background: #f8fafc; border-radius: 12px; border: 1px solid rgba(0,0,0,0.06);">
+            <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">Mit Handy-Kamera scannen, um die Karte sofort mobil zu öffnen:</div>
+            <img id="share-qr-image" alt="QR-Code für Link" style="width: 160px; height: 160px; margin: 0 auto; display: block; border-radius: 8px; background: white; padding: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);" />
+          </div>
         </div>
       </div>
       <div class="sheet-footer">
@@ -1141,6 +1240,6 @@
   <script src="geographic_landmarks.js" defer></script>
   <script src="rhein_neckar_data.js" defer></script>
   <script src="rhein_neckar_districts.js" defer></script>
-  <script src="app.js?v=6" defer></script>
+  <script src="app.js?v=7" defer></script>
 </body>
 </html>

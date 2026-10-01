@@ -64,7 +64,14 @@ Die Anwendung öffnet sich unter `http://localhost:8080`.
   * **iPad / iPhone**: Safari → *Zum Home-Bildschirm*.
   * **Chrome / Edge**: Klick auf das Installationssymbol in der Adressleiste.
 
-### 5. Deployment
+### 5. Online-Synchronisation & Gemeinsame Räume
+* **Gemeinsames Arbeiten über Link (`#room=<raumId>`)**:
+  * Ermöglicht das dauerhafte Bearbeiten einer gemeinsamen Karte über verschiedene Geräte (PC, Tablet, Smartphone) und Nutzer hinweg.
+  * Änderungen werden automatisch online synchronisiert (Vercel Serverless & privater Vercel Blob Store in Frankfurt am Main).
+  * Hintergrund-Aktualisierungen halten alle geöffneten Ansichten ohne Seiten-Reload synchron.
+  * Vor dem Beitritt zu einem Raum wird stets eine lokale Sicherheitskopie angelegt.
+
+### 6. Deployment
 * Siehe [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ---

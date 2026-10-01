@@ -2172,16 +2172,8 @@ function showTownQuickPopover(townId, latlng) {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const newMs = btn.dataset.ms;
-      pushHistory(`Meilenstein von ${feature.properties.name} geändert`);
-      town.milestone = newMs;
-      saveState();
-      refreshAllStyles();
-      refreshMarkers();
+      setTownMilestone(townId, newMs);
       container.querySelectorAll('.qpop-ms-btn').forEach(b => b.classList.toggle('active', b.dataset.ms === newMs));
-      const drawer = document.getElementById('details-drawer');
-      if (drawer && !drawer.classList.contains('collapsed') && AppState.selectedTownId === townId) {
-        updateMilestoneHeaderAndSelection();
-      }
     });
   });
 
@@ -2921,33 +2913,67 @@ function renderDeploymentsList(targetId) {
   });
 }
 
-// --- Quick Paint Mode ---
-function applyPaintToTown(townId) {
+// --- Quick Paint & Milestone Updates ---
+function setTownMilestone(townId, ms, customColor = null) {
   const town = AppState.towns[townId];
   if (!town) return;
-  const name = AppState.townFeaturesById[townId]?.properties?.name || 'Ortschaft';
-  pushHistory(`Ortschaft ${name} eingefärbt`);
-  town.milestone = AppState.activePaintMilestone;
-  if (AppState.activePaintMilestone === 'custom') town.customColor = AppState.activePaintColor;
 
-  // Also set all districts of this town to the painted milestone
+  const tf = AppState.townFeaturesById[townId];
+  const name = tf ? tf.properties.name : 'Ortschaft';
+  pushHistory(`Ortschaft ${name}: Meilenstein auf ${getMilestoneLabel(ms)} geändert`);
+
+  town.milestone = ms;
+  if (ms === 'custom') {
+    town.customColor = customColor || AppState.activePaintColor;
+  }
+
+  // Also cascade milestone and custom color to all districts of this town
   const districts = Object.values(AppState.districtFeaturesById).filter(f => f.properties.townId === townId);
   districts.forEach(df => {
     const dId = df.properties.id;
-    if (AppState.districts[dId]) {
-      AppState.districts[dId].milestone = AppState.activePaintMilestone;
-      if (AppState.activePaintMilestone === 'custom') AppState.districts[dId].customColor = AppState.activePaintColor;
+    if (!AppState.districts[dId]) {
+      AppState.districts[dId] = { milestone: 'none', nuclei: 0, activities: {} };
+    }
+    AppState.districts[dId].milestone = ms;
+    if (ms === 'custom') {
+      AppState.districts[dId].customColor = customColor || AppState.activePaintColor;
+    }
+    const dLayer = AppState.districtLayersById[dId];
+    if (dLayer && dLayer.feature) {
+      dLayer.setStyle(getDistrictStyle(dLayer.feature));
+      syncDistrictPointerEvents(dLayer);
+      updateDistrictTooltip(dId);
     }
   });
 
   saveState();
-  refreshAllStyles();
-  refreshMarkers();
+
+  // Restyle affected town layer and update tooltip
+  const tLayer = AppState.townLayersById[townId];
+  if (tLayer && tLayer.feature) {
+    tLayer.setStyle(getTownStyle(tLayer.feature));
+    updateTownTooltip(townId);
+  }
+
+  // Restyle affected town perimeter layer if in district mode
+  if (AppState.townPerimeterLayer) {
+    AppState.townPerimeterLayer.eachLayer(layer => {
+      if (layer.feature && layer.feature.properties && layer.feature.properties.id === townId) {
+        layer.setStyle(getTownPerimeterStyle(layer.feature));
+      }
+    });
+  }
+
   updateClusterStats();
+
   if (AppState.selectedTownId === townId) {
     updateMilestoneHeaderAndSelection();
     renderDistrictsListForTown(townId);
   }
+}
+
+function applyPaintToTown(townId) {
+  setTownMilestone(townId, AppState.activePaintMilestone, AppState.activePaintColor);
 }
 
 function applyPaintToDistrict(districtId) {
@@ -2960,8 +2986,14 @@ function applyPaintToDistrict(districtId) {
   if (AppState.activePaintMilestone === 'custom') dist.customColor = AppState.activePaintColor;
   AppState.selectedDistrictId = districtId;
   saveState();
-  refreshAllStyles();
-  refreshMarkers();
+
+  const dLayer = AppState.districtLayersById[districtId];
+  if (dLayer && dLayer.feature) {
+    dLayer.setStyle(getDistrictStyle(dLayer.feature));
+    syncDistrictPointerEvents(dLayer);
+    updateDistrictTooltip(districtId);
+  }
+
   updateClusterStats();
   updateMilestoneHeaderAndSelection();
   if (df && AppState.selectedTownId === df.properties.townId) {
@@ -3374,17 +3406,7 @@ function initUIEventListeners() {
 
       // Otherwise we are on the overall town / municipality level:
       if (AppState.selectedTownId && AppState.towns[AppState.selectedTownId]) {
-        const town = AppState.towns[AppState.selectedTownId];
-        const tf = AppState.townFeaturesById[AppState.selectedTownId];
-        const name = tf ? tf.properties.name : 'Ortschaft';
-        pushHistory(`Ortschaft ${name}: Meilenstein auf ${getMilestoneLabel(m)} geändert`);
-        town.milestone = m;
-        updateMilestoneHeaderAndSelection();
-        saveState();
-        refreshAllStyles();
-        refreshMarkers();
-        updateClusterStats();
-        renderDistrictsListForTown(AppState.selectedTownId);
+        setTownMilestone(AppState.selectedTownId, m);
       }
     });
   });

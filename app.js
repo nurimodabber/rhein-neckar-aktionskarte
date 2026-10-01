@@ -306,15 +306,209 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 });
 
+// ==========================================================================
+// Schema Versioning & Data Sanitization Engine (Security & Hard Constraints)
+// ==========================================================================
+const CURRENT_SCHEMA_VERSION = 2;
+
+function sanitizeColor(col, fallback = '#86efac') {
+  if (typeof col !== 'string') return fallback;
+  const clean = col.trim();
+  if (/^#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(clean)) return clean;
+  if (/^var\(--[a-zA-Z0-9-]+\)$/.test(clean)) return clean;
+  return fallback;
+}
+
+function sanitizeActivityObject(acts) {
+  if (!acts || typeof acts !== 'object') {
+    return { devotionals: 0, studyCircles: 0, childrenClasses: 0, juniorYouth: 0 };
+  }
+  return {
+    devotionals: Math.max(0, parseInt(acts.devotionals, 10) || 0),
+    studyCircles: Math.max(0, parseInt(acts.studyCircles, 10) || 0),
+    childrenClasses: Math.max(0, parseInt(acts.childrenClasses, 10) || 0),
+    juniorYouth: Math.max(0, parseInt(acts.juniorYouth, 10) || 0)
+  };
+}
+
+function sanitizeEntityData(entity) {
+  if (!entity || typeof entity !== 'object') {
+    return {
+      milestone: 'none',
+      customColor: '#86efac',
+      nuclei: 0,
+      activities: sanitizeActivityObject(null),
+      isCenter: false,
+      notes: ''
+    };
+  }
+  const validMilestones = ['none', 'pg', 'ipg', 'ipg_plus', 'custom'];
+  const ms = validMilestones.includes(entity.milestone) ? entity.milestone : 'none';
+  return {
+    milestone: ms,
+    customColor: sanitizeColor(entity.customColor, '#86efac'),
+    nuclei: Math.max(0, parseInt(entity.nuclei, 10) || 0),
+    activities: sanitizeActivityObject(entity.activities),
+    isCenter: Boolean(entity.isCenter),
+    notes: typeof entity.notes === 'string' ? entity.notes.slice(0, 10000) : ''
+  };
+}
+
+function sanitizeDeploymentRecord(dep, idx = 0) {
+  if (!dep || typeof dep !== 'object') return null;
+  const fromId = String(dep.fromId || dep.f || '').trim();
+  const toId = String(dep.toId || dep.t || '').trim();
+  if (!fromId || !toId) return null;
+
+  const validStatuses = ['active', 'planned', 'established'];
+  const status = validStatuses.includes(dep.status || dep.s) ? (dep.status || dep.s) : 'active';
+  const fromName = dep.fromName || AppState.townFeaturesById[fromId]?.properties?.name || AppState.districtFeaturesById[fromId]?.properties?.name || fromId;
+  const toName = dep.toName || AppState.townFeaturesById[toId]?.properties?.name || AppState.districtFeaturesById[toId]?.properties?.name || toId;
+
+  return {
+    id: typeof dep.id === 'string' && dep.id ? dep.id : `dep_item_${idx + 1}_${Date.now().toString(36)}`,
+    fromId,
+    toId,
+    fromName: String(fromName).slice(0, 100),
+    toName: String(toName).slice(0, 100),
+    type: typeof dep.type === 'string' && dep.type ? dep.type.slice(0, 100) : 'Pioniere / Umzügler',
+    count: Math.max(1, parseInt(dep.count || dep.c, 10) || 1),
+    status,
+    color: sanitizeColor(dep.color || dep.col, '#007aff'),
+    notes: typeof (dep.notes || dep.nt) === 'string' ? (dep.notes || dep.nt).slice(0, 5000) : '',
+    createdAt: dep.createdAt || new Date().toISOString()
+  };
+}
+
+function migrateStoredState(parsed) {
+  if (!parsed || typeof parsed !== 'object') {
+    return { schemaVersion: CURRENT_SCHEMA_VERSION, towns: {}, districts: {}, deployments: [] };
+  }
+  const towns = {};
+  if (parsed.towns && typeof parsed.towns === 'object') {
+    for (const [id, t] of Object.entries(parsed.towns)) {
+      towns[id] = sanitizeEntityData(t);
+    }
+  }
+
+  const districts = {};
+  if (parsed.districts && typeof parsed.districts === 'object') {
+    for (const [id, d] of Object.entries(parsed.districts)) {
+      districts[id] = sanitizeEntityData(d);
+    }
+  }
+
+  const deployments = [];
+  if (Array.isArray(parsed.deployments)) {
+    parsed.deployments.forEach((d, idx) => {
+      const sanitized = sanitizeDeploymentRecord(d, idx);
+      if (sanitized) deployments.push(sanitized);
+    });
+  }
+
+  return {
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    towns,
+    districts,
+    deployments,
+    updatedAt: parsed.updatedAt || new Date().toISOString()
+  };
+}
+
+function validateClusterDataset(data) {
+  if (!data || typeof data !== 'object') {
+    return { valid: false, error: 'Die Datei enthält kein gültiges JSON-Objekt.' };
+  }
+  if (!data.towns && !data.deployments) {
+    return { valid: false, error: "Fehlende Pflichtfelder: 'towns' oder 'deployments' erforderlich." };
+  }
+  if (data.towns && (typeof data.towns !== 'object' || Array.isArray(data.towns))) {
+    return { valid: false, error: "'towns' muss ein Schlüssel-Wert-Objekt sein." };
+  }
+  if (data.districts && (typeof data.districts !== 'object' || Array.isArray(data.districts))) {
+    return { valid: false, error: "'districts' muss ein Schlüssel-Wert-Objekt sein." };
+  }
+  if (data.deployments && !Array.isArray(data.deployments)) {
+    return { valid: false, error: "'deployments' muss eine Liste sein." };
+  }
+
+  const migrated = migrateStoredState(data);
+  return { valid: true, sanitizedData: migrated };
+}
+
+function validateSharedPayload(payload) {
+  if (!payload || typeof payload !== 'object') {
+    return { valid: false, error: 'Ungültige Share-Nutzlast.' };
+  }
+  if (!payload.t || typeof payload.t !== 'object') {
+    return { valid: false, error: "Share-Payload enthält keine gültigen Ortsdaten ('t')." };
+  }
+  const cleanT = {};
+  const validMilestones = ['none', 'pg', 'ipg', 'ipg_plus', 'custom'];
+  for (const [id, item] of Object.entries(payload.t)) {
+    if (!item || typeof item !== 'object') continue;
+    const cleanItem = {};
+    if (item.m && validMilestones.includes(item.m)) cleanItem.m = item.m;
+    if (item.n) cleanItem.n = Math.max(0, parseInt(item.n, 10) || 0);
+    if (item.c) cleanItem.c = 1;
+    if (item.nt && typeof item.nt === 'string') cleanItem.nt = item.nt.slice(0, 5000);
+    if (item.col) cleanItem.col = sanitizeColor(item.col, '#86efac');
+    cleanT[String(id).slice(0, 64)] = cleanItem;
+  }
+
+  const cleanD = {};
+  if (payload.d && typeof payload.d === 'object') {
+    for (const [id, item] of Object.entries(payload.d)) {
+      if (!item || typeof item !== 'object') continue;
+      const cleanItem = {};
+      if (item.m && validMilestones.includes(item.m)) cleanItem.m = item.m;
+      if (item.n) cleanItem.n = Math.max(0, parseInt(item.n, 10) || 0);
+      if (item.c) cleanItem.c = 1;
+      if (item.nt && typeof item.nt === 'string') cleanItem.nt = item.nt.slice(0, 5000);
+      cleanD[String(id).slice(0, 64)] = cleanItem;
+    }
+  }
+
+  const cleanDp = [];
+  if (Array.isArray(payload.dp)) {
+    payload.dp.forEach(d => {
+      if (!d || typeof d !== 'object') return;
+      const f = String(d.f || '').trim();
+      const t = String(d.t || '').trim();
+      if (!f || !t) return;
+      cleanDp.push({
+        f: f.slice(0, 64),
+        t: t.slice(0, 64),
+        c: Math.max(1, parseInt(d.c, 10) || 1),
+        s: ['active', 'planned', 'established'].includes(d.s) ? d.s : 'active',
+        col: sanitizeColor(d.col, '#007aff'),
+        nt: typeof d.nt === 'string' ? d.nt.slice(0, 2000) : ''
+      });
+    });
+  }
+
+  return {
+    valid: true,
+    sanitizedPayload: {
+      v: payload.v || 1,
+      ts: typeof payload.ts === 'number' ? payload.ts : Date.now(),
+      t: cleanT,
+      d: cleanD,
+      dp: cleanDp
+    }
+  };
+}
+
 // --- Data Persistence ---
 function loadStoredData() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      AppState.towns = parsed.towns || {};
-      AppState.districts = parsed.districts || {};
-      AppState.deployments = parsed.deployments || [];
+      const migrated = migrateStoredState(parsed);
+      AppState.towns = migrated.towns;
+      AppState.districts = migrated.districts;
+      AppState.deployments = migrated.deployments;
     } else {
       AppState.towns = {};
       AppState.districts = {};
@@ -364,16 +558,51 @@ function loadStoredData() {
 
 function registerServiceWorker() {
   if ('serviceWorker' in navigator && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
-    navigator.serviceWorker.register('./sw.js?v=2').then((reg) => {
+    navigator.serviceWorker.register('./sw.js?v=4').then((reg) => {
       reg.update().catch(() => {});
     }).catch(err => {
       console.log('Service worker note (offline fallback):', err);
     });
+
+    // Listen for update messages from the service worker
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'SW_UPDATED') {
+        // Show a non-intrusive update toast with a reload link
+        let container = document.getElementById('toast-container');
+        if (!container) {
+          container = document.createElement('div');
+          container.id = 'toast-container';
+          document.body.appendChild(container);
+        }
+        const toast = document.createElement('div');
+        toast.className = 'app-toast app-toast-info app-toast-update';
+        toast.innerHTML = '';
+        const msg = document.createElement('span');
+        msg.className = 'toast-message';
+        msg.textContent = 'Neue Version verfügbar – ';
+        const reloadLink = document.createElement('button');
+        reloadLink.className = 'toast-reload-btn';
+        reloadLink.textContent = 'Neu laden';
+        reloadLink.addEventListener('click', () => window.location.reload());
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'toast-close';
+        closeBtn.textContent = '×';
+        closeBtn.setAttribute('aria-label', 'Meldung schließen');
+        closeBtn.addEventListener('click', () => toast.remove());
+        toast.appendChild(msg);
+        toast.appendChild(reloadLink);
+        toast.appendChild(closeBtn);
+        container.appendChild(toast);
+        requestAnimationFrame(() => toast.classList.add('toast-enter'));
+      }
+    });
   }
 }
 
+
 function saveState() {
   const dataToSave = {
+    schemaVersion: CURRENT_SCHEMA_VERSION,
     towns: AppState.towns,
     districts: AppState.districts,
     deployments: AppState.deployments,
@@ -530,25 +759,31 @@ function restoreBackup(backupId) {
   const found = backups.find(b => b.id === backupId);
   if (!found) return;
 
-  if (!confirm(`Möchtest du den Sicherungsstand vom ${found.dateFormatted} (${found.desc}) wirklich wiederherstellen?`)) {
-    return;
-  }
+  showConfirmModal({
+    title: 'Sicherung wiederherstellen',
+    message: `Möchtest du den Sicherungsstand vom ${found.dateFormatted} (${found.desc}) wirklich wiederherstellen? Deine aktuellen Daten werden zuvor gesichert.`,
+    confirmText: 'Wiederherstellen',
+    cancelText: 'Abbrechen',
+    onConfirm: () => {
+      pushHistory('Vor Wiederherstellung gesichert');
+      AppState.isHistoryAction = true;
+      AppState.towns = found.data.towns;
+      AppState.districts = found.data.districts;
+      AppState.deployments = found.data.deployments;
+      saveState();
+      refreshAllStyles();
+      refreshMarkers();
+      renderArrows();
+      if (AppState.selectedTownId) selectTown(AppState.selectedTownId);
+      AppState.isHistoryAction = false;
 
-  pushHistory('Vor Wiederherstellung gesichert');
-  AppState.isHistoryAction = true;
-  AppState.towns = found.data.towns;
-  AppState.districts = found.data.districts;
-  AppState.deployments = found.data.deployments;
-  saveState();
-  refreshAllStyles();
-  refreshMarkers();
-  renderArrows();
-  if (AppState.selectedTownId) selectTown(AppState.selectedTownId);
-  AppState.isHistoryAction = false;
-
-  const modal = document.getElementById('backups-modal');
-  if (modal) modal.classList.remove('visible');
+      const modal = document.getElementById('backups-modal');
+      if (modal) modal.classList.remove('visible');
+      showInAppAlert('Sicherungsstand erfolgreich wiederhergestellt ✓', 'success');
+    }
+  });
 }
+
 
 function renderBackupsList() {
   updatePersistenceStatus();
@@ -2768,7 +3003,7 @@ function handleArrowSourceTargetClick(id, isDistrict) {
     refreshAllStyles();
   } else {
     if (AppState.arrowSourceId === id) {
-      alert("Start und Ziel können nicht derselbe Ort sein.");
+      showInAppAlert('Start und Ziel können nicht derselbe Ort sein.', 'warning');
       return;
     }
 
@@ -2838,15 +3073,27 @@ function cancelArrowDrawing() {
 function deleteDeployment(depId) {
   const found = AppState.deployments.find(d => d.id === depId);
   const desc = found ? `Entsendung ${found.fromName} ➔ ${found.toName} gelöscht` : 'Entsendung gelöscht';
-  if (confirm("Möchtest du diesen Pfeil wirklich entfernen?")) {
-    pushHistory(desc);
-    AppState.deployments = AppState.deployments.filter(d => d.id !== depId);
-    saveState();
-    refreshAllStyles();
-    if (AppState.selectedDistrictId) renderDeploymentsList(AppState.selectedDistrictId);
-    else if (AppState.selectedTownId) renderDeploymentsList(AppState.selectedTownId);
-  }
+  const labelFrom = found ? escapeHtml(found.fromName) : '';
+  const labelTo = found ? escapeHtml(found.toName) : '';
+  showConfirmModal({
+    title: 'Entsendung löschen',
+    message: found
+      ? `Möchtest du den Pfeil von „${found.fromName}" nach „${found.toName}" wirklich entfernen? Diese Aktion kann über Rückgängig rückgängig gemacht werden.`
+      : 'Möchtest du diesen Pfeil wirklich entfernen?',
+    confirmText: 'Löschen',
+    cancelText: 'Abbrechen',
+    isDestructive: true,
+    onConfirm: () => {
+      pushHistory(desc);
+      AppState.deployments = AppState.deployments.filter(d => d.id !== depId);
+      saveState();
+      refreshAllStyles();
+      if (AppState.selectedDistrictId) renderDeploymentsList(AppState.selectedDistrictId);
+      else if (AppState.selectedTownId) renderDeploymentsList(AppState.selectedTownId);
+    }
+  });
 }
+
 
 function openDeploymentModal(dep) {
   AppState.editingDeploymentId = dep.id;
@@ -3811,23 +4058,27 @@ function openClusterReportModal() {
     tr.innerHTML = `
       <td>
         <strong>${escapeHtml(f.properties.name)}</strong>
-        ${distCount > 0 ? `<button type="button" class="town-expand-btn" onclick="toggleReportSubpoints('${id}', this)">▼ ${distCount} Unterpunkte</button>` : ''}
+        ${distCount > 0 ? `<button type="button" class="town-expand-btn">▼ ${distCount} Unterpunkte</button>` : ''}
       </td>
       <td><span style="font-size:11px; color:#64748b;">${escapeHtml(f.properties.kreis)}</span></td>
       <td>
         <span style="display:inline-flex; align-items:center; gap:4px; font-weight:600;">
           <span style="width:10px; height:10px; border-radius:50%; background:${getMilestoneColor(town.milestone)};"></span>
-          ${getMilestoneLabel(town.milestone)}
+          ${escapeHtml(getMilestoneLabel(town.milestone))}
         </span>
       </td>
-      <td><strong>${town.nuclei || 0}</strong></td>
+      <td><strong>${Number(town.nuclei) || 0}</strong></td>
       <td><strong>${totalActs}</strong></td>
       <td>${town.isCenter ? '<span style="color:var(--system-orange); font-weight:600;">★ Zentrum</span>' : '-'}</td>
       <td>${AppState.deployments.filter(d => d.fromId === id || d.toId === id).length}</td>
       <td>
-        <button class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;" onclick="jumpToTownFromReport('${id}')">Details</button>
+        <button type="button" class="btn btn-secondary btn-jump-town" style="padding: 3px 8px; font-size: 11px;">Details</button>
       </td>
     `;
+    tr.querySelector('.btn-jump-town').addEventListener('click', () => jumpToTownFromReport(id));
+    if (distCount > 0) {
+      tr.querySelector('.town-expand-btn').addEventListener('click', (e) => toggleReportSubpoints(id, e.currentTarget));
+    }
     tbody.appendChild(tr);
 
     if (distCount > 0) {
@@ -3848,17 +4099,18 @@ function openClusterReportModal() {
           <td>
             <span style="display:inline-flex; align-items:center; gap:4px; font-size:11px;">
               <span style="width:8px; height:8px; border-radius:50%; background:${getMilestoneColor(dist.milestone)};"></span>
-              ${getMilestoneLabel(dist.milestone)}
+              ${escapeHtml(getMilestoneLabel(dist.milestone))}
             </span>
           </td>
-          <td>${dist.nuclei || 0}</td>
+          <td>${Number(dist.nuclei) || 0}</td>
           <td>${dActs}</td>
           <td style="color:var(--text-tertiary);">-</td>
           <td>${AppState.deployments.filter(d => d.fromId === dId || d.toId === dId).length}</td>
           <td>
-            <button class="btn btn-secondary" style="padding: 2px 7px; font-size: 10px;" onclick="jumpToDistrictFromReport('${id}', '${dId}')">Fokus</button>
+            <button type="button" class="btn btn-secondary btn-jump-dist" style="padding: 2px 7px; font-size: 10px;">Fokus</button>
           </td>
         `;
+        subTr.querySelector('.btn-jump-dist').addEventListener('click', () => jumpToDistrictFromReport(id, dId));
         tbody.appendChild(subTr);
       });
     }
@@ -3999,7 +4251,7 @@ function checkMigrationOnStartup() {
 
       // Clean hash
       history.replaceState(null, '', window.location.pathname);
-      alert("✅ Deine Daten und Sicherungen von der vorherigen Plattform wurden erfolgreich übertragen!");
+      showInAppAlert('Deine Daten und Sicherungen von der vorherigen Plattform wurden erfolgreich übertragen!', 'success');
     }
   } catch (err) {
     console.error("Migration handover parse error:", err);
@@ -4145,7 +4397,7 @@ function executeImportMerge() {
 
   pendingImportData = null;
   pendingSharedPayload = null;
-  alert("Daten wurden erfolgreich zusammengeführt! ✓");
+  showInAppAlert('Daten wurden erfolgreich zusammengeführt! ✓', 'success');
 }
 
 function executeImportReplace() {
@@ -4170,7 +4422,7 @@ function executeImportReplace() {
 
   pendingImportData = null;
   pendingSharedPayload = null;
-  alert("Projektstand wurde erfolgreich übernommen! ✓");
+  showInAppAlert('Projektstand wurde erfolgreich übernommen! ✓', 'success');
 }
 
 function parseSharedPayloadToEntities(payload) {
@@ -4223,6 +4475,7 @@ function parseSharedPayloadToEntities(payload) {
 
 function exportDataJson() {
   const exportObject = {
+    schemaVersion: CURRENT_SCHEMA_VERSION,
     clusterName: "Rhein-Neckar",
     exportedAt: new Date().toISOString(),
     towns: AppState.towns,
@@ -4250,18 +4503,22 @@ function handleImportJson(e) {
   reader.onload = (event) => {
     try {
       const data = JSON.parse(event.target.result);
-      if (data.towns && Array.isArray(data.deployments)) {
-        showImportDiffModal(file.name, data.towns, data.districts || {}, data.deployments);
-      } else {
-        alert("Ungültiges Dateiformat. Die JSON muss 'towns' und 'deployments' enthalten.");
+      const validation = validateClusterDataset(data);
+      if (!validation.valid) {
+        showInAppAlert(`Importfehler: ${validation.error}`, 'error');
+        e.target.value = '';
+        return;
       }
+      const sanitized = validation.sanitizedData;
+      showImportDiffModal(file.name, sanitized.towns, sanitized.districts || {}, sanitized.deployments);
     } catch (err) {
-      alert("Fehler beim Lesen der JSON: " + err.message);
+      showInAppAlert(`Die JSON-Datei konnte nicht gelesen werden: ${err.message}`, 'error');
     }
   };
   reader.readAsText(file);
   e.target.value = '';
 }
+
 
 // ==========================================================================
 // Sharable Links & Cloud Share Engine
@@ -4560,8 +4817,13 @@ async function checkShareUrlOnStartup() {
 
     if (!rawParam) return;
 
-    const payload = await decodeShareData(rawParam);
-    if (!payload || !payload.t) return;
+    const rawPayload = await decodeShareData(rawParam);
+    const validation = validateSharedPayload(rawPayload);
+    if (!validation.valid) {
+      console.warn('Ungültige Share-Nutzlast:', validation.error);
+      return;
+    }
+    const payload = validation.sanitizedPayload;
 
     pendingSharedPayload = payload;
 
@@ -4574,7 +4836,17 @@ async function checkShareUrlOnStartup() {
     const dateStr = payload.ts ? new Date(payload.ts).toLocaleDateString('de-DE') : 'kürzlich';
 
     const townText = activeTownCount > 0 ? `${activeTownCount} aktive Orte` : `${Object.keys(payload.t).length} Orte`;
-    details.innerHTML = `Geteilter Stand (${dateStr}): <strong>${townText}</strong> · <strong>${arrowCount} Pfeile</strong>`;
+    // Build safely with DOM methods to avoid XSS
+    details.textContent = '';
+    const textNode = document.createTextNode(`Geteilter Stand (${dateStr}): `);
+    details.appendChild(textNode);
+    const b1 = document.createElement('strong');
+    b1.textContent = townText;
+    details.appendChild(b1);
+    details.appendChild(document.createTextNode(' · '));
+    const b2 = document.createElement('strong');
+    b2.textContent = `${arrowCount} Pfeile`;
+    details.appendChild(b2);
     banner.classList.add('visible');
 
     // Automatically preview on the map
@@ -4583,6 +4855,7 @@ async function checkShareUrlOnStartup() {
     console.warn("Konnte geteilten Link nicht laden:", err);
   }
 }
+
 
 function applySharedDataFromBanner() {
   if (!pendingSharedPayload) return;
@@ -4614,7 +4887,7 @@ function dismissSharedDataBanner() {
 
 async function exportMapAsPng() {
   if (typeof html2canvas === 'undefined') {
-    alert("Export-Bibliothek nicht geladen.");
+    showInAppAlert('Export-Bibliothek nicht geladen – bitte Seite neu laden.', 'error');
     return;
   }
 
@@ -4776,7 +5049,7 @@ async function exportMapAsPng() {
     link.click();
   } catch (err) {
     console.error("Export-Fehler:", err);
-    alert("Fehler beim Erstellen des Bildes: " + (err.message || err));
+    showInAppAlert(`Fehler beim Erstellen des Bildes: ${err.message || err}`, 'error');
   } finally {
     // Restore UI elements and drawer
     uiElementsToHide.forEach((el, i) => {
@@ -4793,24 +5066,33 @@ async function exportMapAsPng() {
 }
 
 function resetToCleanData() {
-  if (confirm("Möchtest du alle Daten auf den sauberen Anfangszustand (0 / keine Aktivitäten) zurücksetzen?")) {
-    saveAutoBackup("Vor Zurücksetzen gesichert", true);
-    pushHistory("Vor Zurücksetzen gesichert");
-    localStorage.removeItem(STORAGE_KEY);
-    AppState.towns = {};
-    AppState.districts = {};
-    AppState.deployments = [];
-    AppState.selectedTownId = null;
-    AppState.selectedDistrictId = null;
-    AppState.focusedTownId = null;
-    loadStoredData();
-    refreshAllStyles();
-    refreshMarkers();
-    renderArrows();
-    updateClusterStats();
-    document.getElementById('details-drawer').classList.add('collapsed');
-  }
+  showConfirmModal({
+    title: 'Karte zurücksetzen',
+    message: 'Möchtest du ALLE Daten (Meilensteine, Nuklei, Aktivitäten, Entsendungen, Notizen) auf den Anfangszustand zurücksetzen? Ein Sicherungsstand wird automatisch angelegt und kann über „Sicherungen" wiederhergestellt werden.',
+    confirmText: 'Zurücksetzen',
+    cancelText: 'Abbrechen',
+    isDestructive: true,
+    onConfirm: () => {
+      saveAutoBackup("Vor Zurücksetzen gesichert", true);
+      pushHistory("Vor Zurücksetzen gesichert");
+      localStorage.removeItem(STORAGE_KEY);
+      AppState.towns = {};
+      AppState.districts = {};
+      AppState.deployments = [];
+      AppState.selectedTownId = null;
+      AppState.selectedDistrictId = null;
+      AppState.focusedTownId = null;
+      loadStoredData();
+      refreshAllStyles();
+      refreshMarkers();
+      renderArrows();
+      updateClusterStats();
+      document.getElementById('details-drawer').classList.add('collapsed');
+      showInAppAlert('Karte wurde auf den Anfangszustand zurückgesetzt.', 'info');
+    }
+  });
 }
+
 
 function calculateTotalActivities(acts) {
   if (!acts) return 0;
@@ -4840,6 +5122,129 @@ function darkenColor(hex, percent) {
 }
 
 function escapeHtml(str) {
-  if (!str) return '';
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// ==========================================================================
+// In-App Toast & Confirm Modal (replaces native alert() / confirm())
+// ==========================================================================
+let _toastTimer = null;
+
+function showInAppAlert(message, type = 'info') {
+  let container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    document.body.appendChild(container);
+  }
+
+  const toast = document.createElement('div');
+  toast.className = `app-toast app-toast-${type}`;
+  const iconMap = { success: '✓', error: '✕', info: 'ℹ', warning: '⚠' };
+  const icon = document.createElement('span');
+  icon.className = 'toast-icon';
+  icon.textContent = iconMap[type] || 'ℹ';
+  const msg = document.createElement('span');
+  msg.className = 'toast-message';
+  msg.textContent = message;
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'toast-close';
+  closeBtn.textContent = '×';
+  closeBtn.setAttribute('aria-label', 'Meldung schließen');
+  toast.appendChild(icon);
+  toast.appendChild(msg);
+  toast.appendChild(closeBtn);
+  container.appendChild(toast);
+
+  const dismiss = () => {
+    toast.classList.add('toast-exit');
+    toast.addEventListener('animationend', () => toast.remove(), { once: true });
+  };
+  closeBtn.addEventListener('click', dismiss);
+
+  // Auto-dismiss: 5s for errors, 3s for others
+  const delay = (type === 'error') ? 5000 : 3000;
+  setTimeout(dismiss, delay);
+
+  // Animate in
+  requestAnimationFrame(() => toast.classList.add('toast-enter'));
+}
+
+function showConfirmModal({ title, message, confirmText = 'Bestätigen', cancelText = 'Abbrechen', isDestructive = false, onConfirm, onCancel } = {}) {
+  // Remove any existing confirm modal
+  const existing = document.getElementById('app-confirm-modal');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'app-confirm-modal';
+  overlay.className = 'app-modal-overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-labelledby', 'confirm-modal-title');
+
+  const sheet = document.createElement('div');
+  sheet.className = 'app-confirm-sheet';
+
+  const titleEl = document.createElement('h3');
+  titleEl.id = 'confirm-modal-title';
+  titleEl.className = 'confirm-sheet-title';
+  titleEl.textContent = title || 'Bestätigung';
+
+  const msgEl = document.createElement('p');
+  msgEl.className = 'confirm-sheet-message';
+  msgEl.textContent = message || '';
+
+  const actions = document.createElement('div');
+  actions.className = 'confirm-sheet-actions';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn btn-secondary confirm-btn-cancel';
+  cancelBtn.textContent = cancelText;
+  cancelBtn.addEventListener('click', () => {
+    overlay.remove();
+    if (onCancel) onCancel();
+  });
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.className = `btn ${isDestructive ? 'btn-destructive' : 'btn-primary'} confirm-btn-confirm`;
+  confirmBtn.textContent = confirmText;
+  confirmBtn.addEventListener('click', () => {
+    overlay.remove();
+    if (onConfirm) onConfirm();
+  });
+
+  actions.appendChild(cancelBtn);
+  actions.appendChild(confirmBtn);
+  sheet.appendChild(titleEl);
+  sheet.appendChild(msgEl);
+  sheet.appendChild(actions);
+  overlay.appendChild(sheet);
+  document.body.appendChild(overlay);
+
+  // Close on backdrop click
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      overlay.remove();
+      if (onCancel) onCancel();
+    }
+  });
+
+  // Close on Esc
+  const escHandler = (e) => {
+    if (e.key === 'Escape') {
+      overlay.remove();
+      document.removeEventListener('keydown', escHandler);
+      if (onCancel) onCancel();
+    }
+  };
+  document.addEventListener('keydown', escHandler);
+
+  // Focus the cancel button by default (safe for destructive actions)
+  requestAnimationFrame(() => cancelBtn.focus());
 }

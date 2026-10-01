@@ -1,5 +1,5 @@
-// Rhein-Neckar Cluster Offline Service Worker
-const CACHE_NAME = 'rhein-neckar-cache-v3';
+// Rhein-Neckar Cluster Offline Service Worker (v4)
+const CACHE_NAME = 'rhein-neckar-cache-v4';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -36,36 +36,49 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    }).then(() => self.clients.claim())
+    }).then(() => {
+      // Notify all open pages that a new app version is installed
+      return self.clients.matchAll({ type: 'window' }).then((clients) => {
+        clients.forEach((client) => {
+          client.postMessage({ type: 'SW_UPDATED', version: CACHE_NAME });
+        });
+        return self.clients.claim();
+      });
+    })
   );
 });
 
 self.addEventListener('fetch', (event) => {
-  // Network-First with Cache-Fallback:
-  // Always fetch latest updates from network when online.
-  // Fall back to offline cache instantly when offline.
+  // Cache-First with Network Background Refresh:
+  // Responds from cache immediately (true offline-first), and
+  // updates the cache in the background when online.
   if (event.request.method !== 'GET') return;
 
+  // Only intercept same-origin requests
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
+
   event.respondWith(
-    fetch(event.request)
-      .then((networkResponse) => {
+    caches.match(event.request).then((cachedResponse) => {
+      // Background network refresh
+      const networkFetch = fetch(event.request).then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
+          const clone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
         return networkResponse;
-      })
-      .catch(() => {
-        return caches.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          if (event.request.mode === 'navigate') {
-            return caches.match('./index.html');
-          }
-        });
-      })
+      }).catch(() => null);
+
+      // Return cached version immediately if available
+      if (cachedResponse) return cachedResponse;
+
+      // Otherwise wait for network
+      return networkFetch.then((resp) => {
+        if (resp) return resp;
+        if (event.request.mode === 'navigate') {
+          return caches.match('./index.html');
+        }
+      });
+    })
   );
 });

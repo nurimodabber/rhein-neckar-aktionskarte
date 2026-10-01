@@ -16,25 +16,10 @@
   <meta name="apple-mobile-web-app-title" content="Rhein-Neckar" />
   <link rel="icon" type="image/svg+xml" href="icon.svg" />
   <link rel="apple-touch-icon" href="icon.svg" />
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="0" />
   <script>
-    if ('caches' in window) {
-      caches.keys().then(function(keys) {
-        keys.forEach(function(key) {
-          if (key === 'rhein-neckar-cache-v1') {
-            caches.delete(key);
-          }
-        });
-      });
-    }
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('controllerchange', function() {
-        if (!window.__swReloaded) {
-          window.__swReloaded = true;
-          window.location.reload();
-        }
+        /* SW updated — the service worker will show a toast via app.js; no hard reload needed here */
       });
     }
   </script>

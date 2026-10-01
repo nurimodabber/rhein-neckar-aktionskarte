@@ -1,10 +1,10 @@
-// Rhein-Neckar Cluster Offline Service Worker (v4)
-const CACHE_NAME = 'rhein-neckar-cache-v4';
+// Rhein-Neckar Cluster Offline Service Worker (v5)
+const CACHE_NAME = 'rhein-neckar-cache-v5';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
-  './style.css',
-  './app.js',
+  './style.css?v=5',
+  './app.js?v=5',
   './icon.svg',
   './manifest.json',
   './lib/leaflet.css',
@@ -37,7 +37,7 @@ self.addEventListener('activate', (event) => {
         })
       );
     }).then(() => {
-      // Notify all open pages that a new app version is installed
+      // Notify all open pages and take control immediately
       return self.clients.matchAll({ type: 'window' }).then((clients) => {
         clients.forEach((client) => {
           client.postMessage({ type: 'SW_UPDATED', version: CACHE_NAME });
@@ -49,18 +49,41 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Cache-First with Network Background Refresh:
-  // Responds from cache immediately (true offline-first), and
-  // updates the cache in the background when online.
   if (event.request.method !== 'GET') return;
 
-  // Only intercept same-origin requests
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
+  const isHtml = event.request.mode === 'navigate' ||
+                 (event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html')) ||
+                 url.pathname.endsWith('.html') ||
+                 url.pathname === '/' ||
+                 url.pathname.endsWith('/rhein-neckar-aktionskarte/');
+
+  // 1. Navigation / HTML requests: NETWORK-FIRST (guarantees latest app version when online)
+  if (isHtml) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          // Offline fallback
+          return caches.match(event.request).then((cached) => {
+            return cached || caches.match('./index.html') || caches.match('./');
+          });
+        })
+    );
+    return;
+  }
+
+  // 2. Static Assets (JS, CSS, images, data): Cache-first with background network refresh
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      // Background network refresh
       const networkFetch = fetch(event.request).then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
           const clone = networkResponse.clone();
@@ -69,15 +92,11 @@ self.addEventListener('fetch', (event) => {
         return networkResponse;
       }).catch(() => null);
 
-      // Return cached version immediately if available
       if (cachedResponse) return cachedResponse;
 
-      // Otherwise wait for network
       return networkFetch.then((resp) => {
         if (resp) return resp;
-        if (event.request.mode === 'navigate') {
-          return caches.match('./index.html');
-        }
+        return caches.match(event.request);
       });
     })
   );

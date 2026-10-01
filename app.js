@@ -558,7 +558,7 @@ function loadStoredData() {
 
 function registerServiceWorker() {
   if ('serviceWorker' in navigator && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
-    navigator.serviceWorker.register('./sw.js?v=4').then((reg) => {
+    navigator.serviceWorker.register('./sw.js?v=5').then((reg) => {
       reg.update().catch(() => {});
     }).catch(err => {
       console.log('Service worker note (offline fallback):', err);

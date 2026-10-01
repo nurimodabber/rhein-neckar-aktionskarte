@@ -898,7 +898,7 @@ function initMap() {
     wheelPxPerZoomLevel: 90,
     wheelDebounceTime: 30,
     minZoom: 8,
-    maxZoom: 16,
+    maxZoom: 14,
     zoomSnap: 0.25,
     zoomDelta: 0.5
   }).setView([49.405, 8.465], 10.4);
@@ -919,6 +919,9 @@ function initMap() {
       }
     }
     closeArrowQuickHUD();
+    if (AppState.focusedTownId || AppState.selectedTownId || AppState.selectedDistrictId) {
+      zoomToClusterOverview(true);
+    }
   });
 
   AppState.map.on('zoomend', () => {
@@ -1007,7 +1010,7 @@ function focusTownDistricts(townId) {
 
   const focusPadding = getFocusPadding();
   AppState.map.fitBounds(layer.getBounds(), {
-    maxZoom: 14,
+    maxZoom: 13,
     paddingTopLeft: focusPadding.paddingTopLeft,
     paddingBottomRight: focusPadding.paddingBottomRight,
     animate: true
@@ -1041,7 +1044,7 @@ function focusDistrictOnMap(districtId) {
 
   const focusPadding = getFocusPadding();
   AppState.map.fitBounds(layer.getBounds(), {
-    maxZoom: 15,
+    maxZoom: 13.5,
     paddingTopLeft: focusPadding.paddingTopLeft,
     paddingBottomRight: focusPadding.paddingBottomRight,
     animate: true
@@ -2360,31 +2363,7 @@ function closeQuickPopover() {
   }
 }
 
-function ensureFeatureVisibleWithDrawer(targetCoords) {
-  if (!AppState.map || !targetCoords) return;
-  const isMobile = window.innerWidth <= 768;
-  const pt = AppState.map.latLngToContainerPoint(targetCoords);
-  const mapSize = AppState.map.getSize();
 
-  if (isMobile) {
-    // On mobile, the details drawer bottom-sheet covers the lower 52% of the screen
-    const visibleHeight = mapSize.y * 0.46;
-    if (pt.y > visibleHeight - 30 || pt.y < 30) {
-      const targetY = visibleHeight * 0.52;
-      const dy = pt.y - targetY;
-      AppState.map.panBy([0, dy], { animate: true, duration: 0.35 });
-    }
-  } else {
-    // On desktop, the drawer slides over from the right side (width: 380px)
-    const drawerWidth = 380;
-    const visibleWidth = mapSize.x - drawerWidth;
-    if (pt.x > visibleWidth - 40 || pt.x < 40) {
-      const targetX = visibleWidth / 2;
-      const dx = pt.x - targetX;
-      AppState.map.panBy([dx, 0], { animate: true, duration: 0.35 });
-    }
-  }
-}
 
 function handleTownClick(townId, latlng) {
   closeQuickPopover();
@@ -3358,7 +3337,7 @@ function initUIEventListeners() {
   if (btnBack) {
     btnBack.addEventListener('click', () => {
       if (AppState.selectedTownId) {
-        selectTown(AppState.selectedTownId);
+        selectTown(AppState.selectedTownId, true);
       }
     });
   }
@@ -3598,7 +3577,8 @@ function initUIEventListeners() {
         }
       }
       const drawer = document.getElementById('details-drawer');
-      if (drawer && !drawer.classList.contains('collapsed')) {
+      const isDrawerOpen = drawer && !drawer.classList.contains('collapsed');
+      if (isDrawerOpen || AppState.focusedTownId || AppState.selectedTownId || AppState.selectedDistrictId) {
         zoomToClusterOverview(true);
       }
       closeArrowQuickHUD();

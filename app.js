@@ -1621,19 +1621,24 @@ function refreshMarkers() {
       const isCenter = town.isCenter;
       const isActive = (town.milestone && town.milestone !== 'none') || isCenter || totalActs > 0 || (town.nuclei > 0);
       const name = f.properties.name;
+      const ms = town.milestone;
+      const msBadgeHtml = (ms && ms !== 'none' && ms !== 'custom') 
+        ? `<span class="subtle-badge milestone-badge ms-${escapeHtml(ms)}">${escapeHtml(APP_TERMS.milestones[ms]?.short || ms.toUpperCase())}</span>`
+        : '';
 
       const markerHtml = `
         <div class="subtle-map-label ${isCenter ? 'center' : ''} ${isActive ? 'active-cluster' : 'inactive-town'}">
           ${isCenter ? '<span class="center-star">★</span>' : ''}
           <span>${escapeHtml(name)}</span>
+          ${msBadgeHtml}
           ${town.nuclei > 0 ? `<span class="subtle-badge nuclei">${town.nuclei}</span>` : ''}
           ${totalActs > 0 ? `<span class="subtle-badge acts">${totalActs}</span>` : ''}
         </div>
       `;
 
       // Estimated label dimensions in screen pixels
-      const hasBadges = town.nuclei > 0 || totalActs > 0;
-      const boxWidth = Math.max(54, name.length * 7.5 + (hasBadges ? 44 : 14) + (isCenter ? 18 : 0));
+      const hasBadges = town.nuclei > 0 || totalActs > 0 || (ms && ms !== 'none');
+      const boxWidth = Math.max(54, name.length * 7.5 + (hasBadges ? 48 : 14) + (isCenter ? 18 : 0));
       const boxHeight = 22;
 
       const customIcon = L.divIcon({
@@ -1642,6 +1647,7 @@ function refreshMarkers() {
         iconSize: [boxWidth, boxHeight],
         iconAnchor: [boxWidth / 2, boxHeight / 2]
       });
+
 
       const marker = L.marker(center, { icon: customIcon, interactive: false });
       const rank = calculateTownLabelRank(f, town);
@@ -3239,10 +3245,91 @@ function initUIEventListeners() {
     });
   });
 
+  function updateLegendForView(viewMode) {
+    const container = document.getElementById('legend-items-container');
+    if (!container) return;
+    if (viewMode === 'activities') {
+      container.innerHTML = `
+        <div class="legend-row">
+          <div class="legend-dot" style="background:#15803d; border-color:#052e16;"></div>
+          <span><strong>11+</strong> Kernaktivitäten</span>
+        </div>
+        <div class="legend-row">
+          <div class="legend-dot" style="background:#22c55e; border-color:#15803d;"></div>
+          <span><strong>6 – 10</strong> Kernaktivitäten</span>
+        </div>
+        <div class="legend-row">
+          <div class="legend-dot" style="background:#4ade80; border-color:#16a34a;"></div>
+          <span><strong>3 – 5</strong> Kernaktivitäten</span>
+        </div>
+        <div class="legend-row">
+          <div class="legend-dot" style="background:#bbf7d0; border-color:#4ade80;"></div>
+          <span><strong>1 – 2</strong> Kernaktivitäten</span>
+        </div>
+        <div class="legend-row">
+          <div class="legend-dot none"></div>
+          <span style="color: var(--text-tertiary);">0 Aktivitäten</span>
+        </div>
+        <div class="legend-row">
+          <span style="color: var(--system-orange); font-size: 13px; line-height: 1; width: 12px; text-align: center;">★</span>
+          <span>Entsende-Zentrum</span>
+        </div>
+      `;
+    } else if (viewMode === 'nuclei') {
+      container.innerHTML = `
+        <div class="legend-row">
+          <div class="legend-dot" style="background:#047857; border-color:#064e3b;"></div>
+          <span><strong>4+</strong> Nuklei</span>
+        </div>
+        <div class="legend-row">
+          <div class="legend-dot" style="background:#10b981; border-color:#047857;"></div>
+          <span><strong>2 – 3</strong> Nuklei</span>
+        </div>
+        <div class="legend-row">
+          <div class="legend-dot" style="background:#a7f3d0; border-color:#10b981;"></div>
+          <span><strong>1</strong> Nukleus</span>
+        </div>
+        <div class="legend-row">
+          <div class="legend-dot none"></div>
+          <span style="color: var(--text-tertiary);">0 Nuklei</span>
+        </div>
+        <div class="legend-row">
+          <span style="color: var(--system-orange); font-size: 13px; line-height: 1; width: 12px; text-align: center;">★</span>
+          <span>Entsende-Zentrum</span>
+        </div>
+      `;
+    } else {
+      container.innerHTML = `
+        <div class="legend-row">
+          <div class="legend-dot ipg-plus"></div>
+          <span><strong>IPG+</strong> (Fortgeschrittenes Programm)</span>
+        </div>
+        <div class="legend-row">
+          <div class="legend-dot ipg"></div>
+          <span><strong>IPG</strong> (Intensives Programm)</span>
+        </div>
+        <div class="legend-row">
+          <div class="legend-dot pg"></div>
+          <span><strong>PG</strong> (Programm des Wachstums)</span>
+        </div>
+        <div class="legend-row">
+          <div class="legend-dot none"></div>
+          <span style="color: var(--text-tertiary);">Noch nicht begonnen</span>
+        </div>
+        <div class="legend-row">
+          <span style="color: var(--system-orange); font-size: 13px; line-height: 1; width: 12px; text-align: center;">★</span>
+          <span>Entsende-Zentrum</span>
+        </div>
+      `;
+    }
+  }
+
   document.getElementById('select-visual-view').addEventListener('change', (e) => {
     AppState.visualViewMode = e.target.value;
+    updateLegendForView(e.target.value);
     refreshAllStyles();
   });
+
 
   const toggleLabelsInput = document.getElementById('toggle-labels');
   toggleLabelsInput.checked = true;
@@ -3645,19 +3732,41 @@ function initUIEventListeners() {
       }
     });
 
-    // Spotlight search keyboard accessibility
+    // Spotlight search keyboard accessibility (↑ / ↓ / Enter / Escape)
+    let activeResultIdx = -1;
+
     searchInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        const firstItem = searchResults.querySelector('.search-item');
-        if (firstItem) {
-          e.preventDefault();
-          firstItem.click();
+      const items = searchResults.querySelectorAll('.search-item');
+      if (items.length === 0) return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        activeResultIdx = (activeResultIdx + 1) % items.length;
+        items.forEach((it, idx) => it.classList.toggle('keyboard-selected', idx === activeResultIdx));
+        items[activeResultIdx]?.scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        activeResultIdx = (activeResultIdx - 1 + items.length) % items.length;
+        items.forEach((it, idx) => it.classList.toggle('keyboard-selected', idx === activeResultIdx));
+        items[activeResultIdx]?.scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (activeResultIdx >= 0 && items[activeResultIdx]) {
+          items[activeResultIdx].click();
+        } else if (items[0]) {
+          items[0].click();
         }
       } else if (e.key === 'Escape') {
         searchResults.classList.remove('visible');
+        activeResultIdx = -1;
         searchInput.blur();
       }
     });
+
+    searchInput.addEventListener('input', () => {
+      activeResultIdx = -1;
+    });
+
   }
 
   // Close search when clicking outside
@@ -3852,6 +3961,12 @@ function initUIEventListeners() {
       document.getElementById('backups-modal').classList.add('visible');
     });
 
+    document.getElementById('menu-item-onboarding')?.addEventListener('click', () => {
+      projectDropdownMenu.classList.remove('visible');
+      btnProjectMenu.setAttribute('aria-expanded', 'false');
+      openOnboardingModal();
+    });
+
     document.getElementById('menu-item-legal')?.addEventListener('click', () => {
       projectDropdownMenu.classList.remove('visible');
       btnProjectMenu.setAttribute('aria-expanded', 'false');
@@ -3865,12 +3980,35 @@ function initUIEventListeners() {
     });
   }
 
+  // Onboarding Guide Modal
+  const openOnboardingModal = () => document.getElementById('onboarding-modal')?.classList.add('visible');
+  const closeOnboardingModal = () => {
+    document.getElementById('onboarding-modal')?.classList.remove('visible');
+    try { localStorage.setItem('rn_onboarding_seen_v1', 'true'); } catch (e) {}
+  };
+  document.getElementById('btn-close-onboarding')?.addEventListener('click', closeOnboardingModal);
+  document.getElementById('btn-dismiss-onboarding')?.addEventListener('click', closeOnboardingModal);
+  document.getElementById('mobile-act-onboarding')?.addEventListener('click', () => {
+    closeMobileActions();
+    openOnboardingModal();
+  });
+
+  // Check first-time visit (auto-open if user hasn't seen it and no share payload loaded)
+  try {
+    const hasSeen = localStorage.getItem('rn_onboarding_seen_v1');
+    const hasShareHash = window.location.hash && window.location.hash.includes('share=');
+    if (!hasSeen && !hasShareHash) {
+      setTimeout(openOnboardingModal, 800);
+    }
+  } catch (e) {}
+
   // Legal & Privacy modal
   const openLegalModal = () => document.getElementById('legal-modal')?.classList.add('visible');
   const closeLegalModal = () => document.getElementById('legal-modal')?.classList.remove('visible');
   document.getElementById('btn-open-legal-legend')?.addEventListener('click', openLegalModal);
   document.getElementById('btn-close-legal-modal')?.addEventListener('click', closeLegalModal);
   document.getElementById('btn-close-legal-sheet')?.addEventListener('click', closeLegalModal);
+
   document.getElementById('legal-modal')?.addEventListener('click', (e) => {
     if (e.target.id === 'legal-modal') closeLegalModal();
   });
@@ -4037,13 +4175,87 @@ function updateClusterStats() {
   if (elCenters) elCenters.textContent = totalCenters;
 }
 
-function openClusterReportModal() {
+let reportSortState = { column: 'name', asc: true };
+let reportSubpointsExpanded = true;
+
+function renderReportTableRows() {
   const tbody = document.getElementById('report-table-body');
+  if (!tbody) return;
   tbody.innerHTML = '';
 
-  const features = Object.values(AppState.townFeaturesById).sort((a, b) =>
-    a.properties.name.localeCompare(b.properties.name)
-  );
+  const q = (document.getElementById('report-search-input')?.value || '').trim().toLowerCase();
+  const filterKreis = document.getElementById('report-filter-kreis')?.value || 'all';
+  const filterMs = document.getElementById('report-filter-ms')?.value || 'all';
+
+  let features = Object.values(AppState.townFeaturesById);
+
+  // Filter Kreis
+  if (filterKreis !== 'all') {
+    if (filterKreis === 'Kreisfreie Städte') {
+      const kreisfrei = ['Mannheim', 'Heidelberg', 'Ludwigshafen am Rhein', 'Frankenthal (Pfalz)', 'Speyer', 'Neustadt an der Weinstraße'];
+      features = features.filter(f => kreisfrei.includes(f.properties.name));
+    } else {
+      features = features.filter(f => (f.properties.kreis || '').includes(filterKreis));
+    }
+  }
+
+  // Filter Search
+  if (q) {
+    features = features.filter(f => {
+      const nameMatch = f.properties.name.toLowerCase().includes(q);
+      const kreisMatch = (f.properties.kreis || '').toLowerCase().includes(q);
+      const districtMatch = Object.values(AppState.districtFeaturesById).some(
+        df => df.properties.townId === f.properties.id && df.properties.name.toLowerCase().includes(q)
+      );
+      return nameMatch || kreisMatch || districtMatch;
+    });
+  }
+
+  // Filter Milestone
+  if (filterMs !== 'all') {
+    if (filterMs === 'active') {
+      features = features.filter(f => {
+        const t = AppState.towns[f.properties.id];
+        return t && t.milestone && t.milestone !== 'none';
+      });
+    } else {
+      features = features.filter(f => {
+        const t = AppState.towns[f.properties.id];
+        return (t?.milestone || 'none') === filterMs;
+      });
+    }
+  }
+
+  // Sort
+  features.sort((a, b) => {
+    const tA = AppState.towns[a.properties.id] || {};
+    const tB = AppState.towns[b.properties.id] || {};
+    let valA, valB;
+    if (reportSortState.column === 'name') {
+      valA = a.properties.name;
+      valB = b.properties.name;
+      return reportSortState.asc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    } else if (reportSortState.column === 'kreis') {
+      valA = a.properties.kreis || '';
+      valB = b.properties.kreis || '';
+      return reportSortState.asc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    } else if (reportSortState.column === 'milestone') {
+      const rank = { ipg_plus: 4, ipg: 3, pg: 2, custom: 1, none: 0 };
+      valA = rank[tA.milestone || 'none'] || 0;
+      valB = rank[tB.milestone || 'none'] || 0;
+    } else if (reportSortState.column === 'nuclei') {
+      valA = Number(tA.nuclei) || 0;
+      valB = Number(tB.nuclei) || 0;
+    } else if (reportSortState.column === 'acts') {
+      valA = calculateTotalActivities(tA.activities);
+      valB = calculateTotalActivities(tB.activities);
+    } else {
+      valA = a.properties.name;
+      valB = b.properties.name;
+      return valA.localeCompare(valB);
+    }
+    return reportSortState.asc ? (valA > valB ? 1 : -1) : (valA < valB ? 1 : -1);
+  });
 
   features.forEach(f => {
     const id = f.properties.id;
@@ -4053,14 +4265,17 @@ function openClusterReportModal() {
     const districts = Object.values(AppState.districtFeaturesById).filter(df => df.properties.townId === id);
     const distCount = districts.length;
 
+    // Shorten Landkreis Rhein-Neckar-Kreis -> Rhein-Neckar-Kreis
+    const cleanKreis = (f.properties.kreis || '').replace(/^Landkreis\s+/, '');
+
     const tr = document.createElement('tr');
     tr.className = `report-town-row ${distCount > 0 ? 'has-subpoints' : ''}`;
     tr.innerHTML = `
       <td>
         <strong>${escapeHtml(f.properties.name)}</strong>
-        ${distCount > 0 ? `<button type="button" class="town-expand-btn">▼ ${distCount} Unterpunkte</button>` : ''}
+        ${distCount > 0 ? `<button type="button" class="town-expand-btn">${reportSubpointsExpanded ? '▼' : '▶'} ${distCount} Stadtteile</button>` : ''}
       </td>
-      <td><span style="font-size:11px; color:#64748b;">${escapeHtml(f.properties.kreis)}</span></td>
+      <td><span style="font-size:11px; color:#64748b; white-space:nowrap;">${escapeHtml(cleanKreis)}</span></td>
       <td>
         <span style="display:inline-flex; align-items:center; gap:4px; font-weight:600;">
           <span style="width:10px; height:10px; border-radius:50%; background:${getMilestoneColor(town.milestone)};"></span>
@@ -4089,13 +4304,14 @@ function openClusterReportModal() {
 
         const subTr = document.createElement('tr');
         subTr.className = `report-subpoint-row report-sub-${id}`;
+        subTr.style.display = reportSubpointsExpanded ? 'table-row' : 'none';
         subTr.innerHTML = `
           <td style="padding-left: 28px;">
             <span class="subpoint-branch-icon">↳</span>
             <span style="font-weight: 500;">${escapeHtml(df.properties.name)}</span>
-            <span class="subpoint-label-badge">Nachbarschaft</span>
+            <span class="subpoint-label-badge">Stadtteil</span>
           </td>
-          <td><span style="font-size:11px; color:var(--text-tertiary);">Unterpunkt von ${escapeHtml(f.properties.name)}</span></td>
+          <td><span style="font-size:11px; color:var(--text-tertiary);">${escapeHtml(f.properties.name)}</span></td>
           <td>
             <span style="display:inline-flex; align-items:center; gap:4px; font-size:11px;">
               <span style="width:8px; height:8px; border-radius:50%; background:${getMilestoneColor(dist.milestone)};"></span>
@@ -4116,7 +4332,137 @@ function openClusterReportModal() {
     }
   });
 
+  if (features.length === 0) {
+    const emptyTr = document.createElement('tr');
+    emptyTr.innerHTML = `<td colspan="8" style="text-align:center; padding: 24px; color: var(--text-tertiary); font-style:italic;">Keine Ortschaften gefunden, die den Filterkriterien entsprechen.</td>`;
+    tbody.appendChild(emptyTr);
+  }
+}
+
+function openClusterReportModal() {
+  // Update Overview Metric Cards
+  const towns = Object.values(AppState.towns);
+  const activeCount = towns.filter(t => t.milestone && t.milestone !== 'none').length;
+  const pgCount = towns.filter(t => t.milestone === 'pg').length;
+  const ipgCount = towns.filter(t => t.milestone === 'ipg').length;
+  const ipgPlusCount = towns.filter(t => t.milestone === 'ipg_plus').length;
+  const totalNuclei = towns.reduce((s, t) => s + (Number(t.nuclei) || 0), 0) + Object.values(AppState.districts).reduce((s, d) => s + (Number(d.nuclei) || 0), 0);
+  const totalActs = towns.reduce((s, t) => s + calculateTotalActivities(t.activities), 0) + Object.values(AppState.districts).reduce((s, d) => s + calculateTotalActivities(d.activities), 0);
+  const totalDeps = (AppState.deployments || []).length;
+
+  const elActive = document.getElementById('rep-card-active');
+  if (elActive) elActive.textContent = `${activeCount} / 133`;
+  const elMs = document.getElementById('rep-card-ms');
+  if (elMs) elMs.textContent = `${pgCount} PG · ${ipgCount} IPG · ${ipgPlusCount} IPG+`;
+  const elNuc = document.getElementById('rep-card-nuclei');
+  if (elNuc) elNuc.textContent = totalNuclei;
+  const elActs = document.getElementById('rep-card-acts');
+  if (elActs) elActs.textContent = totalActs;
+  const elDeps = document.getElementById('rep-card-deps');
+  if (elDeps) elDeps.textContent = totalDeps;
+
+  // Setup event listeners for toolbar once
+  if (!window._reportListenersAttached) {
+    window._reportListenersAttached = true;
+    document.getElementById('report-search-input')?.addEventListener('input', renderReportTableRows);
+    document.getElementById('report-filter-kreis')?.addEventListener('change', renderReportTableRows);
+    document.getElementById('report-filter-ms')?.addEventListener('change', renderReportTableRows);
+
+    // Column sorting clicks
+    document.querySelectorAll('#cluster-report-table th[data-sort]').forEach(th => {
+      th.addEventListener('click', () => {
+        const col = th.dataset.sort;
+        if (reportSortState.column === col) {
+          reportSortState.asc = !reportSortState.asc;
+        } else {
+          reportSortState.column = col;
+          reportSortState.asc = true;
+        }
+        renderReportTableRows();
+      });
+    });
+
+    // Toggle expand/collapse all subpoints
+    document.getElementById('btn-report-toggle-all')?.addEventListener('click', () => {
+      reportSubpointsExpanded = !reportSubpointsExpanded;
+      const btn = document.getElementById('btn-report-toggle-all');
+      if (btn) btn.textContent = reportSubpointsExpanded ? 'Stadtteile zuklappen' : 'Stadtteile aufklappen';
+      renderReportTableRows();
+    });
+
+    // CSV Export
+    document.getElementById('btn-export-report-csv')?.addEventListener('click', exportReportToCsv);
+
+    // Print
+    document.getElementById('btn-print-report')?.addEventListener('click', () => window.print());
+  }
+
+  renderReportTableRows();
   document.getElementById('report-modal').classList.add('visible');
+}
+
+function exportReportToCsv() {
+  const rows = [
+    ['Typ', 'Ortschaft / Stadtteil', 'Übergeordneter Ort', 'Kreis', 'Meilenstein', 'Nuklei', 'Andachten', 'Studienkreise', 'Kinderklassen', 'Junioren', 'Aktivitäten Gesamt', 'Entsende-Zentrum', 'Verknüpfte Pfeile']
+  ];
+
+  Object.values(AppState.townFeaturesById).forEach(f => {
+    const id = f.properties.id;
+    const t = AppState.towns[id] || {};
+    const acts = t.activities || {};
+    const cleanKreis = (f.properties.kreis || '').replace(/^Landkreis\s+/, '');
+    const depCount = AppState.deployments.filter(d => d.fromId === id || d.toId === id).length;
+
+    rows.push([
+      'Kommune',
+      f.properties.name,
+      '',
+      cleanKreis,
+      getMilestoneLabel(t.milestone || 'none'),
+      Number(t.nuclei) || 0,
+      Number(acts.devotionals) || 0,
+      Number(acts.studyCircles) || 0,
+      Number(acts.childrenClasses) || 0,
+      Number(acts.juniorYouth) || 0,
+      calculateTotalActivities(acts),
+      t.isCenter ? 'Ja' : 'Nein',
+      depCount
+    ]);
+
+    const districts = Object.values(AppState.districtFeaturesById).filter(df => df.properties.townId === id);
+    districts.forEach(df => {
+      const dId = df.properties.id;
+      const d = AppState.districts[dId] || {};
+      const dActs = d.activities || {};
+      const distDepCount = AppState.deployments.filter(dep => dep.fromId === dId || dep.toId === dId).length;
+
+      rows.push([
+        'Stadtteil',
+        df.properties.name,
+        f.properties.name,
+        cleanKreis,
+        getMilestoneLabel(d.milestone || 'none'),
+        Number(d.nuclei) || 0,
+        Number(dActs.devotionals) || 0,
+        Number(dActs.studyCircles) || 0,
+        Number(dActs.childrenClasses) || 0,
+        Number(dActs.juniorYouth) || 0,
+        calculateTotalActivities(dActs),
+        'Nein',
+        distDepCount
+      ]);
+    });
+  });
+
+  const csvContent = '\uFEFF' + rows.map(e => e.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(';')).join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `rhein_neckar_cluster_bericht_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showInAppAlert('Bericht erfolgreich als CSV exportiert ✓', 'success');
 }
 
 window.toggleReportSubpoints = function(townId, btn) {
@@ -4124,7 +4470,7 @@ window.toggleReportSubpoints = function(townId, btn) {
   const isHidden = rows.length > 0 && rows[0].style.display === 'none';
   rows.forEach(r => r.style.display = isHidden ? 'table-row' : 'none');
   const count = rows.length;
-  btn.textContent = isHidden ? `▼ ${count} Unterpunkte` : `▶ ${count} Unterpunkte`;
+  btn.textContent = isHidden ? `▼ ${count} Stadtteile` : `▶ ${count} Stadtteile`;
 };
 
 window.jumpToTownFromReport = function(townId) {
@@ -4136,6 +4482,7 @@ window.jumpToDistrictFromReport = function(townId, districtId) {
   document.getElementById('report-modal').classList.remove('visible');
   focusDistrictOnMap(districtId);
 };
+
 
 // --- Metadata Tracking & Export Reminders ---
 function recordExportTimestamp() {

@@ -931,6 +931,26 @@ svg:focus-visible,
   color: var(--system-blue);
 }
 
+.search-item {
+  padding: 8px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 0.5px solid var(--separator, rgba(0,0,0,0.06));
+  transition: background 0.12s ease;
+}
+.search-item:last-child {
+  border-bottom: none;
+}
+.search-item:hover,
+.search-item.keyboard-selected {
+  background: rgba(0, 122, 255, 0.10);
+  color: var(--system-blue);
+}
+
+
 /* Bottom Left Floating Dock: Collapsible Layers & Legend */
 .layers-legend-capsule {
   position: absolute;
@@ -2379,6 +2399,25 @@ input:checked + .slider:before {
   box-shadow: 0 0.5px 2px rgba(0, 0, 0, 0.1);
 }
 
+.subtle-badge.milestone-badge {
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  border: 0.5px solid rgba(0,0,0,0.18);
+}
+.subtle-badge.milestone-badge.ms-pg {
+  background: #86efac;
+  color: #14532d;
+}
+.subtle-badge.milestone-badge.ms-ipg {
+  background: #22c55e;
+  color: #052e16;
+}
+.subtle-badge.milestone-badge.ms-ipg_plus {
+  background: #15803d;
+  color: #ffffff;
+}
+
 .subtle-badge.nuclei {
   background: var(--system-green);
   color: #ffffff;
@@ -3250,5 +3289,121 @@ input:checked + .slider:before {
 .btn-destructive:focus-visible {
   outline: 2px solid #dc2626;
   outline-offset: 2px;
+}
+
+/* ============================================================
+   Cluster Report Modal: Overview Cards, Toolbar & Print Styles
+   ============================================================ */
+.report-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.report-card {
+  background: var(--surface-secondary, rgba(118, 118, 128, 0.08));
+  border: 0.5px solid var(--separator, rgba(0, 0, 0, 0.08));
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.report-card-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-tertiary, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.report-card-val {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+}
+
+.report-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: var(--surface-primary, #ffffff);
+  border: 0.5px solid var(--separator, rgba(0, 0, 0, 0.08));
+  border-radius: 10px;
+}
+.report-filter-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Sticky Header on Report Table */
+.report-table-wrapper {
+  max-height: 58vh;
+  overflow-y: auto;
+  border-radius: 8px;
+  border: 0.5px solid var(--separator, rgba(0,0,0,0.08));
+}
+.report-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-primary, #f8fafc);
+  z-index: 2;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+
+/* Print Stylesheet (Clean A4 Document) */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #report-modal,
+  #report-modal * {
+    visibility: visible;
+  }
+  #report-modal {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background: transparent !important;
+  }
+  .modal-backdrop {
+    background: none !important;
+    position: static !important;
+  }
+  .apple-sheet.lg {
+    box-shadow: none !important;
+    border: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 0 !important;
+  }
+  .inspector-close-btn,
+  .report-toolbar,
+  .report-actions-group,
+  .btn-jump-town,
+  .btn-jump-dist,
+  .town-expand-btn {
+    display: none !important;
+  }
+  .report-table-wrapper {
+    max-height: none !important;
+    overflow: visible !important;
+    border: none !important;
+  }
+  .report-subpoint-row {
+    display: table-row !important;
+  }
+  .report-table {
+    font-size: 10pt !important;
+    width: 100% !important;
+  }
 }
 

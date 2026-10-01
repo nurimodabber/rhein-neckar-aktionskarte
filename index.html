@@ -118,10 +118,15 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
             Automatische Sicherungen...
           </button>
+          <button type="button" class="dropdown-item" id="menu-item-onboarding">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            Kurzanleitung &amp; Einführung...
+          </button>
           <button type="button" class="dropdown-item" id="menu-item-legal">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
             Impressum &amp; Datenschutz...
           </button>
+
           <div class="dropdown-divider"></div>
           <div id="menu-export-status" style="padding: 6px 12px; font-size: 11px; color: var(--text-tertiary); line-height: 1.3;">
             JSON-Sicherung: <span id="menu-export-status-text">Wird geprüft...</span>
@@ -303,35 +308,38 @@
           <span id="legend-chevron" class="legend-chevron">▾</span>
         </div>
         <div class="legend-body" id="legend-body">
-          <div class="legend-row">
-            <div class="legend-dot ipg-plus"></div>
-            <span><strong>IPG+</strong> (Fortgeschrittenes Programm)</span>
-          </div>
-          <div class="legend-row">
-            <div class="legend-dot ipg"></div>
-            <span><strong>IPG</strong> (Intensives Programm)</span>
-          </div>
-          <div class="legend-row">
-            <div class="legend-dot pg"></div>
-            <span><strong>PG</strong> (Programm des Wachstums)</span>
-          </div>
-          <div class="legend-row">
-            <div class="legend-dot none"></div>
-            <span style="color: var(--text-tertiary);">Noch nicht begonnen</span>
-          </div>
-          <div class="legend-row">
-            <span style="color: var(--system-orange); font-size: 13px; line-height: 1; width: 12px; text-align: center;">★</span>
-            <span>Entsende-Zentrum</span>
+          <div id="legend-items-container">
+            <div class="legend-row">
+              <div class="legend-dot ipg-plus"></div>
+              <span><strong>IPG+</strong> (Fortgeschrittenes Programm)</span>
+            </div>
+            <div class="legend-row">
+              <div class="legend-dot ipg"></div>
+              <span><strong>IPG</strong> (Intensives Programm)</span>
+            </div>
+            <div class="legend-row">
+              <div class="legend-dot pg"></div>
+              <span><strong>PG</strong> (Programm des Wachstums)</span>
+            </div>
+            <div class="legend-row">
+              <div class="legend-dot none"></div>
+              <span style="color: var(--text-tertiary);">Noch nicht begonnen</span>
+            </div>
+            <div class="legend-row">
+              <span style="color: var(--system-orange); font-size: 13px; line-height: 1; width: 12px; text-align: center;">★</span>
+              <span>Entsende-Zentrum</span>
+            </div>
           </div>
 
           <div class="legend-toggles">
             <div style="margin-bottom: 6px;">
               <select id="select-visual-view" class="form-select" style="padding: 4px 6px; font-size: 11px;">
-                <option value="milestone">Ansicht: Meilensteine (PG/IPG/IPG+)</option>
-                <option value="activities">Ansicht: Kernaktivitäten (Zahl)</option>
-                <option value="nuclei">Ansicht: Anzahl Nuklei</option>
+                <option value="milestone">Meilensteine</option>
+                <option value="activities">Kernaktivitäten</option>
+                <option value="nuclei">Nuklei</option>
               </select>
             </div>
+
             <label class="legend-checkbox-label">
               <input type="checkbox" id="toggle-labels" checked />
               <span>Orts- &amp; Stadtteilnamen</span>
@@ -725,20 +733,73 @@
         <button class="inspector-close-btn" id="btn-close-report-modal">✕</button>
       </div>
       <div class="sheet-body">
+        <!-- Overview Metric Cards -->
+        <div class="report-summary-cards" id="report-summary-cards">
+
+          <div class="report-card">
+            <span class="report-card-label">Aktive Orte</span>
+            <span class="report-card-val" id="rep-card-active">0 / 133</span>
+          </div>
+          <div class="report-card">
+            <span class="report-card-label">Meilensteine</span>
+            <span class="report-card-val" id="rep-card-ms" style="font-size: 13px; font-weight: 600;">0 PG · 0 IPG · 0 IPG+</span>
+          </div>
+          <div class="report-card">
+            <span class="report-card-label">Aktive Nuklei</span>
+            <span class="report-card-val" id="rep-card-nuclei">0</span>
+          </div>
+          <div class="report-card">
+            <span class="report-card-label">Kernaktivitäten</span>
+            <span class="report-card-val" id="rep-card-acts">0</span>
+          </div>
+          <div class="report-card">
+            <span class="report-card-label">Pfeilverbindungen</span>
+            <span class="report-card-val" id="rep-card-deps">0</span>
+          </div>
+        </div>
+
+        <!-- Filter & Search Toolbar -->
+        <div class="report-toolbar">
+          <div class="report-filter-group">
+            <input type="text" id="report-search-input" class="form-input" placeholder="Ortschaft suchen..." style="padding: 5px 10px; font-size: 12px; width: 170px;" />
+            <select id="report-filter-kreis" class="form-select" style="padding: 5px 8px; font-size: 12px;">
+              <option value="all">Alle Kreise</option>
+              <option value="Rhein-Neckar-Kreis">Rhein-Neckar-Kreis</option>
+              <option value="Rhein-Pfalz-Kreis">Rhein-Pfalz-Kreis</option>
+              <option value="Landkreis Bad Dürkheim">Bad Dürkheim</option>
+              <option value="Kreisfreie Städte">Kreisfreie Städte</option>
+            </select>
+            <select id="report-filter-ms" class="form-select" style="padding: 5px 8px; font-size: 12px;">
+              <option value="all">Alle Meilensteine</option>
+              <option value="active">Nur aktive Orte</option>
+              <option value="ipg_plus">IPG+</option>
+              <option value="ipg">IPG</option>
+              <option value="pg">PG</option>
+              <option value="none">Noch nicht begonnen</option>
+            </select>
+          </div>
+          <div class="report-actions-group" style="display: flex; gap: 6px;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-report-toggle-all">Unterpunkte aufklappen</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-export-report-csv">📥 CSV-Export</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-print-report">🖨️ Drucken / PDF</button>
+          </div>
+        </div>
+
         <div class="report-table-wrapper">
-          <table class="report-table">
+          <table class="report-table" id="cluster-report-table">
             <thead>
               <tr>
-                <th>Ortschaft</th>
-                <th>Kreis</th>
-                <th>Meilenstein</th>
-                <th>Nuklei</th>
-                <th>Kernaktivitäten</th>
+                <th style="cursor: pointer;" data-sort="name">Ortschaft ⇕</th>
+                <th style="cursor: pointer;" data-sort="kreis">Kreis ⇕</th>
+                <th style="cursor: pointer;" data-sort="milestone">Meilenstein ⇕</th>
+                <th style="cursor: pointer;" data-sort="nuclei">Nuklei ⇕</th>
+                <th style="cursor: pointer;" data-sort="acts">Aktivitäten ⇕</th>
                 <th>Zentrum</th>
-                <th>Entsendungen</th>
+                <th>Pfeile</th>
                 <th>Aktion</th>
               </tr>
             </thead>
+
             <tbody id="report-table-body">
               <!-- Dynamically populated -->
             </tbody>
@@ -999,6 +1060,10 @@
         </div>
 
         <div class="mobile-list-group">
+          <button type="button" class="mobile-list-item" id="mobile-act-onboarding">
+            <span>💡 Kurzanleitung &amp; Einführung</span>
+            <span class="m-arrow">›</span>
+          </button>
           <button type="button" class="mobile-list-item" id="mobile-act-legal">
             <span>🛡️ Impressum &amp; Datenschutz</span>
             <span class="m-arrow">›</span>
@@ -1011,6 +1076,65 @@
       </div>
     </div>
   </div>
+
+  <!-- Modal: 3-Step Onboarding Guide (Apple HIG Sheet) -->
+  <div class="modal-backdrop" id="onboarding-modal">
+    <div class="apple-sheet" style="max-width: 480px;">
+      <div class="sheet-header">
+        <h3 style="display: flex; align-items: center; gap: 8px;">
+          <span>👋</span> Willkommen zur Aktionskarte!
+        </h3>
+        <button type="button" class="inspector-close-btn" id="btn-close-onboarding">✕</button>
+      </div>
+      <div class="sheet-body" style="padding: 16px 20px 24px;">
+        <p style="font-size: 13px; color: var(--text-secondary); margin-top: 0; line-height: 1.45;">
+          Dieses Werkzeug unterstützt die strategische Begleitung des Wachstums im Cluster Rhein-Neckar und der Vorderpfalz in drei einfachen Schritten:
+        </p>
+
+        <div style="display: flex; flex-direction: column; gap: 14px; margin: 16px 0;">
+          <div style="display: flex; gap: 12px; align-items: flex-start;">
+            <div style="width: 28px; height: 28px; border-radius: 50%; background: rgba(0, 122, 255, 0.12); color: var(--system-blue); font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px;">1</div>
+            <div>
+              <strong style="display: block; font-size: 13.5px; color: var(--text-primary); margin-bottom: 2px;">Klick auf Ort → Details &amp; Notizen</strong>
+              <span style="font-size: 12px; color: var(--text-secondary); line-height: 1.4; display: block;">
+                Klicke auf eine Ortschaft, um den Inspektor zu öffnen: Pflege Meilenstein (PG, IPG, IPG+), Nuklei, Kernaktivitäten und Quartiersnotizen.
+              </span>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 12px; align-items: flex-start;">
+            <div style="width: 28px; height: 28px; border-radius: 50%; background: rgba(52, 199, 89, 0.12); color: var(--system-green); font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px;">2</div>
+            <div>
+              <strong style="display: block; font-size: 13.5px; color: var(--text-primary); margin-bottom: 2px;">Schnell-Einfärben (1 Klick)</strong>
+              <span style="font-size: 12px; color: var(--text-secondary); line-height: 1.4; display: block;">
+                Wechsle oben auf den Modus „Schnell-Einfärben", wähle eine Wachstumsstufe in der Leiste und färbe mehrere Orte zügig hintereinander ein.
+              </span>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 12px; align-items: flex-start;">
+            <div style="width: 28px; height: 28px; border-radius: 50%; background: rgba(255, 149, 0, 0.12); color: var(--system-orange); font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px;">3</div>
+            <div>
+              <strong style="display: block; font-size: 13.5px; color: var(--text-primary); margin-bottom: 2px;">Entsendungen &amp; Teams verbinden</strong>
+              <span style="font-size: 12px; color: var(--text-secondary); line-height: 1.4; display: block;">
+                Wähle den Modus „Entsendung", klicke auf den Startort und dann auf den Zielort, um Begleitungs- und Pionier-Pfeile mit Anzahl und Status zu zeichnen.
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div style="background: rgba(118, 118, 128, 0.08); border-radius: 10px; padding: 10px 12px; font-size: 11.5px; color: var(--text-secondary); line-height: 1.4;">
+          💡 <em>Tipp:</em> Über das Menü <strong>„Projekt"</strong> kannst du jederzeit Sicherungen anlegen, die Karte per Link teilen oder als hochauflösendes Bild exportieren.
+        </div>
+      </div>
+      <div class="sheet-footer">
+        <button type="button" class="btn btn-primary" id="btn-dismiss-onboarding" style="width: 100%; justify-content: center;">
+          Verstanden &amp; Karte starten
+        </button>
+      </div>
+    </div>
+  </div>
+
 
   <!-- Scripts (100% Offline, Zero Network Requests) -->
   <script src="lib/leaflet.js"></script>

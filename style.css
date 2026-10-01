@@ -2520,6 +2520,14 @@ input:checked + .slider:before {
   filter: drop-shadow(0 0 6px rgba(0, 122, 255, 0.75));
 }
 
+.just-painted {
+  animation: paint-flash .45s ease-out;
+}
+@keyframes paint-flash {
+  from { stroke-width: 5px; filter: brightness(1.15); }
+  to { stroke-width: inherit; filter: none; }
+}
+
 .arrow-flow-dash {
   fill: none;
   stroke: #ffffff;

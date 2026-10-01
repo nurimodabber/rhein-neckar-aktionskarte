@@ -499,6 +499,13 @@ function validateSharedPayload(payload) {
   };
 }
 
+// --- District cache ---
+let townsWithDistrictsSet = new Set();
+
+function townHasDistricts(townId) {
+  return townsWithDistrictsSet.has(townId);
+}
+
 // --- Data Persistence ---
 function loadStoredData() {
   try {
@@ -540,8 +547,12 @@ function loadStoredData() {
   }
 
   if (typeof RHEIN_NECKAR_DISTRICTS !== 'undefined') {
+    townsWithDistrictsSet = new Set();
     RHEIN_NECKAR_DISTRICTS.features.forEach(f => {
       const id = f.properties.id;
+      if (f.properties.townId) {
+        townsWithDistrictsSet.add(f.properties.townId);
+      }
       AppState.districtFeaturesById[id] = f;
       if (!AppState.districts[id]) {
         AppState.districts[id] = {
@@ -558,7 +569,7 @@ function loadStoredData() {
 
 function registerServiceWorker() {
   if ('serviceWorker' in navigator && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
-    navigator.serviceWorker.register('./sw.js?v=5').then((reg) => {
+    navigator.serviceWorker.register('./sw.js?v=6').then((reg) => {
       reg.update().catch(() => {});
     }).catch(err => {
       console.log('Service worker note (offline fallback):', err);
@@ -818,93 +829,77 @@ function renderBackupsList() {
   });
 }
 
-// --- Silky Smooth 60fps Wheel & Trackpad Zoom Engine ---
-L.Map.mergeOptions({
-  smoothWheelZoom: true,
-  smoothSensitivity: 1.2
-});
-
-L.Map.SmoothWheelZoom = L.Handler.extend({
-  addHooks: function () {
-    L.DomEvent.on(this._map._container, 'wheel', this._onWheelScroll, this);
-  },
-
-  removeHooks: function () {
-    L.DomEvent.off(this._map._container, 'wheel', this._onWheelScroll, this);
-  },
-
-  _onWheelScroll: function (e) {
-    if (!this._map.options.smoothWheelZoom) return;
-    if (this._map._animatingZoom) return; // Do not disrupt programmatic flyToBounds animations
-    L.DomEvent.stop(e);
-
-    const map = this._map;
-    const container = map._container;
-    const rect = container.getBoundingClientRect();
-    const mousePos = L.point(e.clientX - rect.left, e.clientY - rect.top);
-
-    this._mousePos = mousePos;
-
-    // Normalize delta across Mac trackpads, Magic Mouse, and classic mouse wheels
-    let delta = -e.deltaY;
-    if (e.deltaMode === 1) delta *= 40; // Firefox line mode
-    else if (e.deltaMode === 2) delta *= 800; // Page mode
-
-    // Pinch gesture on Mac trackpad emits e.ctrlKey = true
-    const isPinch = e.ctrlKey;
-    const factor = isPinch ? 0.01 : 0.0028;
-    const sensitivity = map.options.smoothSensitivity || 1.2;
-    const dZoom = delta * factor * sensitivity;
-
-    const prevTarget = this._isZooming ? this._targetZoom : map.getZoom();
-    this._targetZoom = Math.min(
-      map.getMaxZoom(),
-      Math.max(map.getMinZoom(), prevTarget + dZoom)
-    );
-
-    if (!this._isZooming) {
-      this._isZooming = true;
-      this._zoomAnimation();
-    }
-  },
-
-  _zoomAnimation: function () {
-    if (!this._isZooming) return;
-
-    const map = this._map;
-    const currentZoom = map.getZoom();
-    const diff = this._targetZoom - currentZoom;
-
-    if (Math.abs(diff) < 0.004) {
-      map.setZoomAround(this._mousePos, this._targetZoom, { animate: false });
-      this._isZooming = false;
-      map.fire('zoomend');
-      return;
-    }
-
-    // 60fps exponential easing for fluid glide
-    const step = diff * 0.24;
-    map.setZoomAround(this._mousePos, currentZoom + step, { animate: false });
-
-    requestAnimationFrame(this._zoomAnimation.bind(this));
-  }
-});
-
-L.Map.addInitHook('addHandler', 'smoothWheelZoom', L.Map.SmoothWheelZoom);
-
 // --- Map Setup ---
+let _viewRefreshTimer = null;
+let _viewRefreshFull = false;
+
+function scheduleViewRefresh(full = false) {
+  if (full) {
+    _viewRefreshFull = true;
+  }
+  if (_viewRefreshTimer) {
+    clearTimeout(_viewRefreshTimer);
+  }
+  _viewRefreshTimer = setTimeout(() => {
+    _viewRefreshTimer = null;
+    const doFull = _viewRefreshFull;
+    _viewRefreshFull = false;
+    if (doFull) {
+      refreshAllStyles();
+    }
+    refreshMarkers();
+    updateNavigationHUD();
+    renderArrows();
+  }, 60);
+}
+
+function getFocusPadding() {
+  const isMobile = window.innerWidth <= 768;
+  if (isMobile) {
+    return {
+      paddingTopLeft: [24, 90],
+      paddingBottomRight: [24, Math.round(window.innerHeight * 0.52 + 16)]
+    };
+  }
+  return {
+    paddingTopLeft: [50, 90],
+    paddingBottomRight: [Math.min(window.innerWidth * 0.45, 420) + 30, 40]
+  };
+}
+
+function exitFocusWhenZoomedOut() {
+  if (AppState.focusedTownId && AppState.map && AppState.map.getZoom() < 10.75) {
+    AppState.focusedTownId = null;
+    const banner = document.getElementById('focus-banner');
+    if (banner) banner.style.display = 'none';
+  }
+}
+
+function flashPainted(layer) {
+  if (!layer || !layer._path) return;
+  layer._path.classList.remove('just-painted');
+  // Trigger reflow to restart CSS animation if clicked repeatedly
+  void layer._path.offsetWidth;
+  layer._path.classList.add('just-painted');
+  setTimeout(() => {
+    if (layer._path) {
+      layer._path.classList.remove('just-painted');
+    }
+  }, 450);
+}
+
 function initMap() {
   AppState.map = L.map('map', {
     zoomControl: false,
     attributionControl: false,
     boxZoom: true,
-    doubleClickZoom: true,
-    scrollWheelZoom: false, // SmoothWheelZoom handles mousewheel & trackpad
-    smoothWheelZoom: true,
-    smoothSensitivity: 1.2,
+    doubleClickZoom: false,
+    scrollWheelZoom: true,
+    wheelPxPerZoomLevel: 90,
+    wheelDebounceTime: 30,
     minZoom: 8,
     maxZoom: 16,
-    zoomSnap: 0.2,
+    zoomSnap: 0.25,
     zoomDelta: 0.5
   }).setView([49.405, 8.465], 10.4);
 
@@ -926,14 +921,16 @@ function initMap() {
     closeArrowQuickHUD();
   });
 
-  AppState.map.on('zoomend moveend resize', () => {
-    refreshAllStyles();
-    refreshMarkers();
-    updateNavigationHUD();
-    renderArrows();
+  AppState.map.on('zoomend', () => {
+    exitFocusWhenZoomedOut();
+    scheduleViewRefresh(true);
   });
 
-  AppState.map.on('move drag zoom viewreset', () => {
+  AppState.map.on('moveend resize', () => {
+    scheduleViewRefresh(false);
+  });
+
+  AppState.map.on('move zoom viewreset', () => {
     renderArrows();
   });
 }
@@ -1008,12 +1005,11 @@ function focusTownDistricts(townId) {
   AppState.selectedTownId = townId;
   AppState.selectedDistrictId = null;
 
-  const drawer = document.getElementById('details-drawer');
-  const drawerWidth = drawer && !drawer.classList.contains('collapsed') ? Math.min(window.innerWidth * 0.45, 420) : 40;
+  const focusPadding = getFocusPadding();
   AppState.map.fitBounds(layer.getBounds(), {
     maxZoom: 14,
-    paddingTopLeft: [50, 40],
-    paddingBottomRight: [drawerWidth + 30, 40],
+    paddingTopLeft: focusPadding.paddingTopLeft,
+    paddingBottomRight: focusPadding.paddingBottomRight,
     animate: true
   });
 
@@ -1043,13 +1039,11 @@ function focusDistrictOnMap(districtId) {
   AppState.selectedTownId = feat.properties.townId;
   AppState.selectedDistrictId = districtId;
 
-  const drawer = document.getElementById('details-drawer');
-  const drawerWidth = drawer && !drawer.classList.contains('collapsed') ? Math.min(window.innerWidth * 0.45, 420) : 40;
-
+  const focusPadding = getFocusPadding();
   AppState.map.fitBounds(layer.getBounds(), {
     maxZoom: 15,
-    paddingTopLeft: [50, 40],
-    paddingBottomRight: [drawerWidth + 30, 40],
+    paddingTopLeft: focusPadding.paddingTopLeft,
+    paddingBottomRight: focusPadding.paddingBottomRight,
     animate: true
   });
 
@@ -1122,8 +1116,7 @@ const MILESTONE_COLORS = {
 
 // --- Level of Detail & District Mode Helper ---
 function isTownInDistrictMode(townId) {
-  const hasDistricts = Object.values(AppState.districtFeaturesById).some(df => df.properties.townId === townId);
-  if (!hasDistricts) return false;
+  if (!townHasDistricts(townId)) return false;
   // When a specific town is focused, ONLY expand that town to maintain a clean, uncluttered map
   if (AppState.focusedTownId) {
     return townId === AppState.focusedTownId;
@@ -1192,8 +1185,7 @@ function getTownStyle(feature) {
     return {
       fillOpacity: 0,
       opacity: 0,
-      weight: 0,
-      interactive: false
+      weight: 0
     };
   }
 
@@ -1278,13 +1270,20 @@ function getTownPerimeterStyle(feature) {
   };
 }
 
+function syncDistrictPointerEvents(layer) {
+  if (layer && layer._path && layer.feature && layer.feature.properties) {
+    const townId = layer.feature.properties.townId;
+    layer._path.style.pointerEvents = isTownInDistrictMode(townId) ? '' : 'none';
+  }
+}
+
 // --- Polygon Styles (Districts) ---
 function getDistrictStyle(feature) {
   const townId = feature.properties.townId;
   const id = feature.properties.id;
 
   if (!isTownInDistrictMode(townId)) {
-    return { opacity: 0, fillOpacity: 0, interactive: false };
+    return { opacity: 0, fillOpacity: 0 };
   }
 
   const dist = AppState.districts[id] || { milestone: 'none', nuclei: 0, activities: {} };
@@ -1342,8 +1341,7 @@ function getDistrictStyle(feature) {
     color: borderColor,
     weight: weight,
     dashArray: dashArray,
-    opacity: 0.9,
-    interactive: true
+    opacity: 0.9
   };
 }
 
@@ -1380,6 +1378,8 @@ function renderGeoJson() {
           }
         },
         click: (e) => {
+          L.DomEvent.stopPropagation(e);
+          closeArrowQuickHUD();
           if (!isTownInDistrictMode(id)) {
             handleTownClick(id, e.latlng);
           }
@@ -1419,6 +1419,8 @@ function renderDistrictsGeoJson() {
           }
         },
         click: (e) => {
+          L.DomEvent.stopPropagation(e);
+          closeArrowQuickHUD();
           if (isTownInDistrictMode(feature.properties.townId)) {
             handleDistrictClick(id, e.latlng);
           }
@@ -1426,6 +1428,10 @@ function renderDistrictsGeoJson() {
       });
     }
   }).addTo(AppState.map);
+
+  AppState.districtsLayer.eachLayer(layer => {
+    syncDistrictPointerEvents(layer);
+  });
 
   refreshMarkers();
 }
@@ -1782,6 +1788,7 @@ function refreshAllStyles() {
     AppState.districtsLayer.eachLayer(layer => {
       if (layer.feature) {
         layer.setStyle(getDistrictStyle(layer.feature));
+        syncDistrictPointerEvents(layer);
         updateDistrictTooltip(layer.feature.properties.id);
       }
     });
@@ -2382,17 +2389,11 @@ function ensureFeatureVisibleWithDrawer(targetCoords) {
 function handleTownClick(townId, latlng) {
   closeQuickPopover();
   if (AppState.currentMode === 'inspect') {
-    selectTown(townId, false);
-    const feature = AppState.townFeaturesById[townId];
-    const coords = latlng || (feature && feature.properties ? feature.properties.center : null);
-    ensureFeatureVisibleWithDrawer(coords);
+    selectTown(townId, true);
   } else if (AppState.currentMode === 'paint') {
-    // In Schnell-Einfärben mode: use quick popover for instant coloring
-    if (latlng) {
-      showTownQuickPopover(townId, latlng);
-    } else {
-      applyPaintToTown(townId);
-    }
+    applyPaintToTown(townId);
+    const layer = AppState.townLayersById[townId];
+    if (layer) flashPainted(layer);
   } else if (AppState.currentMode === 'arrow') {
     handleArrowSourceTargetClick(townId, false);
   }
@@ -2401,16 +2402,11 @@ function handleTownClick(townId, latlng) {
 function handleDistrictClick(districtId, latlng) {
   closeQuickPopover();
   if (AppState.currentMode === 'inspect') {
-    selectDistrict(districtId, false);
-    const feature = AppState.districtFeaturesById[districtId];
-    const coords = latlng || (feature && feature.properties ? feature.properties.center : null);
-    ensureFeatureVisibleWithDrawer(coords);
+    selectDistrict(districtId, true);
   } else if (AppState.currentMode === 'paint') {
-    if (latlng) {
-      showDistrictQuickPopover(districtId, latlng);
-    } else {
-      applyPaintToDistrict(districtId);
-    }
+    applyPaintToDistrict(districtId);
+    const layer = AppState.districtLayersById[districtId];
+    if (layer) flashPainted(layer);
   } else if (AppState.currentMode === 'arrow') {
     handleArrowSourceTargetClick(districtId, true);
   }
@@ -2485,11 +2481,11 @@ function selectTown(townId, shouldZoom = true) {
     } else {
       const layer = AppState.townLayersById[townId];
       if (layer) {
-        const drawerWidth = drawer && !drawer.classList.contains('collapsed') ? Math.min(window.innerWidth * 0.45, 420) : 40;
+        const focusPadding = getFocusPadding();
         AppState.map.fitBounds(layer.getBounds(), {
           maxZoom: 13,
-          paddingTopLeft: [50, 40],
-          paddingBottomRight: [drawerWidth + 30, 40],
+          paddingTopLeft: focusPadding.paddingTopLeft,
+          paddingBottomRight: focusPadding.paddingBottomRight,
           animate: true
         });
       }
@@ -3198,12 +3194,11 @@ function recenterCurrentSelection() {
     } else {
       const layer = AppState.townLayersById[AppState.selectedTownId];
       if (layer && AppState.map) {
-        const drawer = document.getElementById('details-drawer');
-        const drawerWidth = drawer && !drawer.classList.contains('collapsed') ? Math.min(window.innerWidth * 0.45, 420) : 40;
+        const focusPadding = getFocusPadding();
         AppState.map.fitBounds(layer.getBounds(), {
           maxZoom: 13,
-          paddingTopLeft: [50, 40],
-          paddingBottomRight: [drawerWidth + 30, 40],
+          paddingTopLeft: focusPadding.paddingTopLeft,
+          paddingBottomRight: focusPadding.paddingBottomRight,
           animate: true
         });
       }

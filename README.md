@@ -28,61 +28,60 @@ Die Anwendung öffnet sich unter `http://localhost:8080`.
 
 ---
 
-## 🌟 Funktionsumfang
+## Funktionsumfang
 
-### 1. Interaktive Karte aller 133 Kommunen & 154 Stadtteile
+### 1. Interaktive Karte aller 133 Kommunen & 162 Stadtteile
 * Umfasst **133 Städte & Gemeinden** des Metropol- und Vorderpfalz-Clusters:
   * **6 Kreisfreie Städte**: Mannheim, Heidelberg, Ludwigshafen am Rhein, Frankenthal (Pfalz), Speyer, Neustadt an der Weinstraße
   * **Rhein-Neckar-Kreis (54 Gemeinden)**
   * **Rhein-Pfalz-Kreis (25 Gemeinden)**
   * **Landkreis Bad Dürkheim (48 Gemeinden)**
 * **4 Entsende-Zentren (★)**: Mannheim, Heidelberg, Speyer, Leimen
-* **154 offizielle Nachbarschaften & Stadtteile** in 33 Städten und Gemeinden (u. a. hochaufgelöste amtliche Stadtteilgrenzen für Heidelberg, Mannheim, Ludwigshafen, Neustadt, Frankenthal, Speyer, Bad Dürkheim, Weinheim, Sinsheim, Wiesloch, Edingen-Neckarhausen, St. Leon-Rot, Hirschberg, Rauenberg, Mühlhausen u.v.m.) für detaillierte Innenstadt- und Quartiersplanung.
+* **162 offizielle Nachbarschaften & Stadtteile** in 35 Städten und Gemeinden (u. a. hochaufgelöste amtliche Stadtteilgrenzen für Heidelberg, Mannheim, Ludwigshafen, Neustadt, Frankenthal, Speyer, Bad Dürkheim, Weinheim, Sinsheim, Wiesloch, Edingen-Neckarhausen, St. Leon-Rot, Hirschberg, Rauenberg, Mühlhausen u.v.m.) für detaillierte Innenstadt- und Quartiersplanung.
 * Angrenzende Regionen dezent im Hintergrund.
 
 ### 2. Arbeitsmodi & Interaktionen
-1. **🔍 Info & Details (Inspektions-Modus)**:
-   * Klick auf eine Ortschaft öffnet die macOS-Seitenleiste mit allen Kennzahlen und Nachbarschafts-Akkordeons.
-2. **🎨 Schnell-Einfärben (Paint-Bucket-Modus)**:
-   * Wähle eine Farbe/Stufe in der Schnellpalette und färbe Kommunen oder Stadtteile mit einem Klick ein.
-3. **🏹 Entsendungen & Pfeilverbindungen**:
+1. **Info & Details (Inspektions-Modus)**:
+   * Klick auf eine Ortschaft öffnet die Seitenleiste mit Kennzahlen und Nachbarschafts-Akkordeons.
+2. **Schnell-Einfärben (Paint-Modus)**:
+   * Wähle eine Stufe in der Farbpalette und färbe Kommunen oder Stadtteile mit einem Klick ein.
+3. **Entsendungen & Pfeilverbindungen**:
    * Verbindung zwischen Start- und Zielort mit Zweck, Personenanzahl und Status.
-   * **Intelligente Bézier-Kurven**: Mehrere Verbindungen und Hin-/Rückwege fächern sich automatisch auf und überlappen nicht.
-   * **Schnell-Aktionsleiste**: 1 Klick auf einen Pfeil öffnet ein schwebendes HUD zum sofortigen Umschalten (● Aktiv, ⏳ In Planung, ✓ Etabliert) oder Löschen.
+   * **Bézier-Kurven**: Mehrere Verbindungen und Hin-/Rückwege fächern sich auf und überlappen nicht.
+   * **Schnell-Aktionsleiste**: Klick auf einen Pfeil öffnet ein schwebendes Menü zum Umschalten (Aktiv, In Planung, Etabliert) oder Löschen.
 
 ### 3. Revisionsverlauf & Datensicherheit
-* **↶ Undo (⌘Z / Strg+Z) & ↷ Redo (⇧⌘Z / Strg+Y)**: Jede Änderung (Meilenstein, Zahl, Pfeil, Notiz) kann blitzschnell rückgängig gemacht werden.
-* **Automatische Backups (Verlauf)**: Fortlaufende lokale Sicherungspunkte mit 1-Klick-Wiederherstellung.
+* **Undo (⌘Z / Strg+Z) & Redo (⇧⌘Z / Strg+Y)**: Änderungen (Meilenstein, Zahl, Pfeil, Notiz) können rückgängig gemacht werden.
+* **Automatische Sicherungen**: Fortlaufende lokale Sicherungspunkte mit Wiederherstellung.
 * **Sicherer Reset**: Vor einem Zurücksetzen wird automatisch ein Sicherungspunkt angelegt.
-* **JSON-Export & Import**: Vollständiger Austausch von Projektständen zwischen Teammitgliedern.
-* **PNG-Kartenspeicherung**: Hochauflösender Bildexport für Dokumente und Konferenzen.
+* **JSON-Export & Import**: Austausch von Projektständen zwischen Mitarbeitern.
+* **PNG-Export**: Bildexport für Dokumente und Berichte.
 
 ### 4. PWA (Progressive Web App) & Offline-Nutzung
-* **100% offline**: Alle Kartendaten, Bibliotheken und Schriften liegen lokal vor.
+* **Offline-Betrieb**: Alle Kartendaten, Bibliotheken und Schriften liegen lokal vor.
 * **App-Installation**:
-  * **Mac**: Safari → *Ablage* → *Zum Dock hinzufügen...* (öffnet als rahmenlose native macOS-App).
+  * **Mac**: Safari → *Ablage* → *Zum Dock hinzufügen...*
   * **iPad / iPhone**: Safari → *Zum Home-Bildschirm*.
   * **Chrome / Edge**: Klick auf das Installationssymbol in der Adressleiste.
 
-### 5. GitHub Pages Bereitstellung
-* Sobald die Planungsphase abgeschlossen ist, kann das Repository mit 1 Befehl auf GitHub synchronisiert werden.
-* Eine fertige GitHub Actions Pipeline (`.github/workflows/deploy.yml`) veröffentlicht die Seite automatisch auf GitHub Pages. Siehe [DEPLOYMENT.md](DEPLOYMENT.md).
+### 5. Deployment
+* Siehe [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ---
 
-## 📁 Dateistruktur
+## Dateistruktur
 
 ```
 .
-├── index.html                 # Apple HIG Benutzeroberfläche & HUDs
-├── style.css                  # Modernes Carto-Styling, Frosted Glass, Popovers
+├── index.html                 # Benutzeroberfläche & Menüs
+├── style.css                  # Kartenspezifische Gestaltung & Popovers
 ├── app.js                     # Anwendungslogik, Undo/Redo, SVG-Pfeile, Storage
 ├── manifest.json              # PWA-Konfiguration
 ├── sw.js                      # Offline-Service-Worker
 ├── icon.svg                   # Vektor-App-Icon
-├── DEPLOYMENT.md              # Anleitung für GitHub Pages & Online-Release
+├── DEPLOYMENT.md              # Anleitung für Deployment & Online-Release
 ├── rhein_neckar_data.js       # Geometrien der 133 Kommunen (Rhein-Neckar & Vorderpfalz)
-├── rhein_neckar_districts.js  # Geometrien der 154 Stadtteile / Nachbarschaften
+├── rhein_neckar_districts.js  # Geometrien der 162 Stadtteile / Nachbarschaften
 ├── surrounding_kreise.js      # Umgebende Nachbarkreise
 ├── rivers_data.js             # Rhein, Neckar und Gewässerläufe
 ├── geographic_landmarks.js    # Autobahnen & Landmarken

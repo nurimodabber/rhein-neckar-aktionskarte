@@ -7,7 +7,7 @@ The **Rhein-Neckar Aktionskarte** (`rhein-neckar-aktionskarte`) is an offline-fi
 ### Core Domain
 - **Geographic Coverage**:
   - **133 Municipalities**: 6 Kreisfreie Städte (Mannheim, Heidelberg, Ludwigshafen am Rhein, Frankenthal (Pfalz), Speyer, Neustadt an der Weinstraße), 54 Rhein-Neckar-Kreis municipalities, 25 Rhein-Pfalz-Kreis municipalities, 48 Landkreis Bad Dürkheim municipalities.
-  - **154 Stadtteile / Nachbarschaften**: Subdivided neighborhoods across 33 cities/municipalities (including Heidelberg, Mannheim, Ludwigshafen, Neustadt, Speyer, Frankenthal, Weinheim, Sinsheim, Wiesloch, Leimen/St. Ilgen, etc.).
+  - **162 Stadtteile / Nachbarschaften**: Subdivided neighborhoods across 35 cities/municipalities (including Heidelberg, Mannheim, Ludwigshafen, Neustadt, Speyer, Frankenthal, Weinheim, Sinsheim, Wiesloch, Leimen/St. Ilgen, etc.).
 - **Milestone Staging**:
   - `none`: Noch nicht begonnen (uncolored/white with subtle border)
   - `pg`: Programm des Wachstums (Spring Green, `#86efac`, border `#22c55e`)
@@ -45,8 +45,8 @@ The **Rhein-Neckar Aktionskarte** (`rhein-neckar-aktionskarte`) is an offline-fi
 │   ├── leaflet.css            # Leaflet stylesheet
 │   ├── html2canvas.min.js     # Client-side map image export
 │   └── qrcode.min.js          # Client-side zero-dependency QR code generator (Kazuhiko Arase)
-├── rhein_neckar_data.js       # GeoJSON polygons & properties for all 133 municipalities (588 KB)
-├── rhein_neckar_districts.js  # GeoJSON polygons & exclaves for 154 Stadtteile (410 KB)
+├── rhein_neckar_data.js       # GeoJSON polygons & properties for all 133 municipalities
+├── rhein_neckar_districts.js  # GeoJSON polygons & exclaves for 162 Stadtteile
 ├── surrounding_kreise.js      # Surrounding neighboring counties (Hessen, Pfalz, BW) (141 KB)
 ├── rivers_data.js             # Rhine and Neckar waterways
 └── geographic_landmarks.js    # Autobahn / landmarks

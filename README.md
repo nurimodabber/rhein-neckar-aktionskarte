@@ -1,6 +1,6 @@
 # Rhein-Neckar Cluster – Interaktive Aktionskarte
 
-Eine vollwertige, offline-fähige Aktions- und Wachstumsplanung für den **Cluster Rhein-Neckar** (Rhein-Neckar-Kreis, Stadtkreis Mannheim, Stadtkreis Heidelberg sowie Speyer) zur strategischen Begleitung des Wachstums (Nuklei, Kernaktivitäten, Meilensteine PG/IPG/IPG+ und Entsendungen von Pionieren und Teams).
+Eine vollwertige, offline-fähige Aktions- und Wachstumsplanung für den **Cluster Rhein-Neckar** (133 Städte und Gemeinden: Mannheim, Heidelberg, Ludwigshafen am Rhein, Speyer, Frankenthal (Pfalz), Neustadt an der Weinstraße, Rhein-Neckar-Kreis, Rhein-Pfalz-Kreis und Landkreis Bad Dürkheim) zur strategischen Begleitung des Wachstums (Nuklei, Kernaktivitäten, Meilensteine PG/IPG/IPG+ und Entsendungen von Pionieren und Teams).
 
 Die Farbgebung orientiert sich an der offiziellen Einteilung der **Region Süd**:
 * **PG** (Hellgrün): Vorbereitung / Programm des Wachstums

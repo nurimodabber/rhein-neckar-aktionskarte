@@ -1,14 +1,6 @@
 const { put, get } = require('@vercel/blob');
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, If-None-Match');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
   // Support query or body for roomId
   const roomId = (req.query && req.query.room) || (req.body && req.body.room);
   if (!roomId || typeof roomId !== 'string' || !/^[a-zA-Z0-9_-]{3,64}$/.test(roomId)) {

@@ -5972,6 +5972,11 @@ const SyncEngine = {
     }
   },
 
+  // Der Raumname ist der einzige Schutz des Raums, deshalb nicht erratbar (12 Zeichen, ~62 Bit).
+  randomId() {
+    return Array.from(crypto.getRandomValues(new Uint8Array(12)), b => (b % 36).toString(36)).join('');
+  },
+
   slugify(text) {
     if (!text || typeof text !== 'string') return '';
     return text
@@ -6019,7 +6024,7 @@ const SyncEngine = {
     }
 
     if (createSlugInput && !isConnected && !createSlugInput.value) {
-      createSlugInput.value = 'rn-planung-' + Math.random().toString(36).substring(2, 6);
+      createSlugInput.value = 'rn-planung-' + SyncEngine.randomId();
     }
   },
 
@@ -6062,7 +6067,7 @@ const SyncEngine = {
         }
         let cleanSlug = SyncEngine.slugify(rawSlug);
         if (!cleanSlug) {
-          cleanSlug = 'rn-' + Math.random().toString(36).substring(2, 8);
+          cleanSlug = 'rn-' + SyncEngine.randomId();
         }
         SyncEngine.joinRoom(cleanSlug, true);
       });

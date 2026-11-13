@@ -518,7 +518,6 @@
               <ul class="people-list" id="people-list"></ul>
               <form class="people-add" id="people-add-form" hidden>
                 <input type="text" class="form-input" id="people-add-name" maxlength="100" placeholder="Name" aria-label="Name der Person" autocomplete="off" required />
-                <label class="people-believer"><input type="checkbox" id="people-add-believer" /> gläubig</label>
                 <button type="submit" class="btn btn-primary btn-sm">Hinzufügen</button>
               </form>
             </div>
@@ -893,7 +892,7 @@
           <li><strong>Ohne Konto:</strong> Die Karte ist nur zum Ansehen. Es werden keine Daten an uns übertragen; der zuletzt angezeigte Stand liegt im lokalen Speicher deines Browsers.</li>
           <li><strong>Konto (Clerk):</strong> Anmeldung und Registrierung laufen über Clerk (Clerk, Inc., USA). Clerk verarbeitet deine E-Mail-Adresse, dein Passwort (nur als Hash) und Sitzungsdaten. Meldest du dich mit Google an, erhält Google (Google Ireland Ltd.) die Information über diese Anmeldung, und Clerk erhält von Google Name und E-Mail-Adresse. Eine Übermittlung in die USA ist möglich.</li>
           <li><strong>Konto-Karten (Upstash, Vercel):</strong> Karten eines Kontos, einschließlich Personenlisten und Notizen, werden auf dem Server verschlüsselt (AES-256-GCM) in einer Upstash-Redis-Datenbank (Upstash, Inc.) gespeichert. Der Schlüssel liegt getrennt davon beim Hoster Vercel (Vercel Inc., USA), über dessen Server die Seite und die Schnittstelle laufen. Lesen können eine Karte nur ihr Besitzer und die Personen, die er per E-Mail-Adresse einlädt.</li>
-          <li><strong>Personen und Glaubenszugehörigkeit:</strong> Namen und das Merkmal „gläubig“ sind besonders geschützte Daten. Trage Personen nur ein, wenn sie damit einverstanden sind. Personendaten werden nie im Browser gespeichert und sind nie Teil von Freigabe-Links, Bild-Export, Bericht, JSON-Export oder einer öffentlichen Karte.</li>
+          <li><strong>Personen:</strong> Namen auf dieser Karte können Rückschlüsse auf die Religionszugehörigkeit erlauben und sind dann besonders geschützte Daten (Art. 9 DSGVO). Trage Personen nur ein, wenn sie damit einverstanden sind. Personendaten werden nie im Browser gespeichert und sind nie Teil von Freigabe-Links, Bild-Export, Bericht, JSON-Export oder einer öffentlichen Karte.</li>
           <li><strong>Öffentliche Karte:</strong> Gibt der Besitzer eine Karte öffentlich frei, sind nur Stufen, Nuklei, Kernaktivitäten, Entsende-Zentren und Entsendungen sichtbar, ohne Personen und Notizen.</li>
           <li><strong>Teilen von Ständen:</strong> Wenn du die Freigabe-Funktion nutzt, werden die freigegebenen Ortsdaten clientseitig komprimiert (Deflate-Raw / Base64url) direkt in den Link eingebettet. Der Link enthält den Stand und ist nicht verschlüsselt.</li>
           <li><strong>Löschen:</strong> Eine Konto-Karte löscht ihr Besitzer im Dialog „Konto &amp; Karten“; sie ist danach sofort vom Server entfernt.</li>

@@ -5,7 +5,7 @@ const core = require('../server/maps-core.js');
 
 const key = crypto.randomBytes(32);
 const sample = {
-  towns: { a: { milestone: 'pg', nuclei: 2, notes: 'intern', people: [{ name: 'X', believer: true }], activities: { devotionals: 1, secret: 9 } } },
+  towns: { a: { milestone: 'pg', nuclei: 2, notes: 'intern', people: [{ name: 'X' }], activities: { devotionals: 1, secret: 9 } } },
   districts: { d: { milestone: 'ipg', notes: 'n', people: [{ name: 'Y' }] } },
   deployments: [{ id: 'dep1', fromId: 'a', toId: 'b', type: 'Pioniere', count: 2, notes: 'Name Z' }]
 };

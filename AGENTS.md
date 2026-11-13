@@ -91,7 +91,7 @@ The **Rhein-Neckar Aktionskarte** (`rhein-neckar-aktionskarte`) is an offline-fi
        juniorYouth?: number;
      };
      notes?: string;
-     people?: { name: string; note: string; believer: boolean }[]; // only in account maps, never stored locally
+     people?: { name: string; note: string }[]; // only in account maps, never stored locally
    }
 
    interface DistrictData extends TownData {}
@@ -168,7 +168,7 @@ The **Rhein-Neckar Aktionskarte** (`rhein-neckar-aktionskarte`) is an offline-fi
 2. **Third-Party Data Leaks (QR Code Service)**:
    - *Fixed in Phase 0*: The QR generator must run locally (`qrcode` or bundled canvas generator); never transmit the payload to external servers like `api.qrserver.com`.
 3. **GDPR / Privacy by Design**:
-   - Religious affiliation is special-category data under Art. 9 GDPR. People (name, note, believer flag) exist **only in account maps**,
+   - Names on a map of a religious community can reveal religious affiliation (Art. 9 GDPR). People (name, note) exist **only in account maps**,
      encrypted on the server. While `AppState.remote` is set, nothing is written to localStorage, IndexedDB, backups or CacheStorage
      (guards in `saveState`/`persistLocal`/`AppStorage`). People must never reach `#share=` links, Blob rooms, the PNG export, the
      report/CSV, the JSON export or a public map. The privacy text in `#legal-modal` names Clerk, Google, Vercel and Upstash; keep it current.

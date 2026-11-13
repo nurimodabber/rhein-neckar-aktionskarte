@@ -14,7 +14,7 @@ function sanitizePeople(list) {
     if (!p || typeof p !== 'object') continue;
     const name = String(p.name || '').trim().slice(0, 100);
     if (!name) continue;
-    out.push({ name, note: String(p.note || '').slice(0, 500), believer: p.believer === true });
+    out.push({ name, note: String(p.note || '').slice(0, 500) });
   }
   return out;
 }
@@ -392,10 +392,10 @@ const Accounts = (() => {
         if (df.properties.townId === AppState.selectedTownId) people = people.concat((AppState.districts[df.properties.id] || {}).people || []);
       }
     }
-    const believers = people.filter(p => p.believer).length;
+    const count = `${people.length} ${people.length === 1 ? 'Person' : 'Personen'}`;
     document.getElementById('people-summary').textContent = unit
-      ? `${people.length} ${people.length === 1 ? 'Person' : 'Personen'}, davon ${believers} gläubig`
-      : `${people.length} ${people.length === 1 ? 'Person' : 'Personen'} in den Stadtteilen, davon ${believers} gläubig. Personen werden im Stadtteil eingetragen.`;
+      ? count
+      : `${count} in den Stadtteilen. Personen werden im Stadtteil eingetragen.`;
     form.hidden = !unit || !canEdit();
     if (!unit) return;
     const ro = !canEdit();
@@ -406,10 +406,6 @@ const Accounts = (() => {
       name.setAttribute('aria-label', 'Name');
       const note = Object.assign(document.createElement('input'), { className: 'form-input people-note', value: p.note, maxLength: 500, placeholder: 'Notiz', disabled: ro });
       note.setAttribute('aria-label', `Notiz zu ${p.name}`);
-      const lab = document.createElement('label');
-      lab.className = 'people-believer';
-      const cb = Object.assign(document.createElement('input'), { type: 'checkbox', checked: p.believer, disabled: ro });
-      lab.append(cb, ' gläubig');
       const del = Object.assign(document.createElement('button'), { type: 'button', className: 'btn btn-secondary btn-sm', textContent: 'Entfernen', hidden: ro });
       del.setAttribute('aria-label', `${p.name} entfernen`);
       const update = (fn, desc) => {
@@ -420,9 +416,8 @@ const Accounts = (() => {
       };
       name.addEventListener('change', () => update(ps => { ps[i] = { ...ps[i], name: name.value }; return ps; }, 'Person umbenannt'));
       note.addEventListener('change', () => update(ps => { ps[i] = { ...ps[i], note: note.value }; return ps; }, 'Personennotiz'));
-      cb.addEventListener('change', () => update(ps => { ps[i] = { ...ps[i], believer: cb.checked }; return ps; }, 'Gläubig geändert'));
       del.addEventListener('click', () => update(ps => { ps.splice(i, 1); return ps; }, 'Person entfernt'));
-      li.append(name, note, lab, del);
+      li.append(name, note, del);
       list.appendChild(li);
     });
   }
@@ -431,13 +426,11 @@ const Accounts = (() => {
     e.preventDefault();
     const unit = selectedUnit();
     const input = document.getElementById('people-add-name');
-    const cb = document.getElementById('people-add-believer');
     if (!unit || !canEdit() || !input.value.trim()) return;
     if ((unit.people || []).length >= MAX_PEOPLE) { showInAppAlert(`Höchstens ${MAX_PEOPLE} Personen pro Ort.`, 'warning'); return; }
     pushHistory('Person hinzugefügt');
-    unit.people = sanitizePeople([...(unit.people || []), { name: input.value, note: '', believer: cb.checked }]);
+    unit.people = sanitizePeople([...(unit.people || []), { name: input.value, note: '' }]);
     input.value = '';
-    cb.checked = false;
     saveState();
     renderPeople();
     input.focus();

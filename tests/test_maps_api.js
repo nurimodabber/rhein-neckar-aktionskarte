@@ -63,7 +63,7 @@ function setup(emails = { user_A: ['a@example.org'], user_B: ['b@example.org'] }
 }
 
 const DATA = {
-  towns: { t1: { milestone: 'pg', nuclei: 3, notes: 'intern', people: [{ name: 'Person X', believer: true }] } },
+  towns: { t1: { milestone: 'pg', nuclei: 3, notes: 'intern', people: [{ name: 'Person X' }] } },
   districts: {},
   deployments: [{ id: 'd1', fromId: 't1', toId: 't2', count: 1, notes: 'Name Z' }]
 };

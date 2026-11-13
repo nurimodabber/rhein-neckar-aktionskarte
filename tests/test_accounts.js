@@ -2,18 +2,17 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { sanitizePeople, mergeMaps } = require('../accounts.js');
 
-test('sanitizePeople kürzt, verwirft Leere und erzwingt boolean', () => {
+test('sanitizePeople kürzt, verwirft Leere und unbekannte Felder', () => {
   const out = sanitizePeople([
-    { name: '  Anna ', note: 'x', believer: true },
+    { name: '  Anna ', note: 'x', extra: true },
     { name: '   ' },
     null,
-    { name: 'B'.repeat(150), note: 'n'.repeat(600), believer: 'yes' }
+    { name: 'B'.repeat(150), note: 'n'.repeat(600) }
   ]);
-  assert.deepStrictEqual(out[0], { name: 'Anna', note: 'x', believer: true });
+  assert.deepStrictEqual(out[0], { name: 'Anna', note: 'x' });
   assert.strictEqual(out.length, 2);
   assert.strictEqual(out[1].name.length, 100);
   assert.strictEqual(out[1].note.length, 500);
-  assert.strictEqual(out[1].believer, false);
   assert.deepStrictEqual(sanitizePeople('kaputt'), []);
   assert.strictEqual(sanitizePeople(Array(600).fill({ name: 'x' })).length, 500);
 });

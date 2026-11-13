@@ -8,7 +8,7 @@
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="lib/leaflet.css" />
   <!-- Apple HIG Custom Styling -->
-  <link rel="stylesheet" href="style.css?v=11" />
+  <link rel="stylesheet" href="style.css?v=12" />
   <!-- PWA & Apple Web App Meta -->
   <link rel="manifest" href="manifest.json" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -443,6 +443,8 @@
             </div>
           </div>
 
+          <div id="drawer-counts">
+          <div class="rollup-hint" id="drawer-sum-hint" hidden></div>
           <!-- Nuclei Stepper Row -->
           <div style="margin-bottom: 12px;">
             <div class="group-header">Wachsende Keimzellen</div>
@@ -515,6 +517,8 @@
             </div>
           </div>
 
+          </div>
+
           <!-- Deployments / Arrows Connected to this Town -->
           <div style="margin-bottom: 12px;">
             <div class="group-header">Entsendungen &amp; Verbindungen</div>
@@ -532,8 +536,9 @@
             </div>
           </div>
 
-          <!-- Notes / Reflections Group -->
-          <div style="margin-bottom: 12px;">
+          <!-- Notes / Reflections Group: bei Ortschaften mit Stadtteilen eingeklappt -->
+          <details class="notes-details" id="drawer-notes-details" open style="margin-bottom: 12px;">
+            <summary class="btn btn-secondary" hidden>Ortsweite Zusammenfassung</summary>
             <div class="group-header">Notizen &amp; Pläne</div>
             <div class="apple-group">
               <textarea class="apple-textarea" id="drawer-notes" placeholder="Nächste Schritte, Ideen, Termine oder Reflexionsnotizen eintragen..."></textarea>
@@ -541,7 +546,7 @@
             <div class="privacy-notes-hint" style="font-size: 11px; color: var(--text-secondary); margin-top: 5px; line-height: 1.35;">
               <span>Bitte keine Namen oder Kontaktdaten eintragen – die Notizen sind für das ganze Team sichtbar.</span>
             </div>
-          </div>
+          </details>
 
         </div> <!-- End of drawer-overview-view -->
 
@@ -1267,6 +1272,6 @@
   <script src="geographic_landmarks.js" defer></script>
   <script src="rhein_neckar_data.js" defer></script>
   <script src="rhein_neckar_districts.js" defer></script>
-  <script src="app.js?v=11" defer></script>
+  <script src="app.js?v=12" defer></script>
 </body>
 </html>

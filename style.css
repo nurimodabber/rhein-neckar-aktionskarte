@@ -3373,3 +3373,11 @@ input:checked + .slider:before {
 .ms-info blockquote { margin: 8px 0 4px; padding-left: 10px; border-left: 2px solid var(--separator); color: var(--text-secondary); font-style: italic; }
 .ms-info cite { font-size: 12px; font-style: normal; }
 .ms-info cite a { color: var(--system-blue); }
+
+/* Ortschaft mit Stadtteilen: Summen nur lesen */
+#drawer-counts.is-sum .stepper-btn { display: none; }
+#drawer-counts.is-sum .stepper-val { pointer-events: none; background: transparent; }
+#drawer-sum-hint { margin: 0 0 8px; padding: 0 4px; }
+.notes-details > summary { list-style: none; width: 100%; justify-content: center; margin-bottom: 8px; }
+.notes-details > summary::-webkit-details-marker { display: none; }
+.notes-details > summary[hidden] { display: none; }

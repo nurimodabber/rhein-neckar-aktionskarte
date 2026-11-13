@@ -548,12 +548,34 @@ function rollupDistrictId(townId) {
 }
 
 // Angezeigte Ortschaft: höhere Stufe aus eigener Stufe und bestem Stadtteil. Gespeichert bleibt nur die eigene.
+// Nuklei und Aktivitäten einer Ortschaft mit Stadtteilen sind die Summe der Stadtteile; alte eigene Zahlen bleiben gespeichert, zählen aber nicht.
 function shownTown(townId) {
   const town = AppState.towns[townId];
+  if (!town || !townHasDistricts(townId)) return town;
+  const sum = { nuclei: 0, activities: { devotionals: 0, studyCircles: 0, childrenClasses: 0, juniorYouth: 0 } };
+  for (const df of Object.values(AppState.districtFeaturesById)) {
+    if (df.properties.townId !== townId) continue;
+    const d = AppState.districts[df.properties.id];
+    if (!d) continue;
+    sum.nuclei += Number(d.nuclei) || 0;
+    for (const k in sum.activities) sum.activities[k] += Number(d.activities?.[k]) || 0;
+  }
   const dId = rollupDistrictId(townId);
-  if (!dId) return town;
-  const d = AppState.districts[dId];
-  return { ...town, milestone: d.milestone, customColor: d.customColor };
+  const ms = dId ? { milestone: AppState.districts[dId].milestone, customColor: AppState.districts[dId].customColor } : {};
+  return { ...town, ...sum, ...ms };
+}
+
+// Ortschaft mit Stadtteilen: Zahlen nur lesen (Summe), Notizen hinter "Ortsweite Zusammenfassung"
+function setDrawerSumMode(distCount) {
+  const on = distCount > 0;
+  document.getElementById('drawer-counts').classList.toggle('is-sum', on);
+  document.querySelectorAll('#drawer-counts .stepper-val').forEach(i => { i.readOnly = on; });
+  const hint = document.getElementById('drawer-sum-hint');
+  hint.hidden = !on;
+  hint.textContent = on ? `Summe aus ${distCount} Stadtteilen. Zum Ändern oben einen Stadtteil öffnen.` : '';
+  const notes = document.getElementById('drawer-notes-details');
+  notes.open = !on;
+  notes.querySelector('summary').hidden = !on;
 }
 
 function rollupHintHtml(townId) {
@@ -2155,7 +2177,8 @@ function showTownQuickPopover(townId, latlng) {
   refreshAllStyles();
 
   const distCount = Object.values(AppState.districtFeaturesById).filter(f => f.properties.townId === townId).length;
-  const totalActs = calculateTotalActivities(town.activities);
+  const shown = shownTown(townId);
+  const totalActs = calculateTotalActivities(shown.activities);
   const ms = town.milestone || 'none';
   const connectedDeps = AppState.deployments.filter(d => d.fromId === townId || d.toId === townId);
 
@@ -2191,7 +2214,7 @@ function showTownQuickPopover(townId, latlng) {
 
     <div class="qpop-metrics-row">
       <div class="qpop-metric">
-        <span class="qpop-metric-val">${town.nuclei || 0}</span>
+        <span class="qpop-metric-val">${shown.nuclei || 0}</span>
         <span class="qpop-metric-lbl">Nuklei</span>
       </div>
       <div class="qpop-metric">
@@ -2475,9 +2498,11 @@ function selectTown(townId, shouldZoom = true) {
   document.getElementById('drawer-is-center').checked = !!town.isCenter;
   document.getElementById('drawer-is-center').closest('.center-switch-box').style.display = 'flex';
 
-  document.getElementById('drawer-nuclei').value = town.nuclei || 0;
+  const shown = shownTown(townId);
+  setDrawerSumMode(distCount);
+  document.getElementById('drawer-nuclei').value = shown.nuclei || 0;
 
-  const acts = town.activities || {};
+  const acts = shown.activities || {};
   document.getElementById('drawer-act-devotionals').value = acts.devotionals || 0;
   document.getElementById('drawer-act-studycircles').value = acts.studyCircles || 0;
   document.getElementById('drawer-act-children').value = acts.childrenClasses || 0;
@@ -2539,6 +2564,7 @@ function selectDistrict(districtId, shouldZoom = false) {
 
   document.getElementById('drawer-is-center').closest('.center-switch-box').style.display = 'none';
 
+  setDrawerSumMode(0);
   document.getElementById('drawer-nuclei').value = dist.nuclei || 0;
 
   const acts = dist.activities || {};
@@ -2573,7 +2599,7 @@ function renderDistrictsListForTown(townId) {
     const d = AppState.districts[dId] || {};
     const m = d.milestone || 'none';
     const color = m === 'custom' ? (d.customColor || '#86efac') : getMilestoneColor(m);
-    const meta = [m === 'none' ? '' : APP_TERMS.milestones[m].short, d.nuclei ? `${d.nuclei} Nukl.` : ''].filter(Boolean).join(' · ');
+    const meta = [m === 'none' ? '' : APP_TERMS.milestones[m].short, d.nuclei ? `${d.nuclei} Nukl.` : '', calculateTotalActivities(d.activities) ? `${calculateTotalActivities(d.activities)} Akt.` : ''].filter(Boolean).join(' · ');
     const row = document.createElement('button');
     row.type = 'button';
     row.className = 'district-row';
@@ -3230,7 +3256,7 @@ function initUIEventListeners() {
   initStepper('nuclei', (val) => {
     if (AppState.selectedDistrictId) {
       AppState.districts[AppState.selectedDistrictId].nuclei = val;
-    } else if (AppState.selectedTownId) {
+    } else if (AppState.selectedTownId && !townHasDistricts(AppState.selectedTownId)) {
       AppState.towns[AppState.selectedTownId].nuclei = val;
     }
     saveState();
@@ -3851,12 +3877,14 @@ function initStepper(name, onChange) {
   if (!decBtn || !incBtn || !input) return;
 
   decBtn.addEventListener('click', () => {
+    if (input.readOnly) return; // Summenanzeige einer Ortschaft
     pushHistory(`Zähler ${name} verringert`);
     let val = Math.max(0, (parseInt(input.value) || 0) - 1);
     input.value = val;
     onChange(val);
   });
   incBtn.addEventListener('click', () => {
+    if (input.readOnly) return;
     pushHistory(`Zähler ${name} erhöht`);
     let val = (parseInt(input.value) || 0) + 1;
     input.value = val;
@@ -3874,7 +3902,7 @@ function updateCurrentActivity(actKey, val) {
   let target = null;
   if (AppState.selectedDistrictId) {
     target = AppState.districts[AppState.selectedDistrictId];
-  } else if (AppState.selectedTownId) {
+  } else if (AppState.selectedTownId && !townHasDistricts(AppState.selectedTownId)) {
     target = AppState.towns[AppState.selectedTownId];
   }
   if (!target) return;
@@ -3915,16 +3943,6 @@ function updateClusterStats() {
       totalStudyCircles += (t.activities.studyCircles || 0);
       totalChildren += (t.activities.childrenClasses || 0);
       totalJuniorYouth += (t.activities.juniorYouth || 0);
-    }
-  });
-
-  Object.values(AppState.districts).forEach(d => {
-    totalNuclei += (d.nuclei || 0);
-    if (d.activities) {
-      totalDevotionals += (d.activities.devotionals || 0);
-      totalStudyCircles += (d.activities.studyCircles || 0);
-      totalChildren += (d.activities.childrenClasses || 0);
-      totalJuniorYouth += (d.activities.juniorYouth || 0);
     }
   });
 
@@ -4128,8 +4146,8 @@ function openClusterReportModal() {
   const pgCount = towns.filter(t => t.milestone === 'pg').length;
   const ipgCount = towns.filter(t => t.milestone === 'ipg').length;
   const ipgPlusCount = towns.filter(t => t.milestone === 'ipg_plus').length;
-  const totalNuclei = towns.reduce((s, t) => s + (Number(t.nuclei) || 0), 0) + Object.values(AppState.districts).reduce((s, d) => s + (Number(d.nuclei) || 0), 0);
-  const totalActs = towns.reduce((s, t) => s + calculateTotalActivities(t.activities), 0) + Object.values(AppState.districts).reduce((s, d) => s + calculateTotalActivities(d.activities), 0);
+  const totalNuclei = towns.reduce((s, t) => s + (Number(t.nuclei) || 0), 0);
+  const totalActs = towns.reduce((s, t) => s + calculateTotalActivities(t.activities), 0);
   const totalDeps = (AppState.deployments || []).length;
 
   const elActive = document.getElementById('rep-card-active');
@@ -4792,7 +4810,7 @@ async function openShareModal(initialTab = null) {
   if (qrContainer) qrContainer.style.display = 'none';
 
   const townsActive = Object.values(AppState.towns).filter(t => t.milestone && t.milestone !== 'none').length;
-  const nucleiCount = Object.values(AppState.towns).reduce((s, t) => s + (t.nuclei || 0), 0);
+  const nucleiCount = Object.keys(AppState.towns).map(shownTown).reduce((s, t) => s + (t.nuclei || 0), 0);
   const centersCount = Object.values(AppState.towns).filter(t => t.isCenter).length;
   const arrowCount = (AppState.deployments || []).length;
 

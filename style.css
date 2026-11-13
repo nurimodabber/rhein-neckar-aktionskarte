@@ -3463,3 +3463,9 @@ button.live-sync-capsule { border: 0; font: inherit; color: inherit; }
   .share-banner-buttons { width: 100%; flex-wrap: wrap; }
   .btn-banner-close { margin-left: auto; }
 }
+
+/* Zweispaltige Formularzeile; auf dem Handy untereinander, sonst wird der Status abgeschnitten */
+.form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 768px) {
+  .form-row-2 { grid-template-columns: 1fr; gap: 0; }
+}

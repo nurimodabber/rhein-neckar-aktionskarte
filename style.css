@@ -920,6 +920,11 @@ svg:focus-visible,
   pointer-events: auto;
 }
 
+/* Trefferliste der Suche liegt über den Kapseln darunter (Konto, Navigation) */
+.top-left-floating-stack > .spotlight-search-capsule {
+  z-index: 801;
+}
+
 .spotlight-search-capsule {
   display: flex;
   align-items: center;
@@ -3449,4 +3454,12 @@ button.live-sync-capsule { border: 0; font: inherit; color: inherit; }
 @media (max-width: 768px) {
   /* Färben-Palette bzw. Pfeil-Hinweis erscheinen unter der Werkzeugleiste: Konto-Kapsel weicht nach unten aus */
   body:has(.map-floating-toolbar-container > .visible) #live-sync-capsule { margin-top: 52px; }
+  /* Buttonzeilen in Dialogen brechen um statt aus dem Fenster zu ragen */
+  .sheet-footer, .sheet-footer > div, .report-actions-group { flex-wrap: wrap; }
+  .sheet-footer > div { margin-left: auto; justify-content: flex-end; }
+  /* Freigabe-Banner: als Karte statt einzeiliger Pille, sonst ragen die Buttons hinaus */
+  .share-import-banner { flex-wrap: wrap; width: calc(100vw - 24px); border-radius: 16px; padding: 10px 12px; }
+  .share-banner-main { white-space: normal; flex-wrap: wrap; }
+  .share-banner-buttons { width: 100%; flex-wrap: wrap; }
+  .btn-banner-close { margin-left: auto; }
 }

@@ -3396,7 +3396,13 @@ function initUIEventListeners() {
   // Mobile Expandable Search
   const searchCapsule = document.getElementById('spotlight-search-capsule');
   if (searchCapsule && searchInput) {
-    searchCapsule.addEventListener('click', () => {
+    searchCapsule.addEventListener('click', (e) => {
+      // Klick auf einen Treffer schließt die Suche. Der blur-Handler greift hier nicht,
+      // weil das Feld schon beim mousedown den Fokus verliert, solange noch Text drinsteht.
+      if (e.target.closest('.search-results-menu')) {
+        searchCapsule.classList.remove('mobile-expanded');
+        return;
+      }
       if (window.innerWidth <= 768) {
         searchCapsule.classList.add('mobile-expanded');
         searchInput.focus();

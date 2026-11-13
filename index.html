@@ -8,7 +8,7 @@
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="lib/leaflet.css" />
   <!-- Apple HIG Custom Styling -->
-  <link rel="stylesheet" href="style.css?v=15" />
+  <link rel="stylesheet" href="style.css?v=16" />
   <!-- PWA & Apple Web App Meta -->
   <link rel="manifest" href="manifest.json" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -281,13 +281,12 @@
 
       <!-- Bottom Left Floating Dock: Layers & Legend -->
       <div class="layers-legend-capsule apple-hud" id="legend-hud">
-        <div class="legend-capsule-header" id="legend-header-toggle" title="Ebenen &amp; Legende einblenden / ausblenden">
-          <div class="legend-header-title">
-            
+        <button type="button" class="legend-capsule-header" id="legend-header-toggle" aria-expanded="true" title="Ebenen &amp; Legende einblenden / ausblenden">
+          <span class="legend-header-title">
             <span class="legend-title-text">Ebenen &amp; Legende</span>
-          </div>
-          <span id="legend-chevron" class="legend-chevron">▾</span>
-        </div>
+          </span>
+          <span id="legend-chevron" class="legend-chevron" aria-hidden="true">▾</span>
+        </button>
         <div class="legend-body" id="legend-body">
           <div id="legend-items-container">
             <div class="legend-row legend-ms-row">
@@ -1148,7 +1147,7 @@
   <script src="geographic_landmarks.js" defer></script>
   <script src="rhein_neckar_data.js" defer></script>
   <script src="rhein_neckar_districts.js" defer></script>
-  <script src="accounts.js?v=15" defer></script>
-  <script src="app.js?v=15" defer></script>
+  <script src="accounts.js?v=16" defer></script>
+  <script src="app.js?v=16" defer></script>
 </body>
 </html>

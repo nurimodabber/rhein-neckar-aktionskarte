@@ -1067,6 +1067,12 @@ svg:focus-visible,
 }
 
 .legend-capsule-header {
+  width: 100%;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1351,11 +1357,34 @@ svg:focus-visible,
     font-weight: 700;
   }
 
-  /* Top Left Stack & Expandable Search */
+  /* Eine Zeile oben: Suche links, Konto rechts; die Brotkrume rutscht in die zweite Zeile */
   .top-left-floating-stack {
     top: 10px !important;
     left: 10px !important;
+    right: 10px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
     z-index: 920;
+  }
+  .top-left-floating-stack::after {
+    content: '';
+    flex-basis: 100%;
+    order: 1;
+  }
+  .top-left-floating-stack > .spotlight-search-capsule { order: 0; }
+  .top-left-floating-stack > .live-sync-capsule { order: 1; margin-left: auto; }
+  .top-left-floating-stack > .hud-nav-bar:not(.live-sync-capsule) { order: 2; }
+  .top-left-floating-stack:has(.mobile-expanded) > .live-sync-capsule,
+  .top-left-floating-stack:has(.spotlight-search-capsule:focus-within) > .live-sync-capsule {
+    display: none !important;
+  }
+  /* Alle schwebenden Kapseln gleich hoch, gleich rund, gleicher Schatten */
+  .top-left-floating-stack > .hud-nav-bar {
+    min-height: 44px;
+    border-radius: 22px;
+    padding: 4px 14px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14);
   }
   .spotlight-search-capsule {
     width: 44px !important;
@@ -1399,24 +1428,27 @@ svg:focus-visible,
     min-height: 44px;
   }
 
-  /* Mode switcher positioning on mobile */
-  /* Gleiche Zeile wie die runde Suche, damit darunter Platz für die Konto-Kapsel bleibt */
+  /* Keine Modusleiste auf dem Handy: Details ist Standard, Pfeile starten im Ortsblatt,
+     Färben geht über die Meilenstein-Auswahl im Blatt. Pfeil-Hinweis und Abbrechen bleiben sichtbar. */
+  .map-mode-control {
+    display: none !important;
+  }
   .map-floating-toolbar-container {
-    top: 10px !important;
+    top: auto !important;
+    bottom: 16px;
     left: 50% !important;
     transform: translateX(-50%) !important;
+    width: max-content;
     max-width: calc(100vw - 20px);
-    z-index: 850;
+    z-index: 1010;
   }
-  .map-mode-control {
-    padding: 3px !important;
+  .arrow-instruction-banner {
+    min-height: 44px;
+    border-radius: 22px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14);
   }
-  .map-mode-control .segmented-btn {
-    min-height: 44px !important;
-    padding: 6px 12px !important;
-    font-size: 11px !important;
-    border-radius: 14px !important;
-    gap: 4px;
+  .arrow-instruction-banner .btn {
+    min-height: 36px;
   }
   .paint-palette-bar {
     max-width: calc(100vw - 24px);
@@ -1434,9 +1466,17 @@ svg:focus-visible,
     bottom: 16px !important;
     max-width: calc(100vw - 20px);
   }
+  .layers-legend-capsule.collapsed {
+    padding: 0 14px;
+    border-radius: 22px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14);
+  }
   .legend-capsule-header {
     min-height: 44px;
-    padding: 8px 14px;
+  }
+  /* Legende und Ortsblatt nie gleichzeitig: das Blatt hat Vorrang */
+  body:has(.inspector-panel:not(.collapsed)) .layers-legend-capsule {
+    display: none;
   }
 
   /* Inspector drawer as Draggable Bottom Sheet */
@@ -3404,6 +3444,25 @@ body.is-readonly #drawer-milestone-section .milestone-option,
 body.is-readonly #drawer-is-center,
 body.is-readonly #drawer-counts .stepper-btn { pointer-events: none; opacity: 0.55; }
 body.is-readonly #drawer-notes { pointer-events: none; background: transparent; }
+
+/* Nur Ansicht: Bearbeiten-Werkzeuge ausblenden, nur den Stand zeigen */
+body.is-readonly .map-mode-control,
+body.is-readonly #drawer-milestone-section .milestone-option:not(.active),
+body.is-readonly #drawer-counts .stepper-btn,
+body.is-readonly #drawer-custom-color-row,
+body.is-readonly #btn-start-arrow-from-town,
+body.is-readonly .center-switch-box .switch,
+body.is-readonly #drawer-notes-details .privacy-notes-hint,
+body.is-readonly .mobile-undo-redo-bar { display: none !important; }
+body.is-readonly #drawer-milestone-section .milestone-option.active { pointer-events: none; opacity: 1; }
+body.is-readonly #drawer-counts .apple-stepper { background: transparent; }
+body.is-readonly #drawer-overview-view > div:has(.center-switch-box #drawer-is-center:not(:checked)),
+body.is-readonly #drawer-notes-details:has(#drawer-notes:placeholder-shown) { display: none; }
+
+/* Touch: Zoomen mit zwei Fingern, die +/−-Knöpfe sind nur im Weg */
+@media (hover: none) {
+  .leaflet-control-zoom { display: none; }
+}
 
 /* Personen */
 .people-section { margin-bottom: 12px; }

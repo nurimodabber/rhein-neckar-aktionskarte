@@ -1,11 +1,11 @@
 // Rhein-Neckar Cluster Offline Service Worker (v7)
-const CACHE_NAME = 'rhein-neckar-cache-v15';
+const CACHE_NAME = 'rhein-neckar-cache-v16';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
-  './style.css?v=15',
-  './accounts.js?v=15',
-  './app.js?v=15',
+  './style.css?v=16',
+  './accounts.js?v=16',
+  './app.js?v=16',
   './icon.svg',
   './manifest.json',
   './lib/leaflet.css',

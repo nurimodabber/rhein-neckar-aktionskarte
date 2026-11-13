@@ -933,12 +933,25 @@ function scheduleViewRefresh(full = false) {
   }, 60);
 }
 
+// Auf Touch-Geräten erscheinen Leaflet-Tooltips beim Antippen als verirrtes Popup
+const CAN_HOVER = window.matchMedia('(hover: hover)').matches;
+
+// Gesamtansicht. Hochkant passen alle 133 Orte nur bei Zoom 8,5 in die Breite, dann ist die Karte
+// winzig und oben wie unten leer. Auf dem Handy daher fester Zoom um die Mitte; Ränder per Wischen.
+function fitOverview(options = {}) {
+  const bounds = AppState.geoJsonLayer.getBounds();
+  // Mitte zwischen Speyer, Mannheim, Heidelberg und Sinsheim, nicht die Mitte aller Landkreise
+  if (window.innerWidth <= 768) AppState.map.setView([49.41, 8.55], 9.5, options);
+  else AppState.map.fitBounds(bounds, { padding: [12, 12], ...options });
+}
+
 function getFocusPadding() {
   const isMobile = window.innerWidth <= 768;
   if (isMobile) {
+    // Das Blatt ist 54vh hoch und liegt über dem unteren Kartenteil
     return {
-      paddingTopLeft: [24, 90],
-      paddingBottomRight: [24, Math.round(window.innerHeight * 0.52 + 16)]
+      paddingTopLeft: [16, 116], // Suchzeile plus Brotkrume
+      paddingBottomRight: [16, Math.round(window.innerHeight * 0.54 + 12)]
     };
   }
   return {
@@ -1073,7 +1086,7 @@ function renderGeographicLandmarks() {
     onEachFeature: (feature, layer) => {
       const p = feature.properties;
       const label = p.type === 'river' || p.type === 'stream' ? `Fluss: ${p.name}` : `Straße: ${p.name}`;
-      layer.bindTooltip(label, { sticky: true, opacity: 0.9 });
+      if (CAN_HOVER) layer.bindTooltip(label, { sticky: true, opacity: 0.9 });
     }
   }).addTo(AppState.map);
 }
@@ -1145,11 +1158,7 @@ function zoomToClusterOverview(animate = true) {
   if (separator) separator.style.display = 'none';
 
   if (AppState.map && AppState.geoJsonLayer) {
-    AppState.map.fitBounds(AppState.geoJsonLayer.getBounds(), {
-      padding: [12, 12],
-      animate: animate,
-      duration: 0.8
-    });
+    fitOverview({ animate: animate, duration: 0.8 });
   }
 
   refreshAllStyles();
@@ -1417,7 +1426,11 @@ function renderGeoJson() {
     }
   }).addTo(AppState.map);
 
-  AppState.map.fitBounds(AppState.geoJsonLayer.getBounds(), { padding: [12, 12] });
+  // Erst nach dem ersten Layout-Frame einpassen, sonst rechnet Leaflet mit der falschen Kartengröße
+  requestAnimationFrame(() => {
+    AppState.map.invalidateSize();
+    fitOverview();
+  });
 }
 
 function renderDistrictsGeoJson() {
@@ -1504,6 +1517,7 @@ function updateTownTooltip(townId) {
   `;
 
   layer.unbindTooltip();
+  if (!CAN_HOVER) return;
   layer.bindTooltip(tooltipContent, {
     sticky: true,
     direction: 'top',
@@ -1529,6 +1543,7 @@ function updateDistrictTooltip(districtId) {
   `;
 
   layer.unbindTooltip();
+  if (!CAN_HOVER) return;
   layer.bindTooltip(tooltipContent, {
     sticky: true,
     direction: 'top',
@@ -3260,6 +3275,8 @@ function initUIEventListeners() {
     const feat = isDist ? AppState.districtFeaturesById[id] : AppState.townFeaturesById[id];
     const name = isDist ? `${feat.properties.townName} (${feat.properties.name})` : feat.properties.name;
     document.getElementById('arrow-instruction-text').textContent = `Start gewählt: ${name} → Klicke jetzt auf das Ziel`;
+    // Auf dem Handy verdeckt das Blatt sonst die halbe Karte, auf der das Ziel liegt
+    if (window.innerWidth <= 768) document.getElementById('details-drawer').classList.add('collapsed');
     refreshAllStyles();
   });
 
@@ -3429,6 +3446,7 @@ function initUIEventListeners() {
       const chevron = document.getElementById('legend-chevron');
       if (hud) hud.classList.add('collapsed');
       if (chevron) chevron.textContent = '▴';
+      legendToggle.setAttribute('aria-expanded', 'false');
     }
 
     legendToggle.addEventListener('click', () => {
@@ -3437,6 +3455,7 @@ function initUIEventListeners() {
       if (hud) {
         hud.classList.toggle('collapsed');
         const isCollapsed = hud.classList.contains('collapsed');
+        legendToggle.setAttribute('aria-expanded', String(!isCollapsed));
         if (chevron) chevron.textContent = isCollapsed ? '▴' : '▾';
       }
     });

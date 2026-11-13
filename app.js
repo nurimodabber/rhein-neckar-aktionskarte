@@ -50,12 +50,7 @@ const AppState = {
   undoStack: [],
   redoStack: [],
   isHistoryAction: false,
-  activeQuickDeployment: null,
-
-  // Online Collaborative Room Sync state
-  syncRoomId: null,
-  syncVersion: 0,
-  syncUpdatedAt: null
+  activeQuickDeployment: null
 };
 
 // TODO: Betreiberdaten vor Veröffentlichung oder Übergabe an den Auftraggeber anpassen
@@ -309,25 +304,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.warn('URL focus parse error:', e);
   }
 
-  // Initialize Collaborative Online Sync Engine
-  if (typeof SyncEngine !== 'undefined') {
-    SyncEngine.init();
-  }
-
-  // Check URL for shared cluster state, platform migration or live room
+  // Check URL for shared cluster state, platform migration or legacy room
   setTimeout(() => {
     checkMigrationOnStartup();
     checkShareUrlOnStartup();
-    if (typeof SyncEngine !== 'undefined') {
-      SyncEngine.checkRoomOnStartup();
-    }
+    checkLegacyRoomOnStartup();
   }, 250);
   window.addEventListener('hashchange', () => {
     checkMigrationOnStartup();
     checkShareUrlOnStartup();
-    if (typeof SyncEngine !== 'undefined') {
-      SyncEngine.checkRoomOnStartup();
-    }
+    checkLegacyRoomOnStartup();
   });
 });
 
@@ -701,10 +687,6 @@ function saveState() {
   AppStorage.saveState(dataToSave);
   updateClusterStats();
   saveAutoBackup('Automatische Sicherung', false);
-
-  if (typeof SyncEngine !== 'undefined' && SyncEngine.roomId) {
-    SyncEngine.schedulePush();
-  }
 }
 
 // --- History (Undo / Redo) & Local Auto-Backups ---
@@ -4775,31 +4757,6 @@ async function openShareModal(initialTab = null) {
   const modal = document.getElementById('share-modal');
   if (!modal) return;
 
-  // Tab switching logic
-  const tabLive = document.getElementById('tab-btn-live-room');
-  const tabSnap = document.getElementById('tab-btn-snapshot');
-  const paneLive = document.getElementById('share-tab-live-room');
-  const paneSnap = document.getElementById('share-tab-snapshot');
-
-  const activeTab = initialTab || (typeof SyncEngine !== 'undefined' && SyncEngine.roomId ? 'live' : 'live');
-  if (tabLive && tabSnap && paneLive && paneSnap) {
-    if (activeTab === 'snapshot') {
-      tabSnap.classList.add('active');
-      tabLive.classList.remove('active');
-      paneSnap.style.display = 'block';
-      paneLive.style.display = 'none';
-    } else {
-      tabLive.classList.add('active');
-      tabSnap.classList.remove('active');
-      paneLive.style.display = 'block';
-      paneSnap.style.display = 'none';
-    }
-  }
-
-  if (typeof SyncEngine !== 'undefined') {
-    SyncEngine.updateModalUI();
-  }
-
   const input = document.getElementById('share-link-input');
   const indicator = document.getElementById('share-copied-indicator');
   const summary = document.getElementById('share-stats-summary');
@@ -5412,534 +5369,31 @@ function showConfirmModal({ title, message, confirmText = 'Bestätigen', cancelT
 }
 
 // ==========================================================================
-// SyncEngine: Collaborative Multi-Device Online Room Synchronization
+// Alte Online-Räume (#room=): abgeschaltet, ihr letzter Stand lässt sich aber noch importieren.
 // ==========================================================================
-const SyncEngine = {
-  roomId: null,
-  version: 0,
-  updatedAt: null,
-  lastEtag: null,
-  isPushing: false,
-  isPulling: false,
-  pushTimer: null,
-  pollIntervalId: null,
-  POLL_INTERVAL_MS: 4000,
-  PUSH_DEBOUNCE_MS: 1200,
-  isOffline: typeof navigator !== 'undefined' ? !navigator.onLine : false,
-
-  init() {
-    window.addEventListener('online', () => {
-      SyncEngine.isOffline = false;
-      SyncEngine.updateCapsuleUI('online');
-      if (SyncEngine.roomId) {
-        SyncEngine.schedulePush(true);
-        SyncEngine.pollRemote();
-      }
-    });
-
-    window.addEventListener('offline', () => {
-      SyncEngine.isOffline = true;
-      SyncEngine.updateCapsuleUI('offline', 'Offline');
-    });
-
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible' && SyncEngine.roomId) {
-        SyncEngine.pollRemote();
-      }
-    });
-
-    SyncEngine.bindUIEvents();
-  },
-
-  checkRoomOnStartup() {
-    let targetRoom = null;
-    const hash = window.location.hash || '';
-    if (hash.includes('room=')) {
-      const match = hash.match(/room=([a-zA-Z0-9_-]+)/);
-      if (match) targetRoom = match[1];
-    } else {
-      const params = new URLSearchParams(window.location.search);
-      targetRoom = params.get('room');
-    }
-
-    if (targetRoom && targetRoom !== SyncEngine.roomId) {
-      SyncEngine.joinRoom(targetRoom, false);
-    }
-  },
-
-  async joinRoom(roomId, isNew = false) {
-    if (!roomId || !/^[a-zA-Z0-9_-]{3,64}$/.test(roomId)) {
-      showInAppAlert('Ungültige Raum-ID. Erlaubt sind 3-64 Zeichen (Buchstaben, Ziffern, - oder _).', 'warning');
+async function checkLegacyRoomOnStartup() {
+  const match = window.location.hash.match(/room=([a-zA-Z0-9_-]{3,64})/);
+  if (!match) return;
+  const roomId = match[1];
+  history.replaceState(null, '', window.location.pathname + window.location.search);
+  try {
+    const res = await fetch(`/api/sync?room=${encodeURIComponent(roomId)}`, { cache: 'no-store' });
+    const json = res.ok ? await res.json() : null;
+    const data = json && json.data;
+    if (!data || typeof data !== 'object') {
+      showInAppAlert(`Raum „${roomId}“ wurde nicht gefunden.`, 'warning');
       return;
     }
-
-    SyncEngine.roomId = roomId;
-    AppState.syncRoomId = roomId;
-
-    const newHash = `#room=${roomId}`;
-    if (window.location.hash !== newHash) {
-      history.replaceState(null, '', newHash);
-    }
-
-    SyncEngine.updateCapsuleUI('syncing', 'Verbinde...');
-
-    try {
-      const res = await fetch(`/api/sync?room=${encodeURIComponent(roomId)}`, {
-        cache: 'no-store'
-      });
-
-      if (res.status === 200) {
-        const json = await res.json();
-        if (json.ok && json.data) {
-          saveAutoBackup(`Vor Beitritt zu Raum ${roomId}`, true);
-          SyncEngine.applyRemoteState(json.data, json.version, json.updatedAt, res.headers.get('etag'));
-          showInAppAlert(`Raum „${roomId}“ geladen. Du arbeitest jetzt online synchronisiert.`, 'success');
-        }
-      } else if (res.status === 404 || isNew) {
-        await SyncEngine.pushStateImmediate(true);
-        showInAppAlert(`Neuer Raum „${roomId}“ erstellt und online synchronisiert.`, 'success');
-      } else {
-        console.warn('Unerwarteter Status beim Raum-Beitritt:', res.status);
-      }
-    } catch (err) {
-      console.warn('Netzwerkfehler beim Raum-Beitritt, arbeite lokal weiter:', err);
-      showInAppAlert('Konnte keine Verbindung zum Raum herstellen. Lokale Version aktiv.', 'warning');
-    }
-
-    SyncEngine.startPolling();
-    SyncEngine.updateModalUI();
-  },
-
-  leaveRoom() {
-    if (!SyncEngine.roomId) return;
-    const oldRoom = SyncEngine.roomId;
-    SyncEngine.stopPolling();
-    SyncEngine.roomId = null;
-    AppState.syncRoomId = null;
-    SyncEngine.version = 0;
-    SyncEngine.updatedAt = null;
-    SyncEngine.lastEtag = null;
-
-    if (window.location.hash.includes('room=')) {
-      history.replaceState(null, '', window.location.pathname);
-    }
-
-    SyncEngine.updateCapsuleUI('hidden');
-    SyncEngine.updateModalUI();
-    showInAppAlert(`Raum „${oldRoom}“ verlassen. Du bist jetzt wieder im lokalen Modus.`, 'info');
-  },
-
-  schedulePush(immediate = false) {
-    if (!SyncEngine.roomId || SyncEngine.isOffline) return;
-
-    if (SyncEngine.pushTimer) {
-      clearTimeout(SyncEngine.pushTimer);
-      SyncEngine.pushTimer = null;
-    }
-
-    if (immediate) {
-      SyncEngine.pushStateImmediate();
-      return;
-    }
-
-    SyncEngine.updateCapsuleUI('syncing', 'Speichere...');
-
-    SyncEngine.pushTimer = setTimeout(() => {
-      SyncEngine.pushStateImmediate();
-    }, SyncEngine.PUSH_DEBOUNCE_MS);
-  },
-
-  async pushStateImmediate(isInit = false) {
-    if (!SyncEngine.roomId || SyncEngine.isPushing) return;
-    SyncEngine.isPushing = true;
-    SyncEngine.updateCapsuleUI('syncing', 'Speichere...');
-
-    try {
-      const payload = {
-        room: SyncEngine.roomId,
-        version: SyncEngine.version,
-        clientTimestamp: Date.now(),
-        data: snapshotCurrentData()
-      };
-
-      const res = await fetch(`/api/sync?room=${encodeURIComponent(SyncEngine.roomId)}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (res.ok) {
-        const json = await res.json();
-        SyncEngine.version = json.version || (SyncEngine.version + 1);
-        SyncEngine.updatedAt = json.updatedAt || new Date().toISOString();
-        SyncEngine.updateCapsuleUI('online', 'Synchron');
-        SyncEngine.updateModalUI();
-      } else {
-        console.warn('Fehler beim Speichern im Raum:', res.status);
-        SyncEngine.updateCapsuleUI('warning', 'Fehler beim Speichern');
-      }
-    } catch (err) {
-      console.warn('Verbindungsfehler beim Synchronisieren:', err);
-      SyncEngine.updateCapsuleUI('offline', 'Offline');
-    } finally {
-      SyncEngine.isPushing = false;
-    }
-  },
-
-  startPolling() {
-    SyncEngine.stopPolling();
-    SyncEngine.pollIntervalId = setInterval(() => {
-      SyncEngine.pollRemote();
-    }, SyncEngine.POLL_INTERVAL_MS);
-  },
-
-  stopPolling() {
-    if (SyncEngine.pollIntervalId) {
-      clearInterval(SyncEngine.pollIntervalId);
-      SyncEngine.pollIntervalId = null;
-    }
-  },
-
-  async pollRemote() {
-    if (!SyncEngine.roomId || SyncEngine.isPulling || SyncEngine.isPushing || SyncEngine.isOffline) return;
-    if (document.hidden) return;
-
-    SyncEngine.isPulling = true;
-    try {
-      const headers = {};
-      if (SyncEngine.lastEtag) {
-        headers['If-None-Match'] = SyncEngine.lastEtag;
-      }
-
-      const res = await fetch(`/api/sync?room=${encodeURIComponent(SyncEngine.roomId)}`, {
-        headers,
-        cache: 'no-store'
-      });
-
-      if (res.status === 304) {
-        return;
-      }
-
-      if (res.status === 200) {
-        const json = await res.json();
-        if (json.ok && json.data) {
-          const remoteVersion = Number(json.version) || 0;
-          if (remoteVersion > SyncEngine.version) {
-            SyncEngine.applyRemoteState(json.data, remoteVersion, json.updatedAt, res.headers.get('etag'));
-            SyncEngine.updateCapsuleUI('online', 'Aktualisiert');
-            setTimeout(() => SyncEngine.updateCapsuleUI('online', 'Synchron'), 2000);
-          }
-        }
-      }
-    } catch (e) {
-      // Ignore background poll errors
-    } finally {
-      SyncEngine.isPulling = false;
-    }
-  },
-
-  applyRemoteState(remoteData, version, updatedAt, etag) {
-    if (!remoteData || typeof remoteData !== 'object') return;
-
-    SyncEngine.version = version || (SyncEngine.version + 1);
-    SyncEngine.updatedAt = updatedAt || new Date().toISOString();
-    if (etag) SyncEngine.lastEtag = etag;
-
-    if (remoteData.towns) {
-      for (const [k, v] of Object.entries(remoteData.towns)) {
-        AppState.towns[k] = sanitizeEntityData(v);
-      }
-    }
-    if (remoteData.districts) {
-      for (const [k, v] of Object.entries(remoteData.districts)) {
-        AppState.districts[k] = sanitizeEntityData(v);
-      }
-    }
-    if (Array.isArray(remoteData.deployments)) {
-      AppState.deployments = remoteData.deployments.map(sanitizeDeployment).filter(Boolean);
-    }
-
-    const dataToSave = {
-      schemaVersion: CURRENT_SCHEMA_VERSION,
-      towns: AppState.towns,
-      districts: AppState.districts,
-      deployments: AppState.deployments,
-      updatedAt: SyncEngine.updatedAt
-    };
-    AppStorage.saveState(dataToSave);
-
-    scheduleViewRefresh(true);
-    updateClusterStats();
-
-    if (AppState.selectedTownId) {
-      renderInspector(AppState.selectedTownId, false);
-    } else if (AppState.selectedDistrictId) {
-      renderInspector(AppState.selectedDistrictId, true);
-    }
-
-    SyncEngine.updateModalUI();
-  },
-
-  updateCapsuleUI(state, text = 'Synchron') {
-    const capsule = document.getElementById('live-sync-capsule');
-    const dot = document.getElementById('sync-live-dot');
-    const label = document.getElementById('sync-room-label');
-    const pill = document.getElementById('sync-state-pill');
-
-    if (!capsule || !dot || !label || !pill) return;
-
-    if (!SyncEngine.roomId || state === 'hidden') {
-      capsule.style.display = 'none';
-      return;
-    }
-
-    capsule.style.display = 'inline-flex';
-    label.textContent = `Raum: ${SyncEngine.roomId}`;
-    pill.textContent = text;
-
-    dot.className = 'sync-live-dot';
-    pill.className = 'sync-state-pill';
-
-    if (state === 'syncing') {
-      dot.classList.add('syncing');
-      pill.classList.add('syncing');
-    } else if (state === 'offline') {
-      dot.classList.add('offline');
-      pill.classList.add('offline');
-    } else if (state === 'warning') {
-      dot.classList.add('syncing');
-      pill.classList.add('syncing');
-    }
-  },
-
-  // Der Raumname ist der einzige Schutz des Raums, deshalb nicht erratbar (12 Zeichen, ~62 Bit).
-  randomId() {
-    return Array.from(crypto.getRandomValues(new Uint8Array(12)), b => (b % 36).toString(36)).join('');
-  },
-
-  slugify(text) {
-    if (!text || typeof text !== 'string') return '';
-    return text
-      .trim()
-      .toLowerCase()
-      .replace(/ä/g, 'ae')
-      .replace(/ö/g, 'oe')
-      .replace(/ü/g, 'ue')
-      .replace(/ß/g, 'ss')
-      .replace(/[^a-z0-9_-]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .substring(0, 64);
-  },
-
-  updateModalUI() {
-    const isConnected = !!SyncEngine.roomId;
-    const connectedView = document.getElementById('room-connected-view');
-    const disconnectedView = document.getElementById('room-disconnected-view');
-    const statusDot = document.getElementById('room-status-dot');
-    const statusHeadline = document.getElementById('room-status-headline');
-    const linkInput = document.getElementById('room-link-input');
-    const editSlugInput = document.getElementById('edit-room-slug-input');
-    const createSlugInput = document.getElementById('create-room-slug-input');
-
-    if (connectedView) connectedView.style.display = isConnected ? 'block' : 'none';
-    if (disconnectedView) disconnectedView.style.display = isConnected ? 'none' : 'flex';
-
-    if (statusDot && statusHeadline) {
-      if (isConnected) {
-        statusDot.className = 'sync-dot online';
-        statusHeadline.innerHTML = `<strong>Status:</strong> Online verbunden (Raum: <code>${escapeHtml(SyncEngine.roomId)}</code>, v${SyncEngine.version})`;
-      } else {
-        statusDot.className = 'sync-dot local';
-        statusHeadline.innerHTML = '<strong>Status:</strong> Lokale Arbeitskopie (Offline-First)';
-      }
-    }
-
-    if (linkInput && isConnected) {
-      const roomUrl = `${window.location.origin}${window.location.pathname}#room=${SyncEngine.roomId}`;
-      linkInput.value = roomUrl;
-    }
-
-    if (editSlugInput && isConnected) {
-      editSlugInput.value = SyncEngine.roomId;
-    }
-
-    if (createSlugInput && !isConnected && !createSlugInput.value) {
-      createSlugInput.value = 'rn-planung-' + SyncEngine.randomId();
-    }
-  },
-
-  bindUIEvents() {
-    const capsule = document.getElementById('live-sync-capsule');
-    if (capsule) {
-      capsule.addEventListener('click', () => {
-        openShareModal('live');
-      });
-    }
-
-    const tabLive = document.getElementById('tab-btn-live-room');
-    const tabSnap = document.getElementById('tab-btn-snapshot');
-    const paneLive = document.getElementById('share-tab-live-room');
-    const paneSnap = document.getElementById('share-tab-snapshot');
-
-    if (tabLive && tabSnap && paneLive && paneSnap) {
-      tabLive.addEventListener('click', () => {
-        tabLive.classList.add('active');
-        tabSnap.classList.remove('active');
-        paneLive.style.display = 'block';
-        paneSnap.style.display = 'none';
-      });
-      tabSnap.addEventListener('click', () => {
-        tabSnap.classList.add('active');
-        tabLive.classList.remove('active');
-        paneLive.style.display = 'none';
-        paneSnap.style.display = 'block';
-      });
-    }
-
-    const btnCreate = document.getElementById('btn-create-room');
-    const createSlugInput = document.getElementById('create-room-slug-input');
-    if (btnCreate) {
-      btnCreate.addEventListener('click', () => {
-        let rawSlug = createSlugInput ? createSlugInput.value : '';
-        if (rawSlug.includes('room=')) {
-          const match = rawSlug.match(/room=([a-zA-Z0-9_-]+)/);
-          if (match) rawSlug = match[1];
-        }
-        let cleanSlug = SyncEngine.slugify(rawSlug);
-        if (!cleanSlug) {
-          cleanSlug = 'rn-' + SyncEngine.randomId();
-        }
-        SyncEngine.joinRoom(cleanSlug, true);
-      });
-      if (createSlugInput) {
-        createSlugInput.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') btnCreate.click();
-        });
-      }
-    }
-
-    const btnUpdateSlug = document.getElementById('btn-update-room-slug');
-    const editSlugInput = document.getElementById('edit-room-slug-input');
-    if (btnUpdateSlug && editSlugInput) {
-      const handleUpdateSlug = () => {
-        let rawSlug = editSlugInput.value;
-        if (rawSlug.includes('room=')) {
-          const match = rawSlug.match(/room=([a-zA-Z0-9_-]+)/);
-          if (match) rawSlug = match[1];
-        }
-        const cleanSlug = SyncEngine.slugify(rawSlug);
-        if (!cleanSlug) {
-          showInAppAlert('Bitte einen gültigen Raum-Slug eingeben (z. B. rn-planung-2026).', 'warning');
-          return;
-        }
-        if (cleanSlug === SyncEngine.roomId) {
-          showInAppAlert('Dieser Slug ist bereits aktiv.', 'info');
-          return;
-        }
-        SyncEngine.joinRoom(cleanSlug, true);
-        showInAppAlert(`Raum-Slug erfolgreich auf „${cleanSlug}“ geändert!`, 'success');
-      };
-
-      btnUpdateSlug.addEventListener('click', handleUpdateSlug);
-      editSlugInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') handleUpdateSlug();
-      });
-    }
-
-    const btnJoin = document.getElementById('btn-join-room');
-    const inputJoin = document.getElementById('join-room-input');
-    if (btnJoin && inputJoin) {
-      btnJoin.addEventListener('click', () => {
-        let val = inputJoin.value.trim();
-        if (val.includes('room=')) {
-          const match = val.match(/room=([a-zA-Z0-9_-]+)/);
-          if (match) val = match[1];
-        }
-        val = SyncEngine.slugify(val);
-        if (val) {
-          SyncEngine.joinRoom(val, false);
-          inputJoin.value = '';
-        } else {
-          showInAppAlert('Bitte einen gültigen Raum-Namen oder Link eingeben.', 'warning');
-        }
-      });
-      inputJoin.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') btnJoin.click();
-      });
-    }
-
-    const btnCopy = document.getElementById('btn-copy-room-link');
-    const roomInput = document.getElementById('room-link-input');
-    const copyIndicator = document.getElementById('room-copied-indicator');
-    if (btnCopy && roomInput) {
-      btnCopy.addEventListener('click', async () => {
-        try {
-          await navigator.clipboard.writeText(roomInput.value);
-          if (copyIndicator) {
-            copyIndicator.style.display = 'inline';
-            setTimeout(() => { copyIndicator.style.display = 'none'; }, 2500);
-          }
-        } catch (e) {
-          roomInput.select();
-          document.execCommand('copy');
-        }
-      });
-      roomInput.addEventListener('click', () => {
-        roomInput.select();
-      });
-    }
-
-    const btnLeave = document.getElementById('btn-leave-room');
-    if (btnLeave) {
-      btnLeave.addEventListener('click', () => {
-        if (confirm('Möchtest du den gemeinsamen Raum verlassen und wieder rein lokal arbeiten? Deine aktuellen Daten bleiben auf diesem Gerät erhalten.')) {
-          SyncEngine.leaveRoom();
-        }
-      });
-    }
-
-    const btnQr = document.getElementById('btn-toggle-room-qr');
-    const qrContainer = document.getElementById('room-qr-container');
-    const qrImage = document.getElementById('room-qr-image');
-    if (btnQr && qrContainer && qrImage) {
-      btnQr.addEventListener('click', () => {
-        if (qrContainer.style.display === 'none') {
-          const url = `${window.location.origin}${window.location.pathname}#room=${SyncEngine.roomId}`;
-          if (typeof qrcode !== 'undefined') {
-            try {
-              const qr = qrcode(0, 'M');
-              qr.addData(url);
-              qr.make();
-              qrImage.src = qr.createDataURL(6, 4);
-              qrContainer.style.display = 'block';
-              btnQr.textContent = 'QR-Code ausblenden';
-            } catch (err) {
-              console.warn('QR error:', err);
-            }
-          }
-        } else {
-          qrContainer.style.display = 'none';
-          btnQr.textContent = 'QR-Code anzeigen';
-        }
-      });
-    }
-
-    const btnNative = document.getElementById('btn-native-share-room');
-    if (btnNative) {
-      if (navigator.share) {
-        btnNative.style.display = 'inline-flex';
-        btnNative.addEventListener('click', async () => {
-          try {
-            await navigator.share({
-              title: 'Rhein-Neckar Aktionskarte – Gemeinsamer Raum',
-              text: `Gemeinsame Planung für den Cluster Rhein-Neckar (Raum: ${SyncEngine.roomId}):`,
-              url: `${window.location.origin}${window.location.pathname}#room=${SyncEngine.roomId}`
-            });
-          } catch (e) {}
-        });
-      }
-    }
+    const towns = {};
+    const districts = {};
+    for (const [k, v] of Object.entries(data.towns || {})) towns[k] = sanitizeEntityData(v);
+    for (const [k, v] of Object.entries(data.districts || {})) districts[k] = sanitizeEntityData(v);
+    const deps = Array.isArray(data.deployments)
+      ? data.deployments.map((d, i) => sanitizeDeploymentRecord(d, i)).filter(Boolean)
+      : [];
+    showImportDiffModal(`Raum „${roomId}“`, towns, districts, deps);
+  } catch (err) {
+    console.warn('Raum konnte nicht geladen werden:', err);
+    showInAppAlert('Raum konnte nicht geladen werden.', 'warning');
   }
-};
+}

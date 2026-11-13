@@ -1,8 +1,8 @@
-const { put, get } = require('@vercel/blob');
+// Alte Online-Räume: nur noch Lesen, damit ihr letzter Stand importiert werden kann.
+const { get } = require('@vercel/blob');
 
 module.exports = async function handler(req, res) {
-  // Support query or body for roomId
-  const roomId = (req.query && req.query.room) || (req.body && req.body.room);
+  const roomId = req.query && req.query.room;
   if (!roomId || typeof roomId !== 'string' || !/^[a-zA-Z0-9_-]{3,64}$/.test(roomId)) {
     return res.status(400).json({
       ok: false,
@@ -44,51 +44,6 @@ module.exports = async function handler(req, res) {
     } catch (err) {
       console.error('Fehler beim Laden des Raums:', err);
       return res.status(500).json({ ok: false, error: 'Fehler beim Lesen des Raumstatus' });
-    }
-  }
-
-  if (req.method === 'POST') {
-    try {
-      const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-      const { data, version, clientTimestamp } = body;
-
-      if (!data || typeof data !== 'object') {
-        return res.status(400).json({ ok: false, error: 'Fehlendes oder ungültiges "data"-Objekt' });
-      }
-
-      const newVersion = (Number(version) || 0) + 1;
-      const nowIso = new Date().toISOString();
-
-      const envelope = {
-        room: roomId,
-        version: newVersion,
-        updatedAt: nowIso,
-        clientTimestamp: clientTimestamp || Date.now(),
-        data
-      };
-
-      const serialized = JSON.stringify(envelope);
-
-      if (Buffer.byteLength(serialized, 'utf8') > 3 * 1024 * 1024) {
-        return res.status(413).json({ ok: false, error: 'Nutzlast überschreitet das Limit von 3 MB' });
-      }
-
-      await put(blobKey, serialized, {
-        access: 'private',
-        addRandomSuffix: false,
-        allowOverwrite: true,
-        contentType: 'application/json'
-      });
-
-      return res.status(200).json({
-        ok: true,
-        room: roomId,
-        version: newVersion,
-        updatedAt: nowIso
-      });
-    } catch (err) {
-      console.error('Fehler beim Speichern des Raums:', err);
-      return res.status(500).json({ ok: false, error: 'Fehler beim Speichern des Raumstatus' });
     }
   }
 

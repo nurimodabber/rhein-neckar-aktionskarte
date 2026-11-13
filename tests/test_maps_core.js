@@ -32,6 +32,7 @@ test('Verschlüsselung: Rundweg, kein Klartext, an Karten-ID gebunden', () => {
   assert.throws(() => core.decrypt(env, crypto.randomBytes(32), id));
   const tampered = { ...env, ct: Buffer.from(env.ct, 'base64').map((b, i) => i === 0 ? b ^ 1 : b).toString('base64') };
   assert.throws(() => core.decrypt(tampered, key, id));
+  assert.throws(() => core.decrypt({ ...env, tag: Buffer.from(env.tag, 'base64').subarray(0, 4).toString('base64') }, key, id));
 });
 
 test('Rollen: zweites Konto hat keinen Zugriff auf fremde Karte', () => {

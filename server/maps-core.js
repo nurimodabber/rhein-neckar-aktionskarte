@@ -33,7 +33,7 @@ function encrypt(obj, key, mapId) {
 
 function decrypt(env, key, mapId) {
   if (!env || env.v !== 1) throw new Error('Unbekanntes Format');
-  const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(env.iv, 'base64'));
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(env.iv, 'base64'), { authTagLength: 16 }); // keine gekürzten Tags
   decipher.setAAD(Buffer.from(mapId, 'utf8'));
   decipher.setAuthTag(Buffer.from(env.tag, 'base64'));
   const pt = Buffer.concat([decipher.update(Buffer.from(env.ct, 'base64')), decipher.final()]);

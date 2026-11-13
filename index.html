@@ -8,7 +8,7 @@
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="lib/leaflet.css" />
   <!-- Apple HIG Custom Styling -->
-  <link rel="stylesheet" href="style.css?v=8" />
+  <link rel="stylesheet" href="style.css?v=9" />
   <!-- PWA & Apple Web App Meta -->
   <link rel="manifest" href="manifest.json" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -418,22 +418,22 @@
           </div>
           <div class="apple-group">
             <div class="milestone-selector">
-              <div class="milestone-card milestone-option" data-milestone="none">
+              <button type="button" class="milestone-card milestone-option" data-milestone="none">
                 <div class="legend-dot none"></div>
                 <span>Noch nicht begonnen</span>
-              </div>
-              <div class="milestone-card milestone-option" data-milestone="pg">
+              </button>
+              <button type="button" class="milestone-card milestone-option" data-milestone="pg">
                 <div class="legend-dot pg"></div>
                 <span>Programm des Wachstums (PG)</span>
-              </div>
-              <div class="milestone-card milestone-option" data-milestone="ipg">
+              </button>
+              <button type="button" class="milestone-card milestone-option" data-milestone="ipg">
                 <div class="legend-dot ipg"></div>
                 <span>Intensives Programm (IPG)</span>
-              </div>
-              <div class="milestone-card milestone-option" data-milestone="ipg_plus">
+              </button>
+              <button type="button" class="milestone-card milestone-option" data-milestone="ipg_plus">
                 <div class="legend-dot ipg-plus"></div>
                 <span>Fortgeschrittenes Programm (IPG+)</span>
-              </div>
+              </button>
             </div>
             <div class="custom-color-row" id="drawer-custom-color-row" style="display:none;">
               <span>Farbe anpassen:</span>
@@ -442,21 +442,13 @@
           </div>
         </div>
 
-        <!-- Segmented Tab Control (Visible when town has sub-districts) -->
-        <div class="segmented-control" id="drawer-tabs-segmented" style="width: 100%; margin-bottom: 8px;">
-          <button class="segmented-btn active" id="tab-btn-overview" style="flex: 1; justify-content: center;">Gesamtgemeinde</button>
-          <button class="segmented-btn" id="tab-btn-districts" style="flex: 1; justify-content: center;">Stadtteile (<span id="drawer-districts-count">0</span>)</button>
-        </div>
+        <div id="drawer-rollup-hint"></div>
 
-        <!-- Container for Stadtteile Tab -->
-        <div id="drawer-districts-view" style="display: none;">
-          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
-            <div class="group-header" style="margin: 0;">Stadtteile &amp; Nachbarschaften</div>
-            <span style="font-size: 11px; font-weight: 500; color: var(--text-tertiary);" id="drawer-districts-summary-count">0 Stadtteile</span>
-          </div>
-          <div class="district-list" id="drawer-districts-list">
-            <!-- Dynamically populated with accordion subcards -->
-          </div>
+        <!-- Stadtteile: Liste, ein Klick öffnet den Stadtteil -->
+        <div id="drawer-districts-view" style="display: none; margin-bottom: 12px;">
+          <div class="group-header" style="padding: 0 4px;">Stadtteile (<span id="drawer-districts-count">0</span>)</div>
+          <input type="search" class="district-search" id="drawer-district-search" placeholder="Stadtteil suchen" aria-label="Stadtteil suchen" autocomplete="off" />
+          <div class="apple-group district-list" id="drawer-districts-list"></div>
         </div>
 
         <!-- Container for Overview Tab -->
@@ -1272,6 +1264,6 @@
   <script src="geographic_landmarks.js" defer></script>
   <script src="rhein_neckar_data.js" defer></script>
   <script src="rhein_neckar_districts.js" defer></script>
-  <script src="app.js?v=8" defer></script>
+  <script src="app.js?v=9" defer></script>
 </body>
 </html>

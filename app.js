@@ -22,7 +22,6 @@ const AppState = {
   
   selectedTownId: null,
   selectedDistrictId: null,
-  activeDrawerTab: 'overview',
   
   arrowSourceId: null,
   arrowSourceIsDistrict: false,
@@ -1078,17 +1077,7 @@ function focusTownDistricts(townId) {
     animate: true
   });
 
-  const distCount = Object.values(AppState.districtFeaturesById).filter(df => df.properties.townId === townId).length;
   selectTown(townId, false);
-  if (distCount > 0) {
-    switchDrawerTab('districts');
-    const firstDist = Object.values(AppState.districtFeaturesById).find(df => df.properties.townId === townId);
-    if (firstDist) {
-      AppState.selectedDistrictId = firstDist.properties.id;
-      updateMilestoneHeaderAndSelection();
-      renderDistrictsListForTown(townId);
-    }
-  }
 
   refreshAllStyles();
   refreshMarkers();
@@ -2475,18 +2464,9 @@ function selectTown(townId, shouldZoom = true) {
     ? `${feature.properties.kreis} • ${distCount} Stadtteile` 
     : `${feature.properties.kreis} • Gesamtgemeinde`;
 
-  const tabsControl = document.getElementById('drawer-tabs-segmented');
-  if (tabsControl) {
-    if (distCount > 0) {
-      tabsControl.style.display = 'inline-flex';
-      const badge = document.getElementById('drawer-districts-count');
-      if (badge) badge.textContent = distCount;
-    } else {
-      tabsControl.style.display = 'none';
-      switchDrawerTab('overview');
-    }
-  }
-
+  document.getElementById('drawer-districts-view').style.display = distCount > 0 ? 'block' : 'none';
+  document.getElementById('drawer-districts-count').textContent = distCount;
+  document.getElementById('drawer-district-search').value = '';
   renderDistrictsListForTown(townId);
 
   updateMilestoneHeaderAndSelection();
@@ -2546,14 +2526,12 @@ function selectDistrict(districtId, shouldZoom = false) {
   if (hierBar) {
     hierBar.style.display = 'flex';
     document.getElementById('drawer-breadcrumb-parent').textContent = feature.properties.townName;
-    document.getElementById('drawer-breadcrumb-current').textContent = `Unterpunkt: ${feature.properties.name}`;
+    document.getElementById('drawer-breadcrumb-current').textContent = feature.properties.name;
   }
 
-  // Explicit parent town title with subpoint context
-  document.getElementById('drawer-town-name').textContent = feature.properties.townName;
-  document.getElementById('drawer-town-type').textContent = `Unterpunkt: ${feature.properties.name} (Nachbarschaft von ${feature.properties.townName})`;
-
-  renderDistrictsListForTown(feature.properties.townId);
+  document.getElementById('drawer-town-name').textContent = feature.properties.name;
+  document.getElementById('drawer-town-type').textContent = `Stadtteil von ${feature.properties.townName}`;
+  document.getElementById('drawer-districts-view').style.display = 'none';
 
   // Synchronize inputs with the selected district
   updateMilestoneHeaderAndSelection();
@@ -2583,273 +2561,34 @@ function selectDistrict(districtId, shouldZoom = false) {
 
 function renderDistrictsListForTown(townId) {
   const container = document.getElementById('drawer-districts-list');
-  const countSpan = document.getElementById('drawer-districts-count');
-  const summarySpan = document.getElementById('drawer-districts-summary-count');
-  container.innerHTML = '';
-
-  const parentTown = AppState.townFeaturesById[townId];
-  const parentName = parentTown ? parentTown.properties.name : 'dieser Ortschaft';
-  const parentHeaderName = document.getElementById('drawer-districts-parent-name');
-  if (parentHeaderName) parentHeaderName.textContent = parentName;
-
-  const districts = Object.values(AppState.districtFeaturesById).filter(f => f.properties.townId === townId);
-  if (countSpan) countSpan.textContent = districts.length;
-  if (summarySpan) summarySpan.textContent = `${districts.length} Nachbarschaften`;
-
-  if (districts.length === 0) {
-    container.innerHTML = `
-      <div style="background:rgba(118,118,128,0.06); border:0.5px solid var(--separator); border-radius:var(--radius-sm); padding:12px; font-size:12px; color:var(--text-secondary);">
-        <div style="font-weight:600; color:var(--text-primary); margin-bottom:4px;">Einheitliche Gemeinde</div>
-        Dieser Ort besitzt keine weiteren unterteilten Nachbarschaften. Alle Aktivitäten und Nuklei werden für die Gesamt-Kommune gepflegt.
-      </div>
-    `;
-    return;
-  }
+  const q = document.getElementById('drawer-district-search').value.trim().toLowerCase();
+  const districts = Object.values(AppState.districtFeaturesById)
+    .filter(f => f.properties.townId === townId && f.properties.name.toLowerCase().includes(q))
+    .sort((a, b) => a.properties.name.localeCompare(b.properties.name, 'de'));
+  container.innerHTML = districts.length ? '' : '<div class="district-list-empty">Kein Stadtteil gefunden</div>';
+  const isPaint = AppState.currentMode === 'paint';
 
   districts.forEach(df => {
     const dId = df.properties.id;
-    const dData = AppState.districts[dId] || { milestone: 'none', nuclei: 0, activities: {} };
-    const actsTotal = calculateTotalActivities(dData.activities);
-    const isSelected = AppState.selectedDistrictId === dId;
-
-    const isPaintMode = AppState.currentMode === 'paint';
-    const card = document.createElement('div');
-    card.className = `district-subcard ${isSelected ? 'active expanded' : ''} ${isPaintMode ? 'paint-ready' : ''}`;
-    card.id = `subcard-${dId}`;
-    if (isPaintMode) {
-      card.title = `Klicken, um ${df.properties.name} mit ${getMilestoneLabel(AppState.activePaintMilestone)} einzufärben`;
-    }
-
-    const m = dData.milestone || 'none';
-    const mLabel = (m && m !== 'none') ? getMilestoneLabel(m) : 'Keine';
-    const mClass = m;
-
-    card.innerHTML = `
-      <div class="district-subcard-header">
-        <div class="district-subcard-left">
-          <span class="subcard-chevron">${isSelected ? '▼' : '▶'}</span>
-          <span class="subcard-color-dot ${mClass}" style="background:${getMilestoneColor(dData.milestone)};" title="Klick: Stufe ändern"></span>
-          <span class="district-subcard-title" title="${escapeHtml(df.properties.name)}">${escapeHtml(df.properties.name)}</span>
-        </div>
-        <div class="district-subcard-badges">
-          <span class="subcard-badge milestone ${mClass}">${mLabel}</span>
-          <div class="subcard-stats-pill" title="${dData.nuclei || 0} Nuklei · ${actsTotal} Aktivitäten">
-            <span class="${dData.nuclei > 0 ? 'highlight-nuclei' : ''}">${dData.nuclei || 0} Nukl.</span>
-            <span class="stat-sep">·</span>
-            <span class="${actsTotal > 0 ? 'highlight-acts' : ''}">${actsTotal} Akt.</span>
-          </div>
-        </div>
-      </div>
-      <div class="district-subcard-body" style="display: ${isSelected ? 'block' : 'none'};">
-        <div class="subcard-section-label">Meilenstein für ${escapeHtml(df.properties.name)}:</div>
-        <div class="subcard-milestone-grid">
-          <button type="button" class="subcard-m-btn ${dData.milestone==='none'?'active':''}" data-m="none">Keine</button>
-          <button type="button" class="subcard-m-btn ${dData.milestone==='pg'?'active':''}" data-m="pg">PG</button>
-          <button type="button" class="subcard-m-btn ${dData.milestone==='ipg'?'active':''}" data-m="ipg">IPG</button>
-          <button type="button" class="subcard-m-btn ${dData.milestone==='ipg_plus'?'active':''}" data-m="ipg_plus">IPG+</button>
-        </div>
-
-        <div class="subcard-steppers-group">
-          <div class="subcard-row">
-            <span>Aktive Nuklei:</span>
-            <div class="apple-stepper sm">
-              <button type="button" class="stepper-btn btn-dec-sub-nuclei">-</button>
-              <input type="number" class="stepper-val input-sub-nuclei" value="${dData.nuclei || 0}" min="0" />
-              <button type="button" class="stepper-btn btn-inc-sub-nuclei">+</button>
-            </div>
-          </div>
-          <div class="subcard-row">
-            <span>Andachten:</span>
-            <div class="apple-stepper sm">
-              <button type="button" class="stepper-btn btn-dec-sub-dev">-</button>
-              <input type="number" class="stepper-val input-sub-dev" value="${dData.activities?.devotionals || 0}" min="0" />
-              <button type="button" class="stepper-btn btn-inc-sub-dev">+</button>
-            </div>
-          </div>
-          <div class="subcard-row">
-            <span>Studienkreise:</span>
-            <div class="apple-stepper sm">
-              <button type="button" class="stepper-btn btn-dec-sub-study">-</button>
-              <input type="number" class="stepper-val input-sub-study" value="${dData.activities?.studyCircles || 0}" min="0" />
-              <button type="button" class="stepper-btn btn-inc-sub-study">+</button>
-            </div>
-          </div>
-          <div class="subcard-row">
-            <span>Kinderklassen:</span>
-            <div class="apple-stepper sm">
-              <button type="button" class="stepper-btn btn-dec-sub-child">-</button>
-              <input type="number" class="stepper-val input-sub-child" value="${dData.activities?.childrenClasses || 0}" min="0" />
-              <button type="button" class="stepper-btn btn-inc-sub-child">+</button>
-            </div>
-          </div>
-          <div class="subcard-row">
-            <span>Junior-Jugend:</span>
-            <div class="apple-stepper sm">
-              <button type="button" class="stepper-btn btn-dec-sub-youth">-</button>
-              <input type="number" class="stepper-val input-sub-youth" value="${dData.activities?.juniorYouth || 0}" min="0" />
-              <button type="button" class="stepper-btn btn-inc-sub-youth">+</button>
-            </div>
-          </div>
-        </div>
-
-        <div style="display:flex; gap:6px; margin-top:8px;">
-          <button type="button" class="btn btn-secondary btn-zoom-subcard" style="flex:1; font-size:11px; padding:3px 8px; justify-content:center;">
-            Auf Karte heranzoomen
-          </button>
-        </div>
-      </div>
-    `;
-
-    // Wire header click to toggle, select or paint
-    const header = card.querySelector('.district-subcard-header');
-    header.addEventListener('click', () => {
-      if (AppState.currentMode === 'paint') {
-        applyPaintToDistrict(dId);
-        return;
-      }
-      if (AppState.selectedDistrictId === dId) {
-        const body = card.querySelector('.district-subcard-body');
-        const isExp = body.style.display !== 'none';
-        body.style.display = isExp ? 'none' : 'block';
-        card.classList.toggle('expanded', !isExp);
-        card.querySelector('.subcard-chevron').textContent = isExp ? '▶' : '▼';
-      } else {
-        selectDistrict(dId, false);
-      }
+    const d = AppState.districts[dId] || {};
+    const m = d.milestone || 'none';
+    const color = m === 'custom' ? (d.customColor || '#86efac') : getMilestoneColor(m);
+    const meta = [m === 'none' ? '' : APP_TERMS.milestones[m].short, d.nuclei ? `${d.nuclei} Nukl.` : ''].filter(Boolean).join(' · ');
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'district-row';
+    row.title = isPaint ? `Mit ${getMilestoneLabel(AppState.activePaintMilestone)} einfärben` : `${df.properties.name} öffnen`;
+    row.innerHTML = `
+      <span class="district-row-dot" style="background:${escapeHtml(color)}"></span>
+      <span class="district-row-name">${escapeHtml(df.properties.name)}</span>
+      <span class="district-row-meta">${escapeHtml(meta)}</span>
+      <span class="district-row-chevron" aria-hidden="true">›</span>`;
+    row.addEventListener('click', () => {
+      if (AppState.currentMode === 'paint') applyPaintToDistrict(dId);
+      else focusDistrictOnMap(dId);
     });
-
-    // Wire color dot quick toggle
-    const colorDot = card.querySelector('.subcard-color-dot');
-    if (colorDot) {
-      colorDot.title = isPaintMode 
-        ? `Klicken zum Einfärben (${getMilestoneLabel(AppState.activePaintMilestone)})` 
-        : 'Klicken zum Ändern der Stufe';
-      colorDot.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (AppState.currentMode === 'paint') {
-          applyPaintToDistrict(dId);
-          return;
-        }
-        const cycle = { none: 'pg', pg: 'ipg', ipg: 'ipg_plus', ipg_plus: 'none' };
-        const nextM = cycle[dData.milestone] || 'pg';
-        pushHistory(`Stadtteil ${df.properties.name}: Meilenstein auf ${getMilestoneLabel(nextM)} geändert`);
-        dData.milestone = nextM;
-        AppState.selectedDistrictId = dId;
-        saveState();
-        refreshAllStyles();
-        refreshMarkers();
-        updateClusterStats();
-        renderDistrictsListForTown(townId);
-        updateMilestoneHeaderAndSelection();
-      });
-    }
-
-    // Milestone buttons
-    card.querySelectorAll('.subcard-m-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const m = btn.dataset.m;
-        pushHistory(`Stadtteil ${df.properties.name}: Meilenstein auf ${getMilestoneLabel(m)} geändert`);
-        dData.milestone = m;
-        AppState.selectedDistrictId = dId;
-        saveState();
-        refreshAllStyles();
-        refreshMarkers();
-        updateClusterStats();
-        renderDistrictsListForTown(townId);
-        updateMilestoneHeaderAndSelection();
-      });
-    });
-
-    // Nuclei Stepper
-    const nucleiInput = card.querySelector('.input-sub-nuclei');
-    card.querySelector('.btn-dec-sub-nuclei').addEventListener('click', (e) => {
-      e.stopPropagation();
-      pushHistory(`Stadtteil ${df.properties.name}: Nuklei verringert`);
-      let v = Math.max(0, (parseInt(nucleiInput.value) || 0) - 1);
-      nucleiInput.value = v;
-      dData.nuclei = v;
-      saveState();
-      refreshAllStyles();
-      renderDistrictsListForTown(townId);
-      if (AppState.selectedDistrictId === dId) document.getElementById('drawer-nuclei').value = v;
-    });
-    card.querySelector('.btn-inc-sub-nuclei').addEventListener('click', (e) => {
-      e.stopPropagation();
-      pushHistory(`Stadtteil ${df.properties.name}: Nuklei erhöht`);
-      let v = (parseInt(nucleiInput.value) || 0) + 1;
-      nucleiInput.value = v;
-      dData.nuclei = v;
-      saveState();
-      refreshAllStyles();
-      renderDistrictsListForTown(townId);
-      if (AppState.selectedDistrictId === dId) document.getElementById('drawer-nuclei').value = v;
-    });
-
-    // Activities
-    const bindSubAct = (decCls, incCls, inputCls, key) => {
-      const inp = card.querySelector(inputCls);
-      card.querySelector(decCls).addEventListener('click', (e) => {
-        e.stopPropagation();
-        pushHistory(`Stadtteil ${df.properties.name}: Aktivität verringert`);
-        if (!dData.activities) dData.activities = {};
-        let v = Math.max(0, (parseInt(inp.value) || 0) - 1);
-        inp.value = v;
-        dData.activities[key] = v;
-        saveState();
-        refreshAllStyles();
-        renderDistrictsListForTown(townId);
-      });
-      card.querySelector(incCls).addEventListener('click', (e) => {
-        e.stopPropagation();
-        pushHistory(`Stadtteil ${df.properties.name}: Aktivität erhöht`);
-        if (!dData.activities) dData.activities = {};
-        let v = (parseInt(inp.value) || 0) + 1;
-        inp.value = v;
-        dData.activities[key] = v;
-        saveState();
-        refreshAllStyles();
-        renderDistrictsListForTown(townId);
-      });
-    };
-
-    bindSubAct('.btn-dec-sub-dev', '.btn-inc-sub-dev', '.input-sub-dev', 'devotionals');
-    bindSubAct('.btn-dec-sub-study', '.btn-inc-sub-study', '.input-sub-study', 'studyCircles');
-    bindSubAct('.btn-dec-sub-child', '.btn-inc-sub-child', '.input-sub-child', 'childrenClasses');
-    bindSubAct('.btn-dec-sub-youth', '.btn-inc-sub-youth', '.input-sub-youth', 'juniorYouth');
-
-    // Zoom subcard button
-    card.querySelector('.btn-zoom-subcard').addEventListener('click', (e) => {
-      e.stopPropagation();
-      focusDistrictOnMap(dId);
-    });
-
-    container.appendChild(card);
+    container.appendChild(row);
   });
-}
-
-function switchDrawerTab(tab) {
-  AppState.activeDrawerTab = tab;
-  const btnOverview = document.getElementById('tab-btn-overview');
-  const btnDistricts = document.getElementById('tab-btn-districts');
-  const viewOverview = document.getElementById('drawer-overview-view');
-  const viewDistricts = document.getElementById('drawer-districts-view');
-
-  if (btnOverview) btnOverview.classList.toggle('active', tab === 'overview');
-  if (btnDistricts) btnDistricts.classList.toggle('active', tab === 'districts');
-
-  if (viewOverview) viewOverview.style.display = tab === 'overview' ? 'block' : 'none';
-  if (viewDistricts) viewDistricts.style.display = tab === 'districts' ? 'block' : 'none';
-
-  if (tab === 'districts' && !AppState.selectedDistrictId && AppState.selectedTownId) {
-    const firstDist = Object.values(AppState.districtFeaturesById).find(f => f.properties.townId === AppState.selectedTownId);
-    if (firstDist) {
-      AppState.selectedDistrictId = firstDist.properties.id;
-      renderDistrictsListForTown(AppState.selectedTownId);
-    }
-  }
-
-  updateMilestoneHeaderAndSelection();
 }
 
 function updateMilestoneUISelection(milestone) {
@@ -2860,47 +2599,23 @@ function updateMilestoneUISelection(milestone) {
   if (customRow) customRow.style.display = milestone === 'custom' ? 'flex' : 'none';
 }
 
+// Ein Stufen-Wähler pro Ansicht: Stadtteil, wenn einer offen ist, sonst die Ortschaft.
 function updateMilestoneHeaderAndSelection() {
-  const header = document.getElementById('drawer-milestone-header');
-  const btnApplyAll = document.getElementById('btn-apply-milestone-all-districts');
   const townId = AppState.selectedTownId;
   const distId = AppState.selectedDistrictId;
-  const distCount = townId ? Object.values(AppState.districtFeaturesById).filter(f => f.properties.townId === townId).length : 0;
+  const entity = distId ? AppState.districts[distId] : AppState.towns[townId];
+  if (!entity) return;
+  const distCount = distId ? 0 : Object.values(AppState.districtFeaturesById).filter(f => f.properties.townId === townId).length;
 
-  if (AppState.activeDrawerTab === 'districts' || distId) {
-    if (distId && AppState.districts[distId]) {
-      const distFeat = AppState.districtFeaturesById[distId];
-      const distName = distFeat ? distFeat.properties.name : 'Stadtteil';
-      if (header) header.textContent = `Meilenstein für: ${distName}`;
-      updateMilestoneUISelection(AppState.districts[distId].milestone);
-      const customInput = document.getElementById('drawer-custom-color');
-      if (customInput) customInput.value = AppState.districts[distId].customColor || '#86efac';
-    } else {
-      if (header) header.textContent = 'Meilenstein für Stadtteil:';
-      const firstDist = Object.values(AppState.districtFeaturesById).find(f => f.properties.townId === townId);
-      if (firstDist && AppState.districts[firstDist.properties.id]) {
-        updateMilestoneUISelection(AppState.districts[firstDist.properties.id].milestone);
-      }
-    }
-    if (btnApplyAll) {
-      btnApplyAll.style.display = distCount > 0 ? 'inline-block' : 'none';
-      btnApplyAll.textContent = `Auf alle ${distCount} Stadtteile anwenden`;
-    }
-  } else {
-    // Overview tab
-    if (header) {
-      header.textContent = distCount > 0 ? 'Wachstumsstufe (Gesamtgemeinde)' : 'Wachstumsstufe & Meilenstein';
-    }
-    if (townId && AppState.towns[townId]) {
-      updateMilestoneUISelection(AppState.towns[townId].milestone);
-      const customInput = document.getElementById('drawer-custom-color');
-      if (customInput) customInput.value = AppState.towns[townId].customColor || '#86efac';
-    }
-    if (btnApplyAll) {
-      btnApplyAll.style.display = distCount > 0 ? 'inline-block' : 'none';
-      btnApplyAll.textContent = `Auf alle ${distCount} Stadtteile anwenden`;
-    }
-  }
+  document.getElementById('drawer-milestone-header').textContent =
+    distId ? 'Wachstumsstufe des Stadtteils' : distCount ? 'Wachstumsstufe (Gesamtgemeinde)' : 'Wachstumsstufe';
+  updateMilestoneUISelection(entity.milestone);
+  document.getElementById('drawer-custom-color').value = entity.customColor || '#86efac';
+  document.getElementById('drawer-rollup-hint').innerHTML = distId ? '' : rollupHintHtml(townId);
+
+  const btnApplyAll = document.getElementById('btn-apply-milestone-all-districts');
+  btnApplyAll.style.display = distCount ? 'inline-block' : 'none';
+  btnApplyAll.textContent = `Auf alle ${distCount} Stadtteile anwenden`;
 }
 
 function renderDeploymentsList(targetId) {
@@ -3284,8 +2999,9 @@ function initUIEventListeners() {
     btnRecenter.addEventListener('click', recenterCurrentSelection);
   }
 
-  document.getElementById('tab-btn-overview').addEventListener('click', () => switchDrawerTab('overview'));
-  document.getElementById('tab-btn-districts').addEventListener('click', () => switchDrawerTab('districts'));
+  document.getElementById('drawer-district-search').addEventListener('input', () => {
+    if (AppState.selectedTownId) renderDistrictsListForTown(AppState.selectedTownId);
+  });
 
   const btnInspect = document.getElementById('mode-btn-inspect');
   const btnPaint = document.getElementById('mode-btn-paint');
@@ -3435,30 +3151,17 @@ function initUIEventListeners() {
     card.addEventListener('click', () => {
       const m = card.dataset.milestone;
 
-      // If we are in the districts tab or have an active selected district:
-      if (AppState.activeDrawerTab === 'districts' || AppState.selectedDistrictId) {
-        let targetDistId = AppState.selectedDistrictId;
-        if (!targetDistId && AppState.selectedTownId) {
-          const firstDist = Object.values(AppState.districtFeaturesById).find(f => f.properties.townId === AppState.selectedTownId);
-          if (firstDist) targetDistId = firstDist.properties.id;
-        }
-
-        if (targetDistId && AppState.districts[targetDistId]) {
-          const df = AppState.districtFeaturesById[targetDistId];
-          const name = df ? df.properties.name : 'Stadtteil';
-          pushHistory(`Stadtteil ${name}: Meilenstein auf ${getMilestoneLabel(m)} geändert`);
-          AppState.districts[targetDistId].milestone = m;
-          AppState.selectedDistrictId = targetDistId;
-          updateMilestoneHeaderAndSelection();
-          saveState();
-          refreshAllStyles();
-          refreshMarkers();
-          updateClusterStats();
-          if (AppState.selectedTownId) {
-            renderDistrictsListForTown(AppState.selectedTownId);
-          }
-          return;
-        }
+      const dId = AppState.selectedDistrictId;
+      if (dId && AppState.districts[dId]) {
+        const name = AppState.districtFeaturesById[dId]?.properties.name || 'Stadtteil';
+        pushHistory(`Stadtteil ${name}: Meilenstein auf ${getMilestoneLabel(m)} geändert`);
+        AppState.districts[dId].milestone = m;
+        updateMilestoneHeaderAndSelection();
+        saveState();
+        refreshAllStyles();
+        refreshMarkers();
+        updateClusterStats();
+        return;
       }
 
       // Otherwise we are on the overall town / municipality level:
@@ -3476,12 +3179,8 @@ function initUIEventListeners() {
       const town = AppState.towns[townId];
       if (!town) return;
 
-      let targetMilestone = town.milestone;
-      let targetColor = town.customColor;
-      if (AppState.activeDrawerTab === 'districts' && AppState.selectedDistrictId && AppState.districts[AppState.selectedDistrictId]) {
-        targetMilestone = AppState.districts[AppState.selectedDistrictId].milestone;
-        targetColor = AppState.districts[AppState.selectedDistrictId].customColor;
-      }
+      const targetMilestone = town.milestone;
+      const targetColor = town.customColor;
 
       const townFeat = AppState.townFeaturesById[townId];
       const townName = townFeat ? townFeat.properties.name : 'Gemeinde';
@@ -3511,7 +3210,7 @@ function initUIEventListeners() {
 
   document.getElementById('drawer-custom-color').addEventListener('change', (e) => {
     pushHistory('Farbe angepasst');
-    if (AppState.activeDrawerTab === 'districts' || AppState.selectedDistrictId) {
+    if (AppState.selectedDistrictId) {
       if (AppState.selectedDistrictId && AppState.districts[AppState.selectedDistrictId]) {
         AppState.districts[AppState.selectedDistrictId].customColor = e.target.value;
       }

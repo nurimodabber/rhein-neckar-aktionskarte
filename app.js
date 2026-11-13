@@ -82,28 +82,28 @@ const APP_TERMS = {
     },
     pg: {
       key: 'pg',
-      code: 'PG',
-      short: 'PG',
-      standard: 'Programm des Wachstums',
-      full: 'Programm des Wachstums (PG)',
+      code: '1. MS',
+      short: '1. MS',
+      standard: '1. MS (Wachstumsprogramm)',
+      full: '1. MS (Wachstumsprogramm)',
       color: '#86efac',
       border: '#22c55e'
     },
     ipg: {
       key: 'ipg',
-      code: 'IPG',
-      short: 'IPG',
-      standard: 'Intensives Programm',
-      full: 'Intensives Programm des Wachstums (IPG)',
+      code: '2. MS',
+      short: '2. MS',
+      standard: '2. MS (Intensives Wachstumsprogramm)',
+      full: '2. MS (Intensives Wachstumsprogramm)',
       color: '#34c759',
       border: '#15803d'
     },
     ipg_plus: {
       key: 'ipg_plus',
-      code: 'IPG+',
-      short: 'IPG+',
-      standard: 'Fortgeschrittenes Programm',
-      full: 'Fortgeschrittenes Intensives Programm (IPG+)',
+      code: '3. MS',
+      short: '3. MS',
+      standard: '3. MS (Fortgeschrittenes Wachstumsprogramm)',
+      full: '3. MS (Fortgeschrittenes Wachstumsprogramm)',
       color: '#15803d',
       border: '#052e16'
     },
@@ -2594,7 +2594,10 @@ function renderDistrictsListForTown(townId) {
 function updateMilestoneUISelection(milestone) {
   document.querySelectorAll('.milestone-card').forEach(card => {
     card.classList.toggle('active', card.dataset.milestone === milestone);
+    card.setAttribute('aria-pressed', String(card.dataset.milestone === milestone));
   });
+  const caption = document.getElementById('milestone-caption');
+  if (caption) caption.textContent = getMilestoneLabel(milestone, 'full');
   const customRow = document.getElementById('drawer-custom-color-row');
   if (customRow) customRow.style.display = milestone === 'custom' ? 'flex' : 'none';
 }
@@ -2608,7 +2611,7 @@ function updateMilestoneHeaderAndSelection() {
   const distCount = distId ? 0 : Object.values(AppState.districtFeaturesById).filter(f => f.properties.townId === townId).length;
 
   document.getElementById('drawer-milestone-header').textContent =
-    distId ? 'Wachstumsstufe des Stadtteils' : distCount ? 'Wachstumsstufe (Gesamtgemeinde)' : 'Wachstumsstufe';
+    distId ? 'Meilenstein des Stadtteils' : distCount ? 'Meilenstein (Gesamtgemeinde)' : 'Meilenstein';
   updateMilestoneUISelection(entity.milestone);
   document.getElementById('drawer-custom-color').value = entity.customColor || '#86efac';
   document.getElementById('drawer-rollup-hint').innerHTML = distId ? '' : rollupHintHtml(townId);
@@ -3079,17 +3082,11 @@ function initUIEventListeners() {
       `;
     } else {
       container.innerHTML = `
-        <div class="legend-row">
-          <div class="legend-dot ipg-plus"></div>
-          <span><strong>IPG+</strong> (Fortgeschrittenes Programm)</span>
-        </div>
-        <div class="legend-row">
-          <div class="legend-dot ipg"></div>
-          <span><strong>IPG</strong> (Intensives Programm)</span>
-        </div>
-        <div class="legend-row">
-          <div class="legend-dot pg"></div>
-          <span><strong>PG</strong> (Programm des Wachstums)</span>
+        <div class="legend-row legend-ms-row">
+          <span title="3. MS (Fortgeschrittenes Wachstumsprogramm)"><span class="legend-dot ipg-plus"></span>3. MS</span>
+          <span title="2. MS (Intensives Wachstumsprogramm)"><span class="legend-dot ipg"></span>2. MS</span>
+          <span title="1. MS (Wachstumsprogramm)"><span class="legend-dot pg"></span>1. MS</span>
+          <button type="button" class="info-btn js-milestone-info" aria-label="Was bedeuten die Meilensteine?" title="Was bedeuten die Meilensteine?">i</button>
         </div>
         <div class="legend-row">
           <div class="legend-dot none"></div>
@@ -3341,6 +3338,15 @@ function initUIEventListeners() {
       document.getElementById('view-dep-modal').classList.remove('visible');
     });
   }
+
+  // Info zu den Meilensteinen: nativer <dialog> übernimmt Fokusfalle, Escape und Fokus-Rückgabe
+  const msInfo = document.getElementById('milestone-info-dialog');
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('.js-milestone-info')) msInfo.showModal();
+    else if (e.target === msInfo || e.target.closest('[data-close-dialog]')) msInfo.close();
+  });
+  // Escape soll nur den Dialog schließen, nicht zusätzlich den Inspektor (globaler Handler unten)
+  msInfo.addEventListener('keydown', (e) => { if (e.key === 'Escape') e.stopPropagation(); });
 
   // Global Keyboard Shortcuts (⌘Z / ⇧⌘Z / ⌘Y / Escape)
   window.addEventListener('keydown', (e) => {
@@ -4129,7 +4135,7 @@ function openClusterReportModal() {
   const elActive = document.getElementById('rep-card-active');
   if (elActive) elActive.textContent = `${activeCount} / 133`;
   const elMs = document.getElementById('rep-card-ms');
-  if (elMs) elMs.textContent = `${pgCount} PG · ${ipgCount} IPG · ${ipgPlusCount} IPG+`;
+  if (elMs) elMs.textContent = `${pgCount}× 1. MS · ${ipgCount}× 2. MS · ${ipgPlusCount}× 3. MS`;
   const elNuc = document.getElementById('rep-card-nuclei');
   if (elNuc) elNuc.textContent = totalNuclei;
   const elActs = document.getElementById('rep-card-acts');
@@ -5138,9 +5144,9 @@ async function exportMapAsPng() {
     ctx.stroke();
 
     const legItems = [
-      { type: 'box', color: '#15803d', label: 'IPG+' },
-      { type: 'box', color: '#22c55e', label: 'IPG' },
-      { type: 'box', color: '#86efac', label: 'PG' },
+      { type: 'box', color: '#15803d', label: '3. MS' },
+      { type: 'box', color: '#22c55e', label: '2. MS' },
+      { type: 'box', color: '#86efac', label: '1. MS' },
       { type: 'star', color: '#ea580c', label: 'Zentrum' },
       { type: 'arrow', color: '#007aff', label: 'Pfeil' }
     ];

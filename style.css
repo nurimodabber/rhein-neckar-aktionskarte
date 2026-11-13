@@ -1110,6 +1110,7 @@ svg:focus-visible,
 }
 
 .legend-dot {
+  display: inline-block;
   width: 12px;
   height: 12px;
   border-radius: 3px;
@@ -1560,9 +1561,22 @@ svg:focus-visible,
 /* Milestone Radio Grid */
 .milestone-selector {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  padding: 8px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  padding: 6px 6px 0;
+}
+
+.milestone-selector .milestone-option {
+  justify-content: center;
+  padding: 7px 4px;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.milestone-caption {
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 5px 10px 7px;
 }
 
 .milestone-option {
@@ -3315,3 +3329,47 @@ input:checked + .slider:before {
   margin: -4px 0 12px;
   padding: 0 4px;
 }
+
+/* Info-Knopf und Meilenstein-Erklärung */
+.info-btn {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--system-blue);
+  background: transparent;
+  color: var(--system-blue);
+  font: italic 600 11px/1 Georgia, serif;
+  cursor: pointer;
+  padding: 0;
+  flex: none;
+}
+.info-btn:hover { background: rgba(0, 122, 255, 0.08); }
+
+.legend-ms-row { gap: 10px; flex-wrap: wrap; }
+.legend-ms-row > span { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; }
+
+.milestone-info-dialog {
+  margin: auto;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  width: min(520px, calc(100vw - 32px));
+  max-height: 85vh;
+}
+.milestone-info-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(15px);
+}
+.milestone-info-dialog .apple-sheet {
+  width: 100%;
+  max-width: none;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+.ms-info { font-size: 13px; line-height: 1.5; color: var(--text-primary); }
+.ms-info-intro { color: var(--text-secondary); margin-bottom: 12px; }
+.ms-info section + section { margin-top: 14px; padding-top: 14px; border-top: 0.5px solid var(--separator); }
+.ms-info h4 { display: flex; align-items: center; gap: 8px; font-size: 14px; margin: 0 0 6px; }
+.ms-info blockquote { margin: 8px 0 4px; padding-left: 10px; border-left: 2px solid var(--separator); color: var(--text-secondary); font-style: italic; }
+.ms-info cite { font-size: 12px; font-style: normal; }
+.ms-info cite a { color: var(--system-blue); }

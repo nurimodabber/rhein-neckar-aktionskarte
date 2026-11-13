@@ -3497,3 +3497,10 @@ input:checked + .slider:before {
   }
 }
 
+
+/* Hinweis, wenn ein Stadtteil die angezeigte Stufe der Ortschaft anhebt */
+.rollup-hint {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin: 6px 0 2px;
+}

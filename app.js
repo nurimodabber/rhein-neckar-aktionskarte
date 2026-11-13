@@ -532,6 +532,38 @@ function townHasDistricts(townId) {
   return townsWithDistrictsSet.has(townId);
 }
 
+// Eigene Farbe zählt nur über "keine", jede echte Stufe gewinnt.
+const MILESTONE_RANK = { none: 0, custom: 1, pg: 2, ipg: 3, ipg_plus: 4 };
+
+// Stadtteil mit der höchsten Stufe, falls er die eigene Stufe der Ortschaft übertrifft.
+function rollupDistrictId(townId) {
+  const town = AppState.towns[townId];
+  if (!town || !townHasDistricts(townId)) return null;
+  let bestId = null, bestRank = MILESTONE_RANK[town.milestone] || 0;
+  for (const df of Object.values(AppState.districtFeaturesById)) {
+    if (df.properties.townId !== townId) continue;
+    const r = MILESTONE_RANK[AppState.districts[df.properties.id]?.milestone] || 0;
+    if (r > bestRank) { bestRank = r; bestId = df.properties.id; }
+  }
+  return bestId;
+}
+
+// Angezeigte Ortschaft: höhere Stufe aus eigener Stufe und bestem Stadtteil. Gespeichert bleibt nur die eigene.
+function shownTown(townId) {
+  const town = AppState.towns[townId];
+  const dId = rollupDistrictId(townId);
+  if (!dId) return town;
+  const d = AppState.districts[dId];
+  return { ...town, milestone: d.milestone, customColor: d.customColor };
+}
+
+function rollupHintHtml(townId) {
+  const dId = rollupDistrictId(townId);
+  if (!dId) return '';
+  const name = AppState.districtFeaturesById[dId].properties.name;
+  return `<div class="rollup-hint">Karte zeigt ${escapeHtml(getMilestoneLabel(AppState.districts[dId].milestone))}: höchste Stufe in ${escapeHtml(name)}</div>`;
+}
+
 // --- Data Persistence ---
 function loadStoredData() {
   try {
@@ -762,7 +794,7 @@ function saveAutoBackup(desc, force = false) {
     let activeTownsCount = 0;
     let totalNuclei = 0;
     let totalActivities = 0;
-    Object.values(AppState.towns).forEach(t => {
+    Object.keys(AppState.towns).map(shownTown).forEach(t => {
       if (t.milestone !== 'none') activeTownsCount++;
       totalNuclei += (t.nuclei || 0);
       if (t.activities) {
@@ -1210,7 +1242,7 @@ function updateNavigationHUD() {
 // --- Polygon Styles (Towns) ---
 function getTownStyle(feature) {
   const id = feature.properties.id;
-  const town = AppState.towns[id] || { milestone: 'none', nuclei: 0, activities: {} };
+  const town = shownTown(id) || { milestone: 'none', nuclei: 0, activities: {} };
 
   if (isTownInDistrictMode(id)) {
     // When in district mode, this city's interior is rendered by its individual Stadtteile.
@@ -1486,7 +1518,7 @@ function renderTownPerimeterLayer() {
 function updateTownTooltip(townId) {
   const layer = AppState.townLayersById[townId];
   const feature = AppState.townFeaturesById[townId];
-  const town = AppState.towns[townId];
+  const town = shownTown(townId);
   if (!layer || !feature || !town) return;
 
   if (isTownInDistrictMode(townId)) {
@@ -1635,7 +1667,7 @@ function refreshMarkers() {
     RHEIN_NECKAR_GEOJSON.features.forEach(f => {
       const id = f.properties.id;
       const center = f.properties.center;
-      const town = AppState.towns[id];
+      const town = shownTown(id);
       if (!center || !town) return;
 
       // If this town is currently resolved into Stadtteile, render an overarching watermark label
@@ -2166,6 +2198,7 @@ function showTownQuickPopover(townId, latlng) {
         <span class="ms-pill-dot ipg-plus"></span>${APP_TERMS.milestones.ipg_plus.code}
       </button>
     </div>
+    ${rollupHintHtml(townId)}
 
     <div class="qpop-metrics-row">
       <div class="qpop-metric">
@@ -2962,25 +2995,8 @@ function setTownMilestone(townId, ms, customColor = null) {
     town.customColor = customColor || AppState.activePaintColor;
   }
 
-  // Also cascade milestone and custom color to all districts of this town
-  const districts = Object.values(AppState.districtFeaturesById).filter(f => f.properties.townId === townId);
-  districts.forEach(df => {
-    const dId = df.properties.id;
-    if (!AppState.districts[dId]) {
-      AppState.districts[dId] = { milestone: 'none', nuclei: 0, activities: {} };
-    }
-    AppState.districts[dId].milestone = ms;
-    if (ms === 'custom') {
-      AppState.districts[dId].customColor = customColor || AppState.activePaintColor;
-    }
-    const dLayer = AppState.districtLayersById[dId];
-    if (dLayer && dLayer.feature) {
-      dLayer.setStyle(getDistrictStyle(dLayer.feature));
-      syncDistrictPointerEvents(dLayer);
-      updateDistrictTooltip(dId);
-    }
-  });
-
+  // Kein automatisches Überschreiben der Stadtteile mehr: deren Stufen fließen per shownTown() nach oben.
+  // Wer alle Stadtteile gleich setzen will, nutzt "Auf alle Stadtteile anwenden".
   saveState();
 
   // Restyle affected town layer and update tooltip
@@ -3027,6 +3043,12 @@ function applyPaintToDistrict(districtId) {
     dLayer.setStyle(getDistrictStyle(dLayer.feature));
     syncDistrictPointerEvents(dLayer);
     updateDistrictTooltip(districtId);
+  }
+  // Ortschaft zeigt ggf. die neue höchste Stufe
+  const tLayer = df && AppState.townLayersById[df.properties.townId];
+  if (tLayer) {
+    tLayer.setStyle(getTownStyle(tLayer.feature));
+    updateTownTooltip(df.properties.townId);
   }
 
   updateClusterStats();
@@ -3708,7 +3730,7 @@ function initUIEventListeners() {
       matchedTowns.slice(0, 5).forEach(f => {
         const item = document.createElement('div');
         item.className = 'search-item';
-        const tState = AppState.towns[f.properties.id];
+        const tState = shownTown(f.properties.id);
         const ms = tState ? tState.milestone : 'none';
         const msBadge = ms !== 'none' ? `<span class="ms-pill-dot ${ms}" style="display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;"></span>` : '';
 
@@ -4153,7 +4175,7 @@ function updateCurrentActivity(actKey, val) {
 }
 
 function updateClusterStats() {
-  const towns = Object.values(AppState.towns);
+  const towns = Object.keys(AppState.towns).map(shownTown);
   const totalTowns = Object.keys(AppState.townFeaturesById).length || 133;
   
   let reachedTowns = 0;
@@ -4263,12 +4285,12 @@ function renderReportTableRows() {
   if (filterMs !== 'all') {
     if (filterMs === 'active') {
       features = features.filter(f => {
-        const t = AppState.towns[f.properties.id];
+        const t = shownTown(f.properties.id);
         return t && t.milestone && t.milestone !== 'none';
       });
     } else {
       features = features.filter(f => {
-        const t = AppState.towns[f.properties.id];
+        const t = shownTown(f.properties.id);
         return (t?.milestone || 'none') === filterMs;
       });
     }
@@ -4276,8 +4298,8 @@ function renderReportTableRows() {
 
   // Sort
   features.sort((a, b) => {
-    const tA = AppState.towns[a.properties.id] || {};
-    const tB = AppState.towns[b.properties.id] || {};
+    const tA = shownTown(a.properties.id) || {};
+    const tB = shownTown(b.properties.id) || {};
     let valA, valB;
     if (reportSortState.column === 'name') {
       valA = a.properties.name;
@@ -4307,7 +4329,7 @@ function renderReportTableRows() {
 
   features.forEach(f => {
     const id = f.properties.id;
-    const town = AppState.towns[id] || { milestone: 'none', nuclei: 0, activities: {} };
+    const town = shownTown(id) || { milestone: 'none', nuclei: 0, activities: {} };
     const acts = town.activities || {};
     const totalActs = calculateTotalActivities(acts);
     const districts = Object.values(AppState.districtFeaturesById).filter(df => df.properties.townId === id);
@@ -4389,7 +4411,7 @@ function renderReportTableRows() {
 
 function openClusterReportModal() {
   // Update Overview Metric Cards
-  const towns = Object.values(AppState.towns);
+  const towns = Object.keys(AppState.towns).map(shownTown);
   const activeCount = towns.filter(t => t.milestone && t.milestone !== 'none').length;
   const pgCount = towns.filter(t => t.milestone === 'pg').length;
   const ipgCount = towns.filter(t => t.milestone === 'ipg').length;
@@ -4456,7 +4478,7 @@ function exportReportToCsv() {
 
   Object.values(AppState.townFeaturesById).forEach(f => {
     const id = f.properties.id;
-    const t = AppState.towns[id] || {};
+    const t = shownTown(id) || {};
     const acts = t.activities || {};
     const cleanKreis = (f.properties.kreis || '').replace(/^Landkreis\s+/, '');
     const depCount = AppState.deployments.filter(d => d.fromId === id || d.toId === id).length;

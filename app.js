@@ -3304,7 +3304,8 @@ function initUIEventListeners() {
       searchResults.innerHTML = '';
       
       matchedTowns.slice(0, 5).forEach(f => {
-        const item = document.createElement('div');
+        const item = document.createElement('button');
+        item.type = 'button';
         item.className = 'search-item';
         const tState = shownTown(f.properties.id);
         const ms = tState ? tState.milestone : 'none';
@@ -3322,13 +3323,14 @@ function initUIEventListeners() {
       });
 
       matchedDistricts.slice(0, 5).forEach(df => {
-        const item = document.createElement('div');
+        const item = document.createElement('button');
+        item.type = 'button';
         item.className = 'search-item';
         item.innerHTML = `
-          <div>
+          <span>
             <strong>${escapeHtml(df.properties.name)}</strong>
             <span class="search-subpoint-badge">↳ Nachbarschaft von ${escapeHtml(df.properties.townName)}</span>
-          </div>
+          </span>
           <span style="font-size:10px; color:#64748b;">Stadtteil</span>
         `;
         item.addEventListener('click', () => {

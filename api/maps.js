@@ -76,6 +76,10 @@ function createHandler(deps = {}) {
     const key = core.loadKey(env);
     const store = deps.store || upstashFromEnv(env);
     const auth = deps.auth || clerk.fromEnv(env);
+    // Der Publishable Key ist öffentlich; so reicht für die Einrichtung eine Umgebungsvariable statt Codeänderung.
+    if (req.method === 'GET' && req.query && req.query.config !== undefined) {
+      return send(res, 200, { ok: true, ready: !!(key && store && auth), publishableKey: env.CLERK_PUBLISHABLE_KEY || null });
+    }
     if (!key || !store || !auth) return fail(res, 503, 'Konten sind noch nicht eingerichtet');
 
     const q = req.query || {};

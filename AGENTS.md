@@ -32,6 +32,11 @@ The **Rhein-Neckar Aktionskarte** (`rhein-neckar-aktionskarte`) is an offline-fi
 ├── index.html                 # Main interface, Apple HIG modals, inspector drawer & floating capsules
 ├── style.css                  # Apple HIG styling, glassmorphism, responsive tokens, map popovers
 ├── app.js                     # Monolithic application controller, global AppState, AppStorage IndexedDB adapter
+├── accounts.js                # window.Accounts: Clerk sign-in, account maps via /api/maps, people lists, read-only gating
+├── api/maps.js                # Vercel function: account maps (create/list/load/save with CAS/share/public/delete) on Upstash Redis
+├── api/sync.js                # Legacy: read-only import of retired #room= Blob rooms
+├── server/maps-core.js        # AES-256-GCM encryption, map ids, roles, validation, publicView()
+├── server/clerk.js            # Clerk session JWT verification (JWKS, azp) and verified e-mail lookup
 ├── manifest.json              # Web app manifest for PWA installation
 ├── sw.js                      # Service Worker (Cache-first offline shell & network fallback)
 ├── icon.svg                   # Vector application icon
@@ -39,7 +44,10 @@ The **Rhein-Neckar Aktionskarte** (`rhein-neckar-aktionskarte`) is an offline-fi
 ├── vercel.json                # Vercel deployment configuration with clean URLs & security headers
 ├── gh-pages-handover.html     # Client-side handover page transferring user storage to Vercel
 ├── tests/
-│   └── test_phase0.js         # Automated headless Chrome integration tests for Phase 0
+│   ├── test_maps_core.js      # node --test: crypto, roles, validation
+│   ├── test_maps_api.js       # node --test: /api/maps with in-memory store (second account gets 404)
+│   ├── test_accounts.js       # node --test: sanitizePeople, mergeMaps
+│   └── test_phase0.js         # Headless Chrome integration tests (its static server answers /api/maps with ready:false)
 ├── lib/                       # Bundled local offline vendor libraries
 │   ├── leaflet.js             # Leaflet 1.9.4
 │   ├── leaflet.css            # Leaflet stylesheet
@@ -83,6 +91,7 @@ The **Rhein-Neckar Aktionskarte** (`rhein-neckar-aktionskarte`) is an offline-fi
        juniorYouth?: number;
      };
      notes?: string;
+     people?: { name: string; note: string; believer: boolean }[]; // only in account maps, never stored locally
    }
 
    interface DistrictData extends TownData {}
@@ -138,14 +147,17 @@ The **Rhein-Neckar Aktionskarte** (`rhein-neckar-aktionskarte`) is an offline-fi
    - Universal Fallback: URI-encoded Base64url → prefix with **`b_`**.
 3. Typical size: 180–400 characters for typical active cluster stages, well within SMS/WhatsApp URL limits.
 
-### Collaborative Online Room Synchronization Protocol
-- **URL Structure**: `https://<domain>/#room=<roomId>`
-- **Storage Backend**: Vercel Serverless Function `/api/sync` backed by private Vercel Blob (`rooms/<roomId>.json`, Frankfurt `fra1` region).
-- **Engine**: `SyncEngine` in `app.js`:
-  - **Multi-Device & Long-Term Persistence**: Persistent cloud room storage allowing teams to edit together simultaneously or asynchronously across days and weeks on phone, tablet, and PC.
-  - **Debounced Auto-Save Push**: 1.2s debounce after local edits, updating cloud state with version increments.
-  - **Low-Overhead Polling**: 4.0s background check via HTTP `ETag` / `If-None-Match` (304 Not Modified when idle, zero bandwidth waste). Instant sync on window focus (`visibilitychange`).
-  - **Safety First**: Automatic local backup (`rn_cluster_backups_v1`) created before joining any new room to guarantee zero data loss.
+### Account Maps (replaces the retired online rooms)
+- **Setup (Vercel env)**: `MAPS_ENC_KEY` (32 bytes, base64), `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `CLERK_AUTHORIZED_PARTIES`,
+  and `KV_REST_API_URL`/`KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL`/`_TOKEN`). `GET /api/maps?config` reports `ready`.
+- **Without accounts set up** (`ready:false`) the local map stays editable as before. **With accounts** (or `/api` unknown/offline)
+  the local map is view-only; editing happens in an account map (`blockLocalEdit()` rolls back and opens the dialog).
+- **Storage**: Redis keys `map:<id>:meta|data|rev`, `user:<sub>:maps`, `invite:<email>:maps`. Data is encrypted server-side with
+  AES-256-GCM bound to the map id. Access is decided by the meta only; non-members get 404.
+- **Roles**: owner, edit, view (invited by verified e-mail), public (`#public=<id>`, only `publicView()`: no people, no notes).
+- **Client**: `AppState.remote = { id, rev, role, name }` while an account map is open (`#map=<id>`). Edits PUT after 1.2 s with
+  `rev`; a 409 runs the three-way `mergeMaps()`. Poll every 30 s with `?rev=`.
+- **Rooms** (`#room=`) are retired; `api/sync.js` only lets old room states be imported once.
 
 ---
 
@@ -156,7 +168,10 @@ The **Rhein-Neckar Aktionskarte** (`rhein-neckar-aktionskarte`) is an offline-fi
 2. **Third-Party Data Leaks (QR Code Service)**:
    - *Fixed in Phase 0*: The QR generator must run locally (`qrcode` or bundled canvas generator); never transmit the payload to external servers like `api.qrserver.com`.
 3. **GDPR / Privacy by Design**:
-   - Religious affiliation is special-category data under Art. 9 GDPR. Never store names or personal phone numbers in notes or deployment cards.
+   - Religious affiliation is special-category data under Art. 9 GDPR. People (name, note, believer flag) exist **only in account maps**,
+     encrypted on the server. While `AppState.remote` is set, nothing is written to localStorage, IndexedDB, backups or CacheStorage
+     (guards in `saveState`/`persistLocal`/`AppStorage`). People must never reach `#share=` links, Blob rooms, the PNG export, the
+     report/CSV, the JSON export or a public map. The privacy text in `#legal-modal` names Clerk, Google, Vercel and Upstash; keep it current.
 4. **Exclave & Multi-Polygon Districting**:
    - Certain municipalities (e.g. Leimen / St. Ilgen, Schwetzingen) possess non-contiguous territorial exclaves. `rhein_neckar_districts.js` contains `exclaveCenter` and special multi-polygon features.
 5. **Arrow Layer Canvas/SVG Sync**:

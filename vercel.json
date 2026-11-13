@@ -1,6 +1,7 @@
 {
   "version": 2,
   "cleanUrls": true,
+  "regions": ["fra1"],
   "headers": [
     {
       "source": "/(.*)",

@@ -3673,13 +3673,9 @@ function initUIEventListeners() {
   });
 
   // Report Modal
-  document.getElementById('btn-open-report').addEventListener('click', openClusterReportModal);
   document.getElementById('btn-close-report-modal').addEventListener('click', () => {
     document.getElementById('report-modal').classList.remove('visible');
   });
-
-  // Export PNG Image
-  document.getElementById('btn-export-png').addEventListener('click', exportMapAsPng);
 
   // Unified Apple-style Projekt Menu
   const btnProjectMenu = document.getElementById('btn-project-menu');
@@ -3697,6 +3693,18 @@ function initUIEventListeners() {
         projectDropdownMenu.classList.remove('visible');
         btnProjectMenu.setAttribute('aria-expanded', 'false');
       }
+    });
+
+    document.getElementById('menu-item-report')?.addEventListener('click', () => {
+      projectDropdownMenu.classList.remove('visible');
+      btnProjectMenu.setAttribute('aria-expanded', 'false');
+      openClusterReportModal();
+    });
+
+    document.getElementById('menu-item-png')?.addEventListener('click', () => {
+      projectDropdownMenu.classList.remove('visible');
+      btnProjectMenu.setAttribute('aria-expanded', 'false');
+      exportMapAsPng();
     });
 
     document.getElementById('menu-item-export')?.addEventListener('click', () => {
@@ -3807,7 +3815,6 @@ function initUIEventListeners() {
   document.getElementById('json-file-input').addEventListener('change', handleImportJson);
 
   // Sharable Links & Cloud Share Event Listeners
-  document.getElementById('btn-share-link')?.addEventListener('click', openShareModal);
   document.getElementById('menu-item-share')?.addEventListener('click', () => {
     const projMenu = document.getElementById('project-dropdown-menu');
     const projBtn = document.getElementById('btn-project-menu');
@@ -5032,12 +5039,6 @@ async function exportMapAsPng() {
     return;
   }
 
-  const btnExport = document.getElementById('btn-export-png');
-  if (btnExport) {
-    btnExport.style.opacity = '0.6';
-    btnExport.style.pointerEvents = 'none';
-  }
-
   // Close project menu dropdown
   const projDropdown = document.getElementById('project-dropdown-menu');
   if (projDropdown) projDropdown.classList.remove('visible');
@@ -5198,10 +5199,6 @@ async function exportMapAsPng() {
     });
     if (wasDrawerOpen && drawer) {
       drawer.classList.remove('collapsed');
-    }
-    if (btnExport) {
-      btnExport.style.opacity = '';
-      btnExport.style.pointerEvents = '';
     }
   }
 }

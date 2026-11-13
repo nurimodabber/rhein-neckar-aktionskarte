@@ -1326,9 +1326,6 @@ svg:focus-visible,
   .vitality-label {
     font-size: 11px;
   }
-  #btn-open-report,
-  #btn-export-png,
-  #btn-share-link,
   #project-dropdown-container,
   .apple-undo-group {
     display: none !important;

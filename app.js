@@ -12,7 +12,6 @@ const AppState = {
   currentMode: 'inspect', // 'inspect' | 'paint' | 'arrow'
   activePaintMilestone: 'pg',
   activePaintColor: '#86efac',
-  visualViewMode: 'milestone',
   
   showLabels: true,
   showSurrounding: true,
@@ -50,7 +49,10 @@ const AppState = {
   undoStack: [],
   redoStack: [],
   isHistoryAction: false,
-  activeQuickDeployment: null
+  activeQuickDeployment: null,
+
+  // Offene Konto-Karte { id, rev, role, name, … } oder null (lokale Karte); gesetzt nur von accounts.js
+  remote: null
 };
 
 // TODO: Betreiberdaten vor Veröffentlichung oder Übergabe an den Auftraggeber anpassen
@@ -227,6 +229,7 @@ const AppStorage = {
   },
 
   async saveState(data) {
+    if (AppState.remote) return; // Konto-Karten (mit Personen) nie lokal speichern
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     } catch (e) {}
@@ -245,7 +248,7 @@ const AppStorage = {
   },
 
   async saveBackup(backupItem) {
-    if (!this.db) return;
+    if (!this.db || AppState.remote) return;
     return new Promise((resolve) => {
       try {
         const tx = this.db.transaction('backups', 'readwrite');
@@ -315,6 +318,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     checkShareUrlOnStartup();
     checkLegacyRoomOnStartup();
   });
+
+  if (window.Accounts) Accounts.init();
 });
 
 // ==========================================================================
@@ -572,11 +577,12 @@ function rollupHintHtml(townId) {
 }
 
 // --- Data Persistence ---
-function loadStoredData() {
+// remoteData: Stand einer Konto-Karte vom Server; ohne ihn gilt der lokale Speicher
+function loadStoredData(remoteData) {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
+    const raw = remoteData ? null : localStorage.getItem(STORAGE_KEY);
+    const parsed = remoteData || (raw ? JSON.parse(raw) : null);
+    if (parsed) {
       const migrated = migrateStoredState(parsed);
       AppState.towns = migrated.towns;
       AppState.districts = migrated.districts;
@@ -634,7 +640,7 @@ function loadStoredData() {
 
 function registerServiceWorker() {
   if ('serviceWorker' in navigator && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
-    navigator.serviceWorker.register('./sw.js?v=6').then((reg) => {
+    navigator.serviceWorker.register('./sw.js?v=7').then((reg) => {
       reg.update().catch(() => {});
     }).catch(err => {
       console.log('Service worker note (offline fallback):', err);
@@ -677,6 +683,13 @@ function registerServiceWorker() {
 
 
 function saveState() {
+  // Konto-Karte: Accounts speichert auf dem Server; lokale Karte: nur ohne eingerichtete Konten bearbeitbar
+  if (AppState.remote) { updateClusterStats(); Accounts.onEdit(); return; }
+  if (window.Accounts && !Accounts.localEditAllowed()) { Accounts.blockLocalEdit(); return; }
+  persistLocal();
+}
+
+function persistLocal() {
   const dataToSave = {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     towns: AppState.towns,
@@ -784,6 +797,7 @@ function getStoredBackups() {
 }
 
 function saveAutoBackup(desc, force = false) {
+  if (AppState.remote) return;
   try {
     const backups = getStoredBackups();
     const now = Date.now();
@@ -835,6 +849,7 @@ function restoreBackup(backupId) {
   const found = backups.find(b => b.id === backupId);
   if (!found) return;
 
+  if (AppState.remote) { showInAppAlert('Sicherungen gehören zur lokalen Karte.', 'warning'); return; }
   showConfirmModal({
     title: 'Sicherung wiederherstellen',
     message: `Möchtest du den Sicherungsstand vom ${found.dateFormatted} (${found.desc}) wirklich wiederherstellen? Deine aktuellen Daten werden zuvor gesichert.`,
@@ -1008,11 +1023,11 @@ function renderSurroundingRegions() {
   if (typeof SURROUNDING_KREISE === 'undefined') return;
 
   AppState.surroundingLayer = L.geoJSON(SURROUNDING_KREISE, {
+    // Nur Umriss: Die Fläche liefert der Kartenhintergrund, auch dort, wo Nachbarkreise in den Daten fehlen
     style: {
-      fillColor: '#f1f5f9',
-      fillOpacity: 0.65,
-      color: '#cbd5e1',
-      weight: 1.2,
+      fillOpacity: 0,
+      color: '#b8c2cf',
+      weight: 1,
       dashArray: '3, 4'
     },
     interactive: false
@@ -1256,40 +1271,17 @@ function getTownStyle(feature) {
   let fillOpacity = 0.88;
   let weight = 1.0;
 
-  if (AppState.visualViewMode === 'milestone') {
-    if (town.milestone === 'custom' && town.customColor) {
-      fillColor = town.customColor;
-      borderColor = darkenColor(town.customColor, 20);
-      weight = 1.8;
-      fillOpacity = 0.95;
-    } else if (town.milestone !== 'none') {
-      const mc = MILESTONE_COLORS[town.milestone] || MILESTONE_COLORS.none;
-      fillColor = mc.fill;
-      borderColor = mc.border;
-      weight = town.milestone === 'ipg_plus' ? 2.2 : (town.milestone === 'ipg' ? 1.9 : 1.6);
-      fillOpacity = 0.95;
-    }
-  } else if (AppState.visualViewMode === 'activities') {
-    const totalActs = calculateTotalActivities(town.activities);
-    if (totalActs > 0) {
-      if (totalActs <= 2) fillColor = '#bbf7d0';
-      else if (totalActs <= 5) fillColor = '#4ade80';
-      else if (totalActs <= 10) fillColor = '#22c55e';
-      else fillColor = '#15803d';
-      borderColor = darkenColor(fillColor, 15);
-      weight = 1.8;
-      fillOpacity = 0.95;
-    }
-  } else if (AppState.visualViewMode === 'nuclei') {
-    const n = town.nuclei || 0;
-    if (n > 0) {
-      if (n === 1) fillColor = '#a7f3d0';
-      else if (n <= 3) fillColor = '#10b981';
-      else fillColor = '#047857';
-      borderColor = darkenColor(fillColor, 15);
-      weight = 1.8;
-      fillOpacity = 0.95;
-    }
+  if (town.milestone === 'custom' && town.customColor) {
+    fillColor = town.customColor;
+    borderColor = darkenColor(town.customColor, 20);
+    weight = 1.8;
+    fillOpacity = 0.95;
+  } else if (town.milestone !== 'none') {
+    const mc = MILESTONE_COLORS[town.milestone] || MILESTONE_COLORS.none;
+    fillColor = mc.fill;
+    borderColor = mc.border;
+    weight = town.milestone === 'ipg_plus' ? 2.2 : (town.milestone === 'ipg' ? 1.9 : 1.6);
+    fillOpacity = 0.95;
   }
 
   return {
@@ -1352,36 +1344,15 @@ function getDistrictStyle(feature) {
   let weight = 1.2;
   let dashArray = null;
 
-  if (AppState.visualViewMode === 'milestone') {
-    if (dist.milestone === 'custom' && dist.customColor) {
-      fillColor = dist.customColor;
-      borderColor = darkenColor(dist.customColor, 20);
-    } else if (dist.milestone !== 'none') {
-      const mc = MILESTONE_COLORS[dist.milestone] || MILESTONE_COLORS.none;
-      fillColor = mc.fill;
-      borderColor = mc.border;
-    } else {
-      dashArray = '2, 3'; // gentle dashed line for unstarted districts
-    }
-  } else if (AppState.visualViewMode === 'activities') {
-    const totalActs = calculateTotalActivities(dist.activities);
-    if (totalActs > 0) {
-      if (totalActs <= 1) fillColor = '#bbf7d0';
-      else if (totalActs <= 3) fillColor = '#4ade80';
-      else fillColor = '#15803d';
-      borderColor = darkenColor(fillColor, 15);
-    } else {
-      dashArray = '2, 3';
-    }
-  } else if (AppState.visualViewMode === 'nuclei') {
-    const n = dist.nuclei || 0;
-    if (n > 0) {
-      if (n === 1) fillColor = '#34d399';
-      else fillColor = '#047857';
-      borderColor = darkenColor(fillColor, 15);
-    } else {
-      dashArray = '2, 3';
-    }
+  if (dist.milestone === 'custom' && dist.customColor) {
+    fillColor = dist.customColor;
+    borderColor = darkenColor(dist.customColor, 20);
+  } else if (dist.milestone !== 'none') {
+    const mc = MILESTONE_COLORS[dist.milestone] || MILESTONE_COLORS.none;
+    fillColor = mc.fill;
+    borderColor = mc.border;
+  } else {
+    dashArray = '2, 3'; // gentle dashed line for unstarted districts
   }
 
   const isSelected = AppState.selectedDistrictId === id;
@@ -1695,14 +1666,12 @@ function refreshMarkers() {
           ${isCenter ? '<span class="center-star">★</span>' : ''}
           <span>${escapeHtml(name)}</span>
           ${msBadgeHtml}
-          ${town.nuclei > 0 ? `<span class="subtle-badge nuclei">${town.nuclei}</span>` : ''}
-          ${totalActs > 0 ? `<span class="subtle-badge acts">${totalActs}</span>` : ''}
         </div>
       `;
 
       // Estimated label dimensions in screen pixels
-      const hasBadges = town.nuclei > 0 || totalActs > 0 || (ms && ms !== 'none');
-      const boxWidth = Math.max(54, name.length * 7.5 + (hasBadges ? 48 : 14) + (isCenter ? 18 : 0));
+      const hasBadge = !!msBadgeHtml;
+      const boxWidth = Math.max(54, name.length * 7.5 + (hasBadge ? 40 : 14) + (isCenter ? 18 : 0));
       const boxHeight = 22;
 
       const customIcon = L.divIcon({
@@ -1787,7 +1756,6 @@ function refreshMarkers() {
       const dist = AppState.districts[id];
       if (!center || !dist) return;
 
-      const totalActs = calculateTotalActivities(dist.activities);
       const parentName = df.properties.townName || (AppState.townFeaturesById[townId] ? AppState.townFeaturesById[townId].properties.name : '');
 
       const markerHtml = `
@@ -1795,8 +1763,6 @@ function refreshMarkers() {
           <span class="district-parent-kicker">${escapeHtml(parentName)}</span>
           <div class="district-name-row">
             <span class="district-name">${escapeHtml(df.properties.name)}</span>
-            ${dist.nuclei > 0 ? `<span class="subtle-badge nuclei">${dist.nuclei}</span>` : ''}
-            ${totalActs > 0 ? `<span class="subtle-badge acts">${totalActs}</span>` : ''}
           </div>
         </div>
       `;
@@ -2493,6 +2459,7 @@ function selectTown(townId, shouldZoom = true) {
 
   renderDeploymentsList(townId);
   document.getElementById('drawer-notes').value = town.notes || '';
+  if (window.Accounts) Accounts.renderPeople();
 
   // AUTOMATIC ZOOM TO TOWN ON SELECTION
   if (shouldZoom && AppState.map) {
@@ -2558,6 +2525,7 @@ function selectDistrict(districtId, shouldZoom = false) {
 
   renderDeploymentsList(districtId);
   document.getElementById('drawer-notes').value = dist.notes || '';
+  if (window.Accounts) Accounts.renderPeople();
 
   if (shouldZoom) {
     focusDistrictOnMap(districtId);
@@ -2624,9 +2592,6 @@ function updateMilestoneHeaderAndSelection() {
   document.getElementById('drawer-custom-color').value = entity.customColor || '#86efac';
   document.getElementById('drawer-rollup-hint').innerHTML = distId ? '' : rollupHintHtml(townId);
 
-  const btnApplyAll = document.getElementById('btn-apply-milestone-all-districts');
-  btnApplyAll.style.display = distCount ? 'inline-block' : 'none';
-  btnApplyAll.textContent = `Auf alle ${distCount} Stadtteile anwenden`;
 }
 
 function renderDeploymentsList(targetId) {
@@ -3035,84 +3000,6 @@ function initUIEventListeners() {
     });
   });
 
-  function updateLegendForView(viewMode) {
-    const container = document.getElementById('legend-items-container');
-    if (!container) return;
-    if (viewMode === 'activities') {
-      container.innerHTML = `
-        <div class="legend-row">
-          <div class="legend-dot" style="background:#15803d; border-color:#052e16;"></div>
-          <span><strong>11+</strong> Kernaktivitäten</span>
-        </div>
-        <div class="legend-row">
-          <div class="legend-dot" style="background:#22c55e; border-color:#15803d;"></div>
-          <span><strong>6 – 10</strong> Kernaktivitäten</span>
-        </div>
-        <div class="legend-row">
-          <div class="legend-dot" style="background:#4ade80; border-color:#16a34a;"></div>
-          <span><strong>3 – 5</strong> Kernaktivitäten</span>
-        </div>
-        <div class="legend-row">
-          <div class="legend-dot" style="background:#bbf7d0; border-color:#4ade80;"></div>
-          <span><strong>1 – 2</strong> Kernaktivitäten</span>
-        </div>
-        <div class="legend-row">
-          <div class="legend-dot none"></div>
-          <span style="color: var(--text-tertiary);">0 Aktivitäten</span>
-        </div>
-        <div class="legend-row">
-          <span style="color: var(--system-orange); font-size: 13px; line-height: 1; width: 12px; text-align: center;">★</span>
-          <span>Entsende-Zentrum</span>
-        </div>
-      `;
-    } else if (viewMode === 'nuclei') {
-      container.innerHTML = `
-        <div class="legend-row">
-          <div class="legend-dot" style="background:#047857; border-color:#064e3b;"></div>
-          <span><strong>4+</strong> Nuklei</span>
-        </div>
-        <div class="legend-row">
-          <div class="legend-dot" style="background:#10b981; border-color:#047857;"></div>
-          <span><strong>2 – 3</strong> Nuklei</span>
-        </div>
-        <div class="legend-row">
-          <div class="legend-dot" style="background:#a7f3d0; border-color:#10b981;"></div>
-          <span><strong>1</strong> Nukleus</span>
-        </div>
-        <div class="legend-row">
-          <div class="legend-dot none"></div>
-          <span style="color: var(--text-tertiary);">0 Nuklei</span>
-        </div>
-        <div class="legend-row">
-          <span style="color: var(--system-orange); font-size: 13px; line-height: 1; width: 12px; text-align: center;">★</span>
-          <span>Entsende-Zentrum</span>
-        </div>
-      `;
-    } else {
-      container.innerHTML = `
-        <div class="legend-row legend-ms-row">
-          <span title="3. MS (Fortgeschrittenes Wachstumsprogramm)"><span class="legend-dot ipg-plus"></span>3. MS</span>
-          <span title="2. MS (Intensives Wachstumsprogramm)"><span class="legend-dot ipg"></span>2. MS</span>
-          <span title="1. MS (Wachstumsprogramm)"><span class="legend-dot pg"></span>1. MS</span>
-          <button type="button" class="info-btn js-milestone-info" aria-label="Was bedeuten die Meilensteine?" title="Was bedeuten die Meilensteine?">i</button>
-        </div>
-        <div class="legend-row">
-          <div class="legend-dot none"></div>
-          <span style="color: var(--text-tertiary);">Noch nicht begonnen</span>
-        </div>
-        <div class="legend-row">
-          <span style="color: var(--system-orange); font-size: 13px; line-height: 1; width: 12px; text-align: center;">★</span>
-          <span>Entsende-Zentrum</span>
-        </div>
-      `;
-    }
-  }
-
-  document.getElementById('select-visual-view').addEventListener('change', (e) => {
-    AppState.visualViewMode = e.target.value;
-    updateLegendForView(e.target.value);
-    refreshAllStyles();
-  });
 
 
   const toggleLabelsInput = document.getElementById('toggle-labels');
@@ -3126,11 +3013,6 @@ function initUIEventListeners() {
 
   document.getElementById('toggle-surrounding').addEventListener('change', (e) => {
     AppState.showSurrounding = e.target.checked;
-    refreshAllStyles();
-  });
-
-  document.getElementById('toggle-rivers').addEventListener('change', (e) => {
-    AppState.showLandmarks = e.target.checked;
     refreshAllStyles();
   });
 
@@ -3175,43 +3057,6 @@ function initUIEventListeners() {
       }
     });
   });
-
-  const btnApplyAll = document.getElementById('btn-apply-milestone-all-districts');
-  if (btnApplyAll) {
-    btnApplyAll.addEventListener('click', () => {
-      const townId = AppState.selectedTownId;
-      if (!townId) return;
-      const town = AppState.towns[townId];
-      if (!town) return;
-
-      const targetMilestone = town.milestone;
-      const targetColor = town.customColor;
-
-      const townFeat = AppState.townFeaturesById[townId];
-      const townName = townFeat ? townFeat.properties.name : 'Gemeinde';
-      const districts = Object.values(AppState.districtFeaturesById).filter(f => f.properties.townId === townId);
-      if (districts.length === 0) return;
-
-      pushHistory(`Alle ${districts.length} Stadtteile von ${townName} auf ${getMilestoneLabel(targetMilestone)} gesetzt`);
-      districts.forEach(df => {
-        const dId = df.properties.id;
-        if (!AppState.districts[dId]) AppState.districts[dId] = { milestone: 'none', nuclei: 0, activities: {} };
-        AppState.districts[dId].milestone = targetMilestone;
-        if (targetMilestone === 'custom' && targetColor) {
-          AppState.districts[dId].customColor = targetColor;
-        }
-      });
-      town.milestone = targetMilestone;
-      if (targetMilestone === 'custom' && targetColor) town.customColor = targetColor;
-
-      saveState();
-      refreshAllStyles();
-      refreshMarkers();
-      updateClusterStats();
-      renderDistrictsListForTown(townId);
-      updateMilestoneHeaderAndSelection();
-    });
-  }
 
   document.getElementById('drawer-custom-color').addEventListener('change', (e) => {
     pushHistory('Farbe angepasst');
@@ -3350,11 +3195,12 @@ function initUIEventListeners() {
   // Info zu den Meilensteinen: nativer <dialog> übernimmt Fokusfalle, Escape und Fokus-Rückgabe
   const msInfo = document.getElementById('milestone-info-dialog');
   document.addEventListener('click', (e) => {
-    if (e.target.closest('.js-milestone-info')) msInfo.showModal();
-    else if (e.target === msInfo || e.target.closest('[data-close-dialog]')) msInfo.close();
+    if (e.target.closest('.js-milestone-info')) return msInfo.showModal();
+    const d = e.target.tagName === 'DIALOG' ? e.target : e.target.closest('[data-close-dialog]')?.closest('dialog');
+    if (d) d.close();
   });
   // Escape soll nur den Dialog schließen, nicht zusätzlich den Inspektor (globaler Handler unten)
-  msInfo.addEventListener('keydown', (e) => { if (e.key === 'Escape') e.stopPropagation(); });
+  document.querySelectorAll('dialog').forEach(d => d.addEventListener('keydown', (e) => { if (e.key === 'Escape') e.stopPropagation(); }));
 
   // Global Keyboard Shortcuts (⌘Z / ⇧⌘Z / ⌘Y / Escape)
   window.addEventListener('keydown', (e) => {
@@ -3617,9 +3463,9 @@ function initUIEventListeners() {
       closeMobileActions();
       openShareModal();
     });
-    document.getElementById('mobile-act-backups')?.addEventListener('click', () => {
+    document.getElementById('mobile-act-accounts')?.addEventListener('click', () => {
       closeMobileActions();
-      openBackupManagerModal();
+      Accounts.openDialog();
     });
     document.getElementById('mobile-act-legal')?.addEventListener('click', () => {
       closeMobileActions();
@@ -3630,10 +3476,6 @@ function initUIEventListeners() {
     });
     document.getElementById('mobile-act-redo')?.addEventListener('click', () => {
       redo();
-    });
-    document.getElementById('mobile-act-reset')?.addEventListener('click', () => {
-      closeMobileActions();
-      document.getElementById('menu-item-reset')?.click();
     });
   }
 
@@ -4363,7 +4205,7 @@ function checkMigrationOnStartup() {
       if (bundle.data.towns) AppState.towns = bundle.data.towns;
       if (bundle.data.districts) AppState.districts = bundle.data.districts;
       if (bundle.data.deployments) AppState.deployments = bundle.data.deployments;
-      saveState();
+      persistLocal(); // Übertragung, keine Bearbeitung: auch ohne Konto erlaubt
 
       if (bundle.backups && Array.isArray(bundle.backups) && bundle.backups.length > 0) {
         const curBackups = getStoredBackups();
@@ -4530,6 +4372,10 @@ function executeImportMerge() {
 }
 
 function executeImportReplace() {
+  if (AppState.remote) {
+    showInAppAlert('Ersetzen würde die Personenlisten dieser Karte löschen. Bitte „Zusammenführen“ wählen oder eine neue Karte anlegen.', 'warning');
+    return;
+  }
   if (!pendingImportData) return;
   saveAutoBackup(`Vor Ersetzen (${pendingImportData.sourceName})`, true);
   pushHistory(`Ersetzen: ${pendingImportData.sourceName}`);
@@ -4603,12 +4449,17 @@ function parseSharedPayloadToEntities(payload) {
 }
 
 function exportDataJson() {
+  // Personen (Art. 9 DSGVO) verlassen den Server nie als Datei
+  const withoutPeople = (units) => Object.fromEntries(Object.entries(units).map(([id, u]) => {
+    const { people, ...rest } = u || {};
+    return [id, rest];
+  }));
   const exportObject = {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     clusterName: "Rhein-Neckar",
     exportedAt: new Date().toISOString(),
-    towns: AppState.towns,
-    districts: AppState.districts,
+    towns: withoutPeople(AppState.towns),
+    districts: withoutPeople(AppState.districts),
     deployments: AppState.deployments
   };
 
@@ -4661,7 +4512,7 @@ function getExportableData() {
     if (t.milestone && t.milestone !== 'none') item.m = t.milestone;
     if (t.nuclei) item.n = t.nuclei;
     if (t.isCenter) item.c = 1;
-    if (t.notes && t.notes.trim()) item.nt = t.notes.trim();
+    if (t.notes && t.notes.trim() && !AppState.remote) item.nt = t.notes.trim();
     if (t.milestone === 'custom' && t.customColor) item.col = t.customColor;
     if (Object.keys(item).length > 0) {
       activeTowns[id] = item;
@@ -4675,7 +4526,7 @@ function getExportableData() {
     if (d.milestone && d.milestone !== 'none') item.m = d.milestone;
     if (d.nuclei) item.n = d.nuclei;
     if (d.isCenter) item.c = 1;
-    if (d.notes && d.notes.trim()) item.nt = d.notes.trim();
+    if (d.notes && d.notes.trim() && !AppState.remote) item.nt = d.notes.trim();
     if (Object.keys(item).length > 0) {
       activeDistricts[id] = item;
     }
@@ -4686,7 +4537,7 @@ function getExportableData() {
     if (d.count && d.count !== 1) item.c = d.count;
     if (d.status && d.status !== 'active') item.s = d.status;
     if (d.color) item.col = d.color;
-    if (d.notes && d.notes.trim()) item.nt = d.notes.trim();
+    if (d.notes && d.notes.trim() && !AppState.remote) item.nt = d.notes.trim();
     return item;
   });
 
@@ -4994,7 +4845,7 @@ function applySharedDataFromBanner() {
 }
 
 function previewSharedDataFromBanner() {
-  if (!pendingSharedPayload) return;
+  if (!pendingSharedPayload || AppState.remote) return;
   applySharedPayload(pendingSharedPayload, false);
   const details = document.getElementById('share-banner-details');
   if (details) {
@@ -5005,7 +4856,7 @@ function previewSharedDataFromBanner() {
 function dismissSharedDataBanner() {
   const banner = document.getElementById('share-import-banner');
   if (banner) banner.classList.remove('visible');
-  loadStoredData();
+  if (!AppState.remote) loadStoredData();
   refreshAllStyles();
   refreshMarkers();
   renderArrows();
@@ -5087,7 +4938,7 @@ async function exportMapAsPng() {
     ctx.font = "bold " + (14 * scale) + "px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.fillText('Rhein-Neckar · Aktionskarte', cardX + 14 * scale, cardY + 12 * scale);
+    ctx.fillText('Clusterkarte Rhein-Neckar', cardX + 14 * scale, cardY + 12 * scale);
 
     const townsActive = Object.values(AppState.towns).filter(t => t.milestone && t.milestone !== 'none').length;
     const depCount = (AppState.deployments || []).length;
@@ -5185,6 +5036,7 @@ async function exportMapAsPng() {
 }
 
 function resetToCleanData() {
+  if (AppState.remote) { showInAppAlert('Zurücksetzen gilt nur für die lokale Karte.', 'warning'); return; }
   showConfirmModal({
     title: 'Karte zurücksetzen',
     message: 'Möchtest du ALLE Daten (Meilensteine, Nuklei, Aktivitäten, Entsendungen, Notizen) auf den Anfangszustand zurücksetzen? Ein Sicherungsstand wird automatisch angelegt und kann über „Sicherungen" wiederhergestellt werden.',

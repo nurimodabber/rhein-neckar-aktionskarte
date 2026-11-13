@@ -8,7 +8,7 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "node --test tests/test_maps_core.js tests/test_maps_api.js && node tests/test_phase0.js"
+    "test": "node --test tests/test_maps_core.js tests/test_maps_api.js tests/test_accounts.js && node tests/test_phase0.js"
   },
   "repository": {
     "type": "git",

@@ -51,6 +51,12 @@ async function startServer(port) {
   server = http.createServer((req, res) => {
     let reqPath = req.url.split('?')[0].split('#')[0];
     if (reqPath === '/') reqPath = '/index.html';
+    // Wie ein Server ohne eingerichtete Konten: dann ist die lokale Karte bearbeitbar (Import-Tests)
+    if (reqPath === '/api/maps') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, ready: false, publishableKey: null }));
+      return;
+    }
     const filePath = path.join(__dirname, '..', reqPath);
 
     fs.readFile(filePath, (err, data) => {

@@ -8,7 +8,7 @@
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="lib/leaflet.css" />
   <!-- Apple HIG Custom Styling -->
-  <link rel="stylesheet" href="style.css?v=13" />
+  <link rel="stylesheet" href="style.css?v=14" />
   <!-- PWA & Apple Web App Meta -->
   <link rel="manifest" href="manifest.json" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -39,8 +39,7 @@
         </svg>
       </div>
       <div class="header-titles">
-        <h1>Rhein-Neckar</h1>
-        <div class="subtitle">Aktionskarte · Region Süd</div>
+        <h1>Clusterkarte Rhein-Neckar</h1>
       </div>
     </div>
 
@@ -76,49 +75,41 @@
           Menü ▾
         </button>
         <div class="dropdown-menu" id="project-dropdown-menu">
+          <button type="button" class="dropdown-item" id="menu-item-accounts">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            Konto &amp; Karten
+          </button>
+          <div class="dropdown-divider"></div>
           <button type="button" class="dropdown-item" id="menu-item-report">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-            Bericht (Gesamtübersicht)...
+            Bericht
           </button>
           <button type="button" class="dropdown-item" id="menu-item-png">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-            Karte als Bild speichern
+            Als Bild speichern
           </button>
           <button type="button" class="dropdown-item" id="menu-item-share">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
-            Karte teilen (Link &amp; QR)...
+            Teilen (Link &amp; QR)
           </button>
           <div class="dropdown-divider"></div>
           <button type="button" class="dropdown-item" id="menu-item-export">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-            Projekt exportieren (JSON)
+            Exportieren (JSON)
           </button>
           <button type="button" class="dropdown-item" id="menu-item-import">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-            Projekt importieren (JSON)...
-          </button>
-          <button type="button" class="dropdown-item" id="menu-item-backups">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-            Automatische Sicherungen...
+            Importieren (JSON)
           </button>
           <button type="button" class="dropdown-item" id="menu-item-onboarding">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-            Kurzanleitung &amp; Einführung...
+            Kurzanleitung
           </button>
           <button type="button" class="dropdown-item" id="menu-item-legal">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            Impressum &amp; Datenschutz...
+            Impressum &amp; Datenschutz
           </button>
 
-          <div class="dropdown-divider"></div>
-          <div id="menu-export-status" style="padding: 6px 12px; font-size: 11px; color: var(--text-tertiary); line-height: 1.3;">
-            JSON-Sicherung: <span id="menu-export-status-text">Wird geprüft...</span>
-          </div>
-          <div class="dropdown-divider"></div>
-          <button type="button" class="dropdown-item destructive" id="menu-item-reset">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
-            Auf Anfangszustand zurücksetzen...
-          </button>
         </div>
       </div>
       <input type="file" id="json-file-input" accept=".json" style="display: none;" />
@@ -200,11 +191,11 @@
         </div>
 
         <!-- Collaborative Online Sync Capsule -->
-        <div class="hud-nav-bar apple-hud live-sync-capsule" id="live-sync-capsule" style="display: none;" title="Online-Raum aktiv (Klicken für Details)">
+        <button type="button" class="hud-nav-bar apple-hud live-sync-capsule" id="live-sync-capsule" style="display: none;" title="Konto &amp; Karten">
           <span class="sync-live-dot" id="sync-live-dot"></span>
-          <span id="sync-room-label" style="font-weight: 600; font-size: 12px;">Raum: ...</span>
-          <span class="sync-state-pill" id="sync-state-pill">Synchron</span>
-        </div>
+          <span id="sync-room-label" style="font-weight: 600; font-size: 12px;">Anmelden</span>
+          <span class="sync-state-pill" id="sync-state-pill">Nur Ansicht</span>
+        </button>
       </div>
 
       <!-- Floating Map Mode Toolbar & Contextual Sub-bars -->
@@ -305,40 +296,24 @@
               <span title="1. MS (Wachstumsprogramm)"><span class="legend-dot pg"></span>1. MS</span>
               <button type="button" class="info-btn js-milestone-info" aria-label="Was bedeuten die Meilensteine?" title="Was bedeuten die Meilensteine?">i</button>
             </div>
-            <div class="legend-row">
-              <div class="legend-dot none"></div>
-              <span style="color: var(--text-tertiary);">Noch nicht begonnen</span>
-            </div>
-            <div class="legend-row">
-              <span style="color: var(--system-orange); font-size: 13px; line-height: 1; width: 12px; text-align: center;">★</span>
-              <span>Entsende-Zentrum</span>
+            <div class="legend-row legend-ms-row">
+              <span><span class="legend-dot none"></span>Nicht begonnen</span>
+              <span><span class="legend-star">★</span>Entsende-Zentrum</span>
             </div>
           </div>
 
           <div class="legend-toggles">
-            <div style="margin-bottom: 6px;">
-              <select id="select-visual-view" class="form-select" style="padding: 4px 6px; font-size: 11px;">
-                <option value="milestone">Meilensteine</option>
-                <option value="activities">Kernaktivitäten</option>
-                <option value="nuclei">Nuklei</option>
-              </select>
-            </div>
-
             <label class="legend-checkbox-label">
               <input type="checkbox" id="toggle-labels" checked />
-              <span>Orts- &amp; Stadtteilnamen</span>
+              <span>Namen</span>
             </label>
             <label class="legend-checkbox-label">
               <input type="checkbox" id="toggle-surrounding" checked />
               <span>Nachbarregionen</span>
             </label>
             <label class="legend-checkbox-label">
-              <input type="checkbox" id="toggle-rivers" checked />
-              <span>Rhein, Neckar &amp; Landmarken</span>
-            </label>
-            <label class="legend-checkbox-label">
               <input type="checkbox" id="toggle-arrows" checked />
-              <span>Entsende-Pfeile</span>
+              <span>Pfeile</span>
             </label>
           </div>
 
@@ -380,7 +355,11 @@
       </div>
 
       <div class="inspector-body">
-        
+        <div class="drawer-readonly" id="drawer-readonly" hidden>
+          <span id="drawer-readonly-text">Nur Ansicht.</span>
+          <button type="button" class="btn btn-primary btn-sm" id="drawer-readonly-btn">Anmelden</button>
+        </div>
+
         <!-- Milestone Selection Group (Always at top of drawer for instant coloring of town or selected district) -->
         <div id="drawer-milestone-section" style="margin-bottom: 12px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; padding: 0 4px;">
@@ -388,9 +367,6 @@
               <div class="group-header" id="drawer-milestone-header" style="margin: 0; padding: 0;">Meilenstein</div>
               <button type="button" class="info-btn js-milestone-info" aria-label="Was bedeuten die Meilensteine?" title="Was bedeuten die Meilensteine?">i</button>
             </div>
-            <button type="button" class="btn btn-ghost" id="btn-apply-milestone-all-districts" style="display: none; font-size: 11px; padding: 2px 8px; color: var(--system-blue); font-weight: 500;" title="Diesen Meilenstein auf alle Stadtteile dieser Ortschaft anwenden">
-              Auf alle Stadtteile anwenden
-            </button>
           </div>
           <div class="apple-group">
             <div class="milestone-selector">
@@ -430,11 +406,8 @@
           <!-- Center Toggle Switch Row -->
           <div style="margin-bottom: 12px;">
             <div class="apple-group">
-              <div class="apple-list-row center-switch-box">
-                <div>
-                  <div class="row-label">★ Entsende-Zentrum</div>
-                  <div class="row-sublabel">Basis für Ressourcen, Begleitung &amp; Entsendungen</div>
-                </div>
+              <div class="apple-list-row center-switch-box" title="Basis für Ressourcen, Begleitung und Entsendungen">
+                <label class="row-label" for="drawer-is-center"><span class="legend-star">★</span> Entsende-Zentrum</label>
                 <label class="switch">
                   <input type="checkbox" id="drawer-is-center" />
                   <span class="slider"></span>
@@ -535,6 +508,21 @@
               </button>
             </div>
           </div>
+
+          <!-- Personen: nur in Konto-Karten, nie in Links, Export oder lokalem Speicher -->
+          <section class="people-section" id="drawer-people" hidden>
+            <div class="group-header">Personen</div>
+            <div class="apple-group people-group">
+              <p class="people-summary" id="people-summary"></p>
+              <button type="button" class="btn btn-primary btn-sm" id="people-open-accounts" hidden>Konto-Karte öffnen</button>
+              <ul class="people-list" id="people-list"></ul>
+              <form class="people-add" id="people-add-form" hidden>
+                <input type="text" class="form-input" id="people-add-name" maxlength="100" placeholder="Name" aria-label="Name der Person" autocomplete="off" required />
+                <label class="people-believer"><input type="checkbox" id="people-add-believer" /> gläubig</label>
+                <button type="submit" class="btn btn-primary btn-sm">Hinzufügen</button>
+              </form>
+            </div>
+          </section>
 
           <!-- Notes / Reflections Group: bei Ortschaften mit Stadtteilen eingeklappt -->
           <details class="notes-details" id="drawer-notes-details" open style="margin-bottom: 12px;">
@@ -902,9 +890,13 @@
           Diese Aktionskarte dient der internen Reflexion und Planung gemeindlicher Aktivitäten. Die Zugehörigkeit zu einer Religionsgemeinschaft ist nach Art. 9 DSGVO besonders geschützt.
         </p>
         <ul style="color: var(--text-secondary); padding-left: 20px; margin-bottom: 12px;">
-          <li><strong>Keine Speicherung personenbezogener Namen oder Adressen:</strong> Es werden ausschließlich aggregierte Zählwerte (Nuklei, Aktivitäten) und Ortsbezeichnungen erfasst.</li>
-          <li><strong>Lokale Datenverarbeitung:</strong> Alle Eingaben werden standardmäßig ausschließlich im lokalen Speicher deines Browsers auf deinem Endgerät verarbeitet. Es findet ohne deine ausdrückliche Freigabe keine Übertragung an externe Server Dritter statt.</li>
-          <li><strong>Teilen von Ständen:</strong> Wenn du die Freigabe-Funktion nutzt, werden die von dir freigegebenen Ortsdaten clientseitig komprimiert (Deflate-Raw / Base64url) direkt in den Freigabe-Link eingebettet. Der Link enthält den Stand und ist nicht verschlüsselt.</li>
+          <li><strong>Ohne Konto:</strong> Die Karte ist nur zum Ansehen. Es werden keine Daten an uns übertragen; der zuletzt angezeigte Stand liegt im lokalen Speicher deines Browsers.</li>
+          <li><strong>Konto (Clerk):</strong> Anmeldung und Registrierung laufen über Clerk (Clerk, Inc., USA). Clerk verarbeitet deine E-Mail-Adresse, dein Passwort (nur als Hash) und Sitzungsdaten. Meldest du dich mit Google an, erhält Google (Google Ireland Ltd.) die Information über diese Anmeldung, und Clerk erhält von Google Name und E-Mail-Adresse. Eine Übermittlung in die USA ist möglich.</li>
+          <li><strong>Konto-Karten (Upstash, Vercel):</strong> Karten eines Kontos, einschließlich Personenlisten und Notizen, werden auf dem Server verschlüsselt (AES-256-GCM) in einer Upstash-Redis-Datenbank (Upstash, Inc.) gespeichert. Der Schlüssel liegt getrennt davon beim Hoster Vercel (Vercel Inc., USA), über dessen Server die Seite und die Schnittstelle laufen. Lesen können eine Karte nur ihr Besitzer und die Personen, die er per E-Mail-Adresse einlädt.</li>
+          <li><strong>Personen und Glaubenszugehörigkeit:</strong> Namen und das Merkmal „gläubig“ sind besonders geschützte Daten. Trage Personen nur ein, wenn sie damit einverstanden sind. Personendaten werden nie im Browser gespeichert und sind nie Teil von Freigabe-Links, Bild-Export, Bericht, JSON-Export oder einer öffentlichen Karte.</li>
+          <li><strong>Öffentliche Karte:</strong> Gibt der Besitzer eine Karte öffentlich frei, sind nur Stufen, Nuklei, Kernaktivitäten, Entsende-Zentren und Entsendungen sichtbar, ohne Personen und Notizen.</li>
+          <li><strong>Teilen von Ständen:</strong> Wenn du die Freigabe-Funktion nutzt, werden die freigegebenen Ortsdaten clientseitig komprimiert (Deflate-Raw / Base64url) direkt in den Link eingebettet. Der Link enthält den Stand und ist nicht verschlüsselt.</li>
+          <li><strong>Löschen:</strong> Eine Konto-Karte löscht ihr Besitzer im Dialog „Konto &amp; Karten“; sie ist danach sofort vom Server entfernt.</li>
         </ul>
 
         <h4 style="margin: 14px 0 6px; font-size: 14px;">3. Kartendaten &amp; Lizenzen</h4>
@@ -1020,9 +1012,9 @@
             <span class="m-act-label">Teilen</span>
             <span class="m-act-sub">Link &amp; QR-Code</span>
           </button>
-          <button type="button" class="mobile-action-card" id="mobile-act-backups">
-            <span class="m-act-label">Projekt &amp; Daten</span>
-            <span class="m-act-sub">Sicherungen &amp; JSON</span>
+          <button type="button" class="mobile-action-card" id="mobile-act-accounts">
+            <span class="m-act-label">Konto &amp; Karten</span>
+            <span class="m-act-sub">Anmelden, teilen</span>
           </button>
         </div>
 
@@ -1044,14 +1036,20 @@
             <span>Impressum &amp; Datenschutz</span>
             <span class="m-arrow">›</span>
           </button>
-          <button type="button" class="mobile-list-item destructive" id="mobile-act-reset">
-            <span>Auf Anfangszustand zurücksetzen</span>
-            <span class="m-arrow">›</span>
-          </button>
         </div>
       </div>
     </div>
   </div>
+
+  <dialog class="milestone-info-dialog accounts-dialog" id="accounts-dialog" aria-labelledby="accounts-title">
+    <div class="apple-sheet">
+      <div class="sheet-header">
+        <h3 id="accounts-title">Konto &amp; Karten</h3>
+        <button type="button" class="inspector-close-btn" data-close-dialog aria-label="Schließen">✕</button>
+      </div>
+      <div class="sheet-body" id="accounts-body"></div>
+    </div>
+  </dialog>
 
   <!-- Modal: 3-Step Onboarding Guide (Apple HIG Sheet) -->
   <dialog class="milestone-info-dialog" id="milestone-info-dialog" aria-labelledby="milestone-info-title">
@@ -1151,6 +1149,7 @@
   <script src="geographic_landmarks.js" defer></script>
   <script src="rhein_neckar_data.js" defer></script>
   <script src="rhein_neckar_districts.js" defer></script>
-  <script src="app.js?v=13" defer></script>
+  <script src="accounts.js?v=14" defer></script>
+  <script src="app.js?v=14" defer></script>
 </body>
 </html>

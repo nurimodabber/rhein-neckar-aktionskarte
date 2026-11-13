@@ -52,12 +52,17 @@ const Accounts = (() => {
   let pending = false, saving = false, saveTimer = null, lastReadOnlyAlert = 0;
   let wantedMapId = null;      // #map=… vor der Anmeldung
   let status = '';
+  let notice = '';             // Hinweis oben im Dialog, z. B. warum er sich geöffnet hat
 
   const dialog = () => document.getElementById('accounts-dialog');
   const body = () => document.getElementById('accounts-body');
   const remote = () => AppState.remote;
   const canEdit = () => !!remote() && (remote().role === 'owner' || remote().role === 'edit');
   const currentData = () => ({ towns: AppState.towns, districts: AppState.districts, deployments: AppState.deployments });
+  // Die lokale Karte ist nur bearbeitbar, solange der Server ausdrücklich keine Konten anbietet.
+  // Unbekannt (offline, Fehler) zählt als „Konten vorhanden“, damit nichts ohne Konto entsteht.
+  const localEditAllowed = () => !!cfg && cfg.ready === false;
+  const editable = () => (remote() ? canEdit() : localEditAllowed());
 
   async function loadConfig() {
     if (cfg) return cfg;
@@ -117,6 +122,8 @@ const Accounts = (() => {
     const uid = clerk && clerk.user ? clerk.user.id : null;
     if (uid === lastAuthUser) return;
     lastAuthUser = uid;
+    setStatus(status);
+    updateReadOnly();
     if (!uid) {
       maps = [];
       if (remote() && remote().role !== 'public') leaveToLocal(true);
@@ -165,6 +172,8 @@ const Accounts = (() => {
     clearTimeout(saveTimer);
     pending = false;
     AppState.remote = meta;
+    // Eine offene #share=-Vorschau gehört zur lokalen Karte
+    document.getElementById('share-import-banner')?.classList.remove('visible');
     applyData(data);
     resetHistory();
     setStatus(meta.role === 'public' ? 'Öffentlich' : meta.role === 'view' ? 'Nur lesen' : 'Gespeichert');
@@ -183,7 +192,7 @@ const Accounts = (() => {
     updateNotesHint();
     try { localStorage.removeItem(LAST_MAP_KEY); } catch (e) { /* privat */ }
     if (/^#(map|public)=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search);
-    if (!silent) showInAppAlert('Lokale Karte (dieses Gerät) ist wieder aktiv.', 'info');
+    if (!silent) showInAppAlert(localEditAllowed() ? 'Lokale Karte (dieses Gerät) ist wieder aktiv.' : 'Du siehst wieder die lokale Karte (nur Ansicht).', 'info');
   }
 
   // Vor dem Wechsel: offene Änderungen sichern; schlägt das fehl, bleibt die Karte offen.
@@ -220,6 +229,17 @@ const Accounts = (() => {
     } catch (e) {
       showInAppAlert('Öffentliche Karte konnte nicht geladen werden.', 'warning');
     }
+  }
+
+  // Bearbeitung der lokalen Karte ohne Konto: zurücknehmen und zeigen, wie es geht
+  function blockLocalEdit() {
+    loadStoredData();
+    refreshAll();
+    resetHistory();
+    notice = signedIn()
+      ? 'Bearbeiten geht in einer Konto-Karte. Öffne unten eine Karte oder lege eine neue an.'
+      : 'Zum Bearbeiten brauchst du ein Konto. Melde dich an (oder registriere dich) und lege eine Karte an; den bisherigen Stand kannst du dabei übernehmen.';
+    openDialog();
   }
 
   // --- Speichern ---
@@ -305,11 +325,13 @@ const Accounts = (() => {
     const cap = document.getElementById('live-sync-capsule');
     if (!cap) return;
     const r = remote();
-    cap.style.display = r ? '' : 'none';
-    if (!r) return;
-    document.getElementById('sync-room-label').textContent = r.name;
+    const show = !!r || !localEditAllowed();
+    cap.style.display = show ? '' : 'none';
+    if (!show) return;
+    document.getElementById('sync-room-label').textContent = r ? r.name : signedIn() ? 'Karte öffnen' : 'Anmelden';
     const pill = document.getElementById('sync-state-pill');
-    pill.textContent = s;
+    pill.textContent = r ? s : 'Nur Ansicht';
+    cap.title = r ? 'Konto & Karten' : 'Zum Bearbeiten anmelden und eine Karte öffnen';
     pill.classList.toggle('syncing', s === 'Speichere…');
     pill.classList.toggle('offline', s === 'Nicht gespeichert');
     document.getElementById('sync-live-dot').classList.toggle('offline', s === 'Nicht gespeichert');
@@ -331,12 +353,33 @@ const Accounts = (() => {
     return AppState.towns[tid];
   }
 
+  function updateReadOnly() {
+    const box = document.getElementById('drawer-readonly');
+    if (!box) return;
+    const r = remote();
+    box.hidden = editable();
+    document.getElementById('drawer-readonly-text').textContent = r
+      ? (r.role === 'public' ? 'Öffentliche Ansicht.' : 'Diese Karte ist für dich nur zum Ansehen freigegeben.')
+      : 'Nur Ansicht. Zum Bearbeiten brauchst du ein Konto.';
+    const btn = document.getElementById('drawer-readonly-btn');
+    btn.textContent = r ? 'Konto & Karten' : signedIn() ? 'Karte öffnen' : 'Anmelden';
+    document.body.classList.toggle('is-readonly', !editable());
+  }
+
   function renderPeople() {
+    updateReadOnly();
     const sec = document.getElementById('drawer-people');
     if (!sec) return;
     const r = remote();
-    sec.hidden = !r || r.role === 'public' || !AppState.selectedTownId;
+    sec.hidden = (r && r.role === 'public') || !AppState.selectedTownId;
     if (sec.hidden) return;
+    document.getElementById('people-open-accounts').hidden = !!r;
+    if (!r) {
+      document.getElementById('people-list').replaceChildren();
+      document.getElementById('people-add-form').hidden = true;
+      document.getElementById('people-summary').textContent = 'Personen trägst du in einer Konto-Karte ein. Sie sind nur für dich und die Personen sichtbar, mit denen du die Karte teilst.';
+      return;
+    }
     const unit = selectedUnit();
     const list = document.getElementById('people-list');
     const form = document.getElementById('people-add-form');
@@ -433,6 +476,8 @@ const Accounts = (() => {
     const r = remote();
     const parts = [];
 
+    if (notice) parts.push(h('p', { className: 'acc-notice', role: 'status' }, notice));
+
     if (r && r.role === 'public') {
       parts.push(h('p', {}, `Du siehst die öffentliche Ansicht von „${r.name}“: nur Stufen, Aktivitäten und Entsendungen.`));
       parts.push(h('button', { type: 'button', className: 'btn btn-secondary', onclick: () => leaveToLocal(false) || render() }, 'Zur lokalen Karte'));
@@ -459,12 +504,12 @@ const Accounts = (() => {
       const item = (label, badge, active, onclick) => ul.appendChild(h('li', {},
         h('button', { type: 'button', className: 'acc-map' + (active ? ' active' : ''), onclick, 'aria-current': active ? 'true' : 'false' },
           h('span', {}, label), badge ? h('span', { className: 'acc-badge' }, badge) : null)));
-      item('Lokale Karte (nur dieses Gerät)', null, !r, async () => { if (r && await settle()) { leaveToLocal(false); render(); } });
+      item(localEditAllowed() ? 'Lokale Karte (nur dieses Gerät)' : 'Lokale Karte (dieses Gerät, nur Ansicht)', null, !r, async () => { if (r && await settle()) { leaveToLocal(false); render(); } });
       maps.forEach(m => item(m.name, ROLE_LABEL[m.role] + (m.public ? ' · öffentlich' : ''), r && r.id === m.id, () => openMap(m.id)));
       parts.push(ul);
 
       const nameIn = h('input', { className: 'form-input', maxLength: 80, required: true, placeholder: 'Name der neuen Karte', 'aria-label': 'Name der neuen Karte' });
-      const copyCb = h('input', { type: 'checkbox' });
+      const copyCb = h('input', { type: 'checkbox', checked: true });
       parts.push(h('form', { className: 'acc-form', onsubmit: (e) => { e.preventDefault(); createMap(nameIn.value, copyCb.checked); } },
         nameIn,
         h('label', { className: 'acc-check' }, copyCb, ' Stand der lokalen Karte übernehmen'),
@@ -580,6 +625,10 @@ const Accounts = (() => {
       openDialog();
     });
     document.getElementById('live-sync-capsule')?.addEventListener('click', openDialog);
+    document.getElementById('drawer-readonly-btn')?.addEventListener('click', openDialog);
+    document.getElementById('people-open-accounts')?.addEventListener('click', openDialog);
+    dialog()?.addEventListener('close', () => { notice = ''; });
+    loadConfig().then(() => { setStatus(status); updateReadOnly(); });
     document.getElementById('people-add-form')?.addEventListener('submit', addPerson);
     window.addEventListener('hashchange', handleHash);
     window.addEventListener('online', () => { if (pending) flush(); });
@@ -593,7 +642,7 @@ const Accounts = (() => {
     }
   }
 
-  return { init, onEdit, renderPeople, openDialog, isActive: () => !!AppState.remote };
+  return { init, onEdit, renderPeople, openDialog, localEditAllowed, blockLocalEdit };
 })();
 
 if (typeof window !== 'undefined') window.Accounts = Accounts;

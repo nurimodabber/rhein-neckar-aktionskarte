@@ -3528,3 +3528,9 @@ button.live-sync-capsule { border: 0; font: inherit; color: inherit; }
 @media (max-width: 768px) {
   .form-row-2 { grid-template-columns: 1fr; gap: 0; }
 }
+
+/* Fingergerechte Treffflächen in Dialogen (Apple HIG: 44 px) */
+@media (hover: none) {
+  .modal-backdrop .btn { min-height: 44px; }
+  .modal-backdrop .inspector-close-btn { min-width: 44px; min-height: 44px; }
+}

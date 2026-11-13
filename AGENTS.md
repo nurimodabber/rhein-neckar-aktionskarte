@@ -10,9 +10,9 @@ The **Rhein-Neckar Aktionskarte** (`rhein-neckar-aktionskarte`) is an offline-fi
   - **162 Stadtteile / Nachbarschaften**: Subdivided neighborhoods across 35 cities/municipalities (including Heidelberg, Mannheim, Ludwigshafen, Neustadt, Speyer, Frankenthal, Weinheim, Sinsheim, Wiesloch, Leimen/St. Ilgen, etc.).
 - **Milestone Staging**:
   - `none`: Noch nicht begonnen (uncolored/white with subtle border)
-  - `pg`: Programm des Wachstums (Spring Green, `#86efac`, border `#22c55e`)
-  - `ipg`: Intensives Programm (Apple Emerald Green, `#34c759`, border `#15803d`)
-  - `ipg_plus`: Fortgeschrittenes Intensives Programm (Deep Forest Green, `#15803d`, border `#052e16`)
+  - `pg`: 1. MS (Wachstumsprogramm) (Spring Green, `#86efac`, border `#22c55e`)
+  - `ipg`: 2. MS (Intensives Wachstumsprogramm) (Apple Emerald Green, `#34c759`, border `#15803d`)
+  - `ipg_plus`: 3. MS (Fortgeschrittenes Wachstumsprogramm) (Deep Forest Green, `#15803d`, border `#052e16`)
   - `custom`: Custom color overrides
 - **Tracked Metrics per Unit**:
   - Active Nuclei (`nuclei`: integer)

@@ -3447,3 +3447,7 @@ button.live-sync-capsule { border: 0; font: inherit; color: inherit; }
 @media (max-width: 480px) {
   .cluster-vitality-pill { display: none !important; }
 }
+@media (max-width: 768px) {
+  /* Färben-Palette bzw. Pfeil-Hinweis erscheinen unter der Werkzeugleiste: Konto-Kapsel weicht nach unten aus */
+  body:has(.map-floating-toolbar-container > .visible) #live-sync-capsule { margin-top: 52px; }
+}

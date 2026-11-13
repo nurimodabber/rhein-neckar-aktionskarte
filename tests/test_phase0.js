@@ -323,14 +323,14 @@ async function main() {
 
           return JSON.stringify({
             isVisible,
-            hasTmg: text.includes('§ 5 TMG'),
+            hasDdg: text.includes('§ 5 DDG'),
             hasArt9: text.includes('Art. 9 DSGVO') || text.includes('DSGVO Art. 9'),
             hasOsm: text.includes('OpenStreetMap')
           });
         })()`
       });
       const res = JSON.parse(raw.result.value);
-      if (!res.isVisible || !res.hasTmg || !res.hasArt9 || !res.hasOsm) {
+      if (!res.isVisible || !res.hasDdg || !res.hasArt9 || !res.hasOsm) {
         throw new Error(`Legal notice modal missing clauses: ${JSON.stringify(res)}`);
       }
       results.push({ name: '6. Legal Modal (Impressum, DSGVO Art. 9, OSM ODbL)', passed: true });

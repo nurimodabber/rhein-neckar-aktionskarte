@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://rhein-neckar-aktionskarte.vercel.app/sitemap.xml

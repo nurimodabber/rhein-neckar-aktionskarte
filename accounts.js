@@ -517,12 +517,15 @@ const Accounts = (() => {
 
   function ownerSection(r) {
     const out = [h('div', { className: 'group-header' }, `„${r.name}“ teilen`)];
+    // Der Link gibt keinen Zugriff; die Person muss sich mit der eingeladenen Adresse anmelden.
+    const mapLink = `${location.origin}${location.pathname}#map=${r.id}`;
     const ul = h('ul', { className: 'acc-invites' });
     for (const [mail, role] of Object.entries(r.invites || {})) {
       const sel = h('select', { className: 'form-select', 'aria-label': `Rolle für ${mail}`, onchange: () => patch({ invites: { [mail]: sel.value } }) },
         h('option', { value: 'view', selected: role === 'view' }, 'Lesen'),
         h('option', { value: 'edit', selected: role === 'edit' }, 'Bearbeiten'));
       ul.appendChild(h('li', {}, h('span', {}, mail), sel,
+        h('button', { type: 'button', className: 'btn btn-secondary btn-sm', 'aria-label': `Link für ${mail} teilen`, onclick: () => share(mapLink, `Karte „${r.name}“`) }, 'Link teilen'),
         h('button', { type: 'button', className: 'btn btn-secondary btn-sm', 'aria-label': `${mail} entfernen`, onclick: () => patch({ invites: { [mail]: null } }) }, 'Entfernen')));
     }
     if (!ul.children.length) ul.appendChild(h('li', { className: 'acc-muted' }, 'Noch mit niemandem geteilt.'));
@@ -532,12 +535,12 @@ const Accounts = (() => {
     const roleSel = h('select', { className: 'form-select', 'aria-label': 'Rolle' }, h('option', { value: 'view' }, 'Lesen'), h('option', { value: 'edit' }, 'Bearbeiten'));
     out.push(h('form', { className: 'acc-form', onsubmit: (e) => { e.preventDefault(); patch({ invites: { [mailIn.value.trim()]: roleSel.value } }); } },
       mailIn, roleSel, h('button', { type: 'submit', className: 'btn btn-primary btn-sm' }, 'Einladen')));
-    out.push(h('p', { className: 'acc-muted' }, 'Die Person meldet sich mit genau dieser E-Mail-Adresse an und findet die Karte dann hier in der Liste.'));
+    out.push(h('p', { className: 'acc-muted' }, 'Schick der Person danach den Link. Sie meldet sich mit genau dieser E-Mail-Adresse an und sieht die Karte; ohne Einladung zeigt der Link nichts.'));
 
     const pub = h('input', { type: 'checkbox', checked: r.public, onchange: () => patch({ public: pub.checked }) });
     const link = `${location.origin}${location.pathname}#public=${r.id}`;
     out.push(h('label', { className: 'acc-check' }, pub, ' Öffentlich ansehen lassen (nur Stufen, Aktivitäten, Entsendungen; keine Personen, keine Notizen)'));
-    if (r.public) out.push(h('button', { type: 'button', className: 'btn btn-secondary btn-sm', onclick: () => copy(link) }, 'Öffentlichen Link kopieren'));
+    if (r.public) out.push(h('button', { type: 'button', className: 'btn btn-secondary btn-sm', onclick: () => share(link, `Karte „${r.name}“ (öffentlich)`) }, 'Öffentlichen Link teilen'));
 
     const renameIn = h('input', { className: 'form-input', maxLength: 80, required: true, value: r.name, 'aria-label': 'Name der Karte' });
     out.push(h('div', { className: 'group-header' }, 'Karte verwalten'));
@@ -547,9 +550,14 @@ const Accounts = (() => {
     return out;
   }
 
-  async function copy(text) {
-    try { await navigator.clipboard.writeText(text); showInAppAlert('Link kopiert.', 'success'); }
-    catch (e) { window.prompt('Link kopieren:', text); }
+  // Auf dem Handy öffnet das Teilen-Menü (WhatsApp, Mail …), am Rechner wird kopiert.
+  async function share(url, title) {
+    if (navigator.share) {
+      try { return await navigator.share({ title, url }); }
+      catch (e) { if (e.name === 'AbortError') return; }
+    }
+    try { await navigator.clipboard.writeText(url); showInAppAlert('Link kopiert.', 'success'); }
+    catch (e) { window.prompt('Link kopieren:', url); }
   }
 
   async function patch(change) {

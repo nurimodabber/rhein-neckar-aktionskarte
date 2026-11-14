@@ -3506,6 +3506,7 @@ body.is-readonly #drawer-notes-details:has(#drawer-notes:placeholder-shown) { di
 .acc-badge { font-size: 11px; color: var(--text-secondary); white-space: nowrap; }
 .acc-invites li { display: flex; align-items: center; gap: 6px; }
 .acc-invites li > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 480px) { .acc-invites li { flex-wrap: wrap; } .acc-invites li > span { flex-basis: 100%; } }
 .acc-form { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .acc-form .form-input { flex: 1 1 180px; min-width: 0; }
 .acc-check { display: flex; gap: 6px; align-items: flex-start; font-size: 12.5px; color: var(--text-secondary); cursor: pointer; }

@@ -95,7 +95,9 @@ const Accounts = (() => {
       let c2 = window.Clerk;
       if (!c2) return null;
       if (typeof c2 === 'function') c2 = new c2(pk);
-      if (!c2.loaded) await c2.load({ ui: { ClerkUI: window.__internal_ClerkUICtor } });
+      // Offizielle Übersetzung aus @clerk/localizations 4.24.8, lokal statt vom CDN (keine weitere Drittpartei).
+      const { deDE } = await import('/lib/clerk-de-DE.js');
+      if (!c2.loaded) await c2.load({ ui: { ClerkUI: window.__internal_ClerkUICtor }, localization: deDE });
       clerk = c2;
       clerk.addListener(onAuthChange);
       return clerk;

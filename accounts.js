@@ -53,6 +53,7 @@ const Accounts = (() => {
   let wantedMapId = null;      // #map=… vor der Anmeldung
   let status = '';
   let notice = '';             // Hinweis oben im Dialog, z. B. warum er sich geöffnet hat
+  let loadError = '';          // warum Konfiguration oder Clerk nicht geladen werden konnten
 
   const dialog = () => document.getElementById('accounts-dialog');
   const body = () => document.getElementById('accounts-body');
@@ -67,9 +68,11 @@ const Accounts = (() => {
   async function loadConfig() {
     if (cfg) return cfg;
     try {
-      const r = await fetch('/api/maps?config=1', { cache: 'no-store' });
+      // Ohne Zeitlimit hängt ein Abruf nach dem Aufwecken eines iOS-Tabs manchmal endlos.
+      const r = await fetch('/api/maps?config=1', { cache: 'no-store', signal: AbortSignal.timeout?.(10000) });
       if (r.ok) cfg = await r.json();
     } catch (e) { /* offline: später erneut */ }
+    if (!cfg) loadError = 'Der Server ist gerade nicht erreichbar. Bitte prüfe die Internetverbindung.';
     return cfg;
   }
 
@@ -85,7 +88,8 @@ const Accounts = (() => {
       const s = document.createElement('script');
       s.id = id; s.src = src; s.crossOrigin = 'anonymous'; s.async = true;
       for (const [k, v] of Object.entries(attrs)) s.setAttribute(k, v);
-      s.onload = resolve; s.onerror = () => reject(new Error('Clerk konnte nicht geladen werden'));
+      // Fehlgeschlagenes Skript entfernen, damit „Erneut versuchen“ es wirklich neu lädt.
+      s.onload = resolve; s.onerror = () => { s.remove(); reject(new Error('Clerk konnte nicht geladen werden')); };
       document.head.appendChild(s);
     });
     try {
@@ -97,12 +101,17 @@ const Accounts = (() => {
       if (typeof c2 === 'function') c2 = new c2(pk);
       // Offizielle Übersetzung aus @clerk/localizations 4.24.8, lokal statt vom CDN (keine weitere Drittpartei).
       const { deDE } = await import('/lib/clerk-de-DE.js');
-      if (!c2.loaded) await c2.load({ ui: { ClerkUI: window.__internal_ClerkUICtor }, localization: deDE });
+      if (!c2.loaded) await Promise.race([
+        // shortcut: blendet nur den Hinweis der Clerk-Development-Instanz aus; mit eigener Domain auf pk_live_ umstellen.
+        c2.load({ ui: { ClerkUI: window.__internal_ClerkUICtor }, localization: deDE, appearance: { options: { unsafe_disableDevelopmentModeWarnings: true } } }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Zeitüberschreitung')), 20000)),
+      ]);
       clerk = c2;
       clerk.addListener(onAuthChange);
       return clerk;
     } catch (e) {
       console.warn('Clerk:', e.message);
+      loadError = 'Die Anmeldung konnte nicht geladen werden. Inhaltsblocker oder „Websiteübergreifendes Tracking verhindern“ können Clerk blockieren.';
       return null;
     }
   }
@@ -442,8 +451,10 @@ const Accounts = (() => {
   function openDialog() {
     const d = dialog();
     if (!d.open) d.showModal();
+    loadError = '';
     render();
-    loadClerk().then(() => { refreshList().then(render); });
+    loadConfig().then(render);
+    loadClerk().then(refreshList).catch(e => { loadError = 'Laden fehlgeschlagen: ' + e.message; }).finally(render);
   }
 
   // Ein modaler <dialog> macht die übrige Seite inert, darum vor Clerk-Fenstern und Bestätigungen schließen.
@@ -478,12 +489,14 @@ const Accounts = (() => {
       parts.push(h('button', { type: 'button', className: 'btn btn-secondary', onclick: () => leaveToLocal(false) || render() }, 'Zur lokalen Karte'));
     }
 
+    const retry = () => [h('p', { role: 'alert' }, loadError),
+      h('button', { type: 'button', className: 'btn btn-primary', onclick: openDialog }, 'Erneut versuchen')];
     if (!cfg) {
-      parts.push(h('p', {}, 'Lade…'));
+      parts.push(...(loadError ? retry() : [h('p', {}, 'Lade…')]));
     } else if (!cfg.ready) {
       parts.push(h('p', {}, 'Konten sind auf diesem Server noch nicht eingerichtet. Die lokale Karte funktioniert wie bisher.'));
     } else if (!clerk) {
-      parts.push(h('p', {}, 'Anmeldung wird geladen…'));
+      parts.push(...(loadError ? retry() : [h('p', {}, 'Anmeldung wird geladen…')]));
     } else if (!signedIn()) {
       parts.push(
         h('p', {}, wantedMapId ? 'Diese Karte ist geschützt. Bitte melde dich an.' : 'Mit einem Konto legst du eigene Karten an, teilst sie mit bestimmten Personen und führst Personenlisten pro Ort. Diese Daten sind nur für dich und die Personen sichtbar, mit denen du eine Karte teilst.'),

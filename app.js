@@ -569,6 +569,18 @@ function setDrawerSumMode(distCount) {
   notes.querySelector('summary').hidden = !on;
 }
 
+// Nullzeilen stören beim Lesen; Bearbeitende brauchen sie zum Hochzählen
+function hideZeroCounts() {
+  const readOnly = (window.Accounts && !Accounts.editable()) || document.getElementById('drawer-counts').classList.contains('is-sum');
+  document.querySelectorAll('#drawer-counts .apple-list-row, #drawer-counts .activity-row').forEach(row => {
+    row.style.display = readOnly && !Number(row.querySelector('.stepper-val').value) ? 'none' : '';
+  });
+  document.querySelectorAll('#drawer-counts .apple-group').forEach(g => {
+    const rows = [...g.children];
+    g.parentElement.style.display = rows.length && rows.every(r => r.style.display === 'none') ? 'none' : '';
+  });
+}
+
 function rollupHintHtml(townId) {
   const dId = rollupDistrictId(townId);
   if (!dId) return '';
@@ -2474,6 +2486,7 @@ function selectTown(townId, shouldZoom = true) {
 
   renderDeploymentsList(townId);
   document.getElementById('drawer-notes').value = town.notes || '';
+  hideZeroCounts();
   if (window.Accounts) Accounts.renderPeople();
 
   // AUTOMATIC ZOOM TO TOWN ON SELECTION
@@ -2540,6 +2553,7 @@ function selectDistrict(districtId, shouldZoom = false) {
 
   renderDeploymentsList(districtId);
   document.getElementById('drawer-notes').value = dist.notes || '';
+  hideZeroCounts();
   if (window.Accounts) Accounts.renderPeople();
 
   if (shouldZoom) {

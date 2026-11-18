@@ -2830,6 +2830,18 @@ input:checked + .slider:before {
   box-shadow: var(--shadow-sm);
 }
 .welcome-banner[hidden] { display: none; }
+@media (max-width: 768px) {
+  .welcome-banner {
+    top: auto;
+    bottom: 100px;
+    left: 12px;
+    right: 12px;
+    transform: none;
+    max-width: none;
+    border-radius: 14px;
+  }
+  .welcome-banner span { flex: 1; }
+}
 .welcome-banner .btn-link {
   background: none;
   border: 0;

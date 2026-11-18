@@ -160,7 +160,7 @@ body {
   color: var(--text-secondary);
   border-radius: 7px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
   outline: none;
   white-space: nowrap;
   display: flex;
@@ -202,7 +202,7 @@ body {
   font-size: 12px;
   color: var(--text-secondary);
   border: 0.5px solid rgba(0, 0, 0, 0.04);
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
   user-select: none;
   margin-right: 6px;
 }
@@ -308,7 +308,7 @@ body {
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
   border: 0.5px solid transparent;
   outline: none;
   white-space: nowrap;
@@ -406,7 +406,7 @@ body {
   color: var(--text-primary);
   text-align: left;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease, transform 0.12s ease;
   line-height: 1.2;
 }
 
@@ -474,28 +474,47 @@ body {
   z-index: 1;
 }
 
-/* Eliminate browser default rectangular / square focus selection outlines on all map paths, polygons and SVGs */
+/* Karte und SVG-Container: kein rechteckiger Browser-Rahmen. Formen zeigen den Fokus als Kontur. */
 #map:focus,
 #map:focus-visible,
 .leaflet-container:focus,
 .leaflet-container:focus-visible,
-.leaflet-container *:focus,
-.leaflet-container *:focus-visible,
-.leaflet-pane > svg path:focus,
-.leaflet-pane > svg path:focus-visible,
-.leaflet-interactive:focus,
-.leaflet-interactive:focus-visible,
-path.leaflet-interactive:focus,
-path.leaflet-interactive:focus-visible,
-path:focus,
-path:focus-visible,
 svg:focus,
 svg:focus-visible,
 .leaflet-marker-icon:focus,
 .leaflet-marker-icon:focus-visible {
-  outline: none !important;
-  box-shadow: none !important;
-  -webkit-tap-highlight-color: transparent !important;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Sichtbarer Fokus auf Kartenformen: 3px Kontur statt eines Rechtecks um die Bounding-Box */
+path.leaflet-interactive:focus,
+path.leaflet-interactive:focus-visible {
+  outline: none;
+}
+path.leaflet-interactive:focus-visible {
+  stroke: #1f4e79;
+  stroke-width: 3px;
+  stroke-opacity: 1;
+  stroke-dasharray: none;
+}
+
+/* Tastaturfokus für alle Bedienelemente außerhalb der Karte */
+:focus-visible {
+  outline: 3px solid #1f4e79;
+  outline-offset: 2px;
+}
+
+/* Wer weniger Bewegung wünscht, bekommt keine Übergänge und Animationen */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Apple Floating HUD Container */
@@ -521,7 +540,7 @@ svg:focus-visible,
   border-radius: 20px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
   z-index: 800;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   width: fit-content;
 }
 
@@ -593,7 +612,7 @@ svg:focus-visible,
   border-radius: 8px;
   padding: 6px 12px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
 }
 
 .btn-danger-ghost:hover {
@@ -770,7 +789,7 @@ svg:focus-visible,
   font-size: 12px;
   font-weight: 500;
   color: var(--text-secondary);
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -933,7 +952,7 @@ svg:focus-visible,
   border-radius: 20px;
   width: 250px;
   position: relative;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), width 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
@@ -1057,7 +1076,7 @@ svg:focus-visible,
   padding: 10px 12px;
   border-radius: 16px;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1), color 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), padding 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-radius 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   overflow: hidden;
 }
 
@@ -1115,8 +1134,6 @@ svg:focus-visible,
 .legend-header {
   font-size: 11px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
   color: var(--text-tertiary);
   margin-bottom: 0;
 }
@@ -1131,12 +1148,22 @@ svg:focus-visible,
 }
 
 .legend-dot {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
   flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
 }
+
+/* Die Ziffer ist der zweite Kanal neben der Farbe; Kontrast je Füllung gewählt */
+.legend-dot.pg,
+.legend-dot.ipg { color: #052e16; }
+.legend-dot.ipg-plus { color: #ffffff; }
 
 .legend-dot.ipg-plus {
   background: var(--milestone-ipg-plus);
@@ -1253,7 +1280,7 @@ svg:focus-visible,
   border-radius: 14px;
   cursor: pointer;
   text-align: left;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
   min-height: 72px;
 }
 .mobile-action-card:active {
@@ -1578,7 +1605,7 @@ svg:focus-visible,
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
 }
 
 .inspector-close-btn:hover {
@@ -1607,8 +1634,6 @@ svg:focus-visible,
 .group-header {
   font-size: 11px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
   color: var(--text-tertiary);
   margin-bottom: 6px;
   padding: 0 4px;
@@ -1649,7 +1674,7 @@ svg:focus-visible,
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
 }
 
 .milestone-option:hover {
@@ -1943,7 +1968,7 @@ input:checked + .slider:before {
   font-size: 13px;
   color: var(--text-primary);
   outline: none;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
 }
 
 .form-input:focus, .form-select:focus {
@@ -2011,7 +2036,7 @@ input:checked + .slider:before {
   font-size: 11px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
 }
 
 .breadcrumb-back-btn:hover {
@@ -2186,7 +2211,7 @@ input:checked + .slider:before {
   justify-content: space-between;
   margin-bottom: 6px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
 }
 
 .deployment-card:hover {
@@ -2201,7 +2226,7 @@ input:checked + .slider:before {
   font-size: 13px;
   border-radius: 4px;
   padding: 2px 4px;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
 }
 
 .btn-icon-edit:hover {
@@ -2231,7 +2256,7 @@ input:checked + .slider:before {
   padding: 3px 6px;
   border-radius: 4px;
   font-size: 12px;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
 }
 
 .btn-icon-del:hover {
@@ -2624,7 +2649,7 @@ input:checked + .slider:before {
   border-radius: 6px;
   cursor: pointer;
   color: var(--text-secondary);
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
 }
 
 .quick-status-pill:hover {
@@ -2728,7 +2753,7 @@ input:checked + .slider:before {
   border-radius: 9999px;
   opacity: 0;
   pointer-events: none;
-  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background-color 0.35s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.35s cubic-bezier(0.16, 1, 0.3, 1), color 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   max-width: 92vw;
 }
 
@@ -2879,7 +2904,7 @@ input:checked + .slider:before {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
 }
 
 .apple-quick-popover-wrapper .leaflet-popup-close-button:hover {
@@ -2924,7 +2949,7 @@ input:checked + .slider:before {
   padding: 3px 8px;
   border-radius: 12px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
   white-space: nowrap;
 }
 
@@ -2936,8 +2961,6 @@ input:checked + .slider:before {
 .qpop-section-label {
   font-size: 10px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
   color: var(--text-quaternary);
   margin-bottom: -4px;
 }
@@ -2964,7 +2987,7 @@ input:checked + .slider:before {
   justify-content: center;
   gap: 4px;
   color: var(--text-secondary);
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
 }
 
 .qpop-ms-btn:hover {

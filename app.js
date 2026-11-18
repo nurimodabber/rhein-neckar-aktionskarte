@@ -3630,10 +3630,17 @@ function initUIEventListeners() {
 
   // Onboarding Guide Modal
   const openOnboardingModal = () => document.getElementById('onboarding-modal')?.classList.add('visible');
+  const welcomeBanner = document.getElementById('welcome-banner');
   const closeOnboardingModal = () => {
     document.getElementById('onboarding-modal')?.classList.remove('visible');
+    if (welcomeBanner) welcomeBanner.hidden = true;
     try { localStorage.setItem('rn_onboarding_seen_v1', 'true'); } catch (e) {}
   };
+  document.getElementById('btn-welcome-close')?.addEventListener('click', closeOnboardingModal);
+  document.getElementById('btn-welcome-guide')?.addEventListener('click', () => {
+    closeOnboardingModal();
+    openOnboardingModal();
+  });
   document.getElementById('btn-close-onboarding')?.addEventListener('click', closeOnboardingModal);
   document.getElementById('btn-dismiss-onboarding')?.addEventListener('click', closeOnboardingModal);
   document.getElementById('mobile-act-onboarding')?.addEventListener('click', () => {
@@ -3646,7 +3653,12 @@ function initUIEventListeners() {
     const hasSeen = localStorage.getItem('rn_onboarding_seen_v1');
     const hasShareHash = window.location.hash && window.location.hash.includes('share=');
     if (!hasSeen && !hasShareHash) {
-      setTimeout(openOnboardingModal, 800);
+      // Betrachter sehen nur eine Zeile; die dreistufige Anleitung beschreibt Bearbeitungsmodi.
+      setTimeout(() => {
+        const editor = !window.Accounts || Accounts.editable();
+        if (editor) openOnboardingModal();
+        else if (welcomeBanner) welcomeBanner.hidden = false;
+      }, 800);
     }
   } catch (e) {}
 

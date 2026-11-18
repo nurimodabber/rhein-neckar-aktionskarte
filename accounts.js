@@ -658,7 +658,7 @@ const Accounts = (() => {
     }
   }
 
-  return { init, onEdit, renderPeople, openDialog, localEditAllowed, blockLocalEdit };
+  return { init, onEdit, renderPeople, openDialog, localEditAllowed, blockLocalEdit, editable };
 })();
 
 if (typeof window !== 'undefined') window.Accounts = Accounts;

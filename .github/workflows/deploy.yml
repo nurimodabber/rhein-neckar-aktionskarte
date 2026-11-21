@@ -25,10 +25,16 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v5
+      # The live map runs on Vercel. Pages only serves the handover page, which moves local data there.
+      - name: Build handover site
+        run: |
+          mkdir -p _site
+          cp gh-pages-handover.html _site/index.html
+          cp gh-pages-handover.html _site/404.html
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: '_site'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

@@ -1072,7 +1072,7 @@ function renderSurroundingRegions() {
       iconSize: [item.isRegion ? 160 : 100, 20],
       iconAnchor: [item.isRegion ? 80 : 50, 10]
     });
-    L.marker(item.coords, { icon: icon, interactive: false }).addTo(AppState.surroundingLayer);
+    L.marker(item.coords, { icon: icon, interactive: false, keyboard: false }).addTo(AppState.surroundingLayer);
   });
 }
 
@@ -1674,7 +1674,7 @@ function refreshMarkers() {
           iconSize: [220, 32],
           iconAnchor: [110, 16]
         });
-        const marker = L.marker(center, { icon: customIcon, interactive: false, zIndexOffset: -200 });
+        const marker = L.marker(center, { icon: customIcon, interactive: false, keyboard: false, zIndexOffset: -200 });
         candidates.push({ isWatermark: true, marker, rank: 9999999 });
         return;
       }
@@ -1709,7 +1709,7 @@ function refreshMarkers() {
       });
 
 
-      const marker = L.marker(center, { icon: customIcon, interactive: false });
+      const marker = L.marker(center, { icon: customIcon, interactive: false, keyboard: false });
       const rank = calculateTownLabelRank(f, town);
 
       candidates.push({
@@ -1801,7 +1801,7 @@ function refreshMarkers() {
         iconAnchor: [40, 9]
       });
 
-      const marker = L.marker(center, { icon: customIcon, interactive: false });
+      const marker = L.marker(center, { icon: customIcon, interactive: false, keyboard: false });
       AppState.markersLayer.addLayer(marker);
 
       if (df.properties.exclaveCenter) {
@@ -1816,7 +1816,7 @@ function refreshMarkers() {
           iconSize: [120, 18],
           iconAnchor: [60, 9]
         });
-        const exclaveMarker = L.marker(df.properties.exclaveCenter, { icon: exclaveIcon, interactive: false });
+        const exclaveMarker = L.marker(df.properties.exclaveCenter, { icon: exclaveIcon, interactive: false, keyboard: false });
         AppState.markersLayer.addLayer(exclaveMarker);
       }
     });

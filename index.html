@@ -431,12 +431,12 @@
             <div class="apple-group">
               <div class="apple-list-row">
                 <div>
-                  <div class="row-label">Aktive Nuklei</div>
+                  <div class="row-label" id="lbl-drawer-nuclei">Aktive Nuklei</div>
                   <div class="row-sublabel">Tragfähige Gruppen vor Ort</div>
                 </div>
                 <div class="apple-stepper">
                   <button class="stepper-btn" id="btn-dec-nuclei">-</button>
-                  <input type="number" class="stepper-val" id="drawer-nuclei" value="0" min="0" />
+                  <input type="number" class="stepper-val" id="drawer-nuclei" aria-labelledby="lbl-drawer-nuclei" value="0" min="0" />
                   <button class="stepper-btn" id="btn-inc-nuclei">+</button>
                 </div>
               </div>
@@ -453,44 +453,44 @@
               <div class="activity-row">
                 <div class="act-name-col">
                   <span class="activity-icon-badge devotions">A</span>
-                  <span class="act-title">Andachten</span>
+                  <span class="act-title" id="lbl-act-devotionals">Andachten</span>
                 </div>
                 <div class="apple-stepper">
                   <button class="stepper-btn" id="btn-dec-act-devotionals">-</button>
-                  <input type="number" class="stepper-val" id="drawer-act-devotionals" value="0" min="0" />
+                  <input type="number" class="stepper-val" id="drawer-act-devotionals" aria-labelledby="lbl-act-devotionals" value="0" min="0" />
                   <button class="stepper-btn" id="btn-inc-act-devotionals">+</button>
                 </div>
               </div>
               <div class="activity-row">
                 <div class="act-name-col">
                   <span class="activity-icon-badge study">S</span>
-                  <span class="act-title">Studienkreise</span>
+                  <span class="act-title" id="lbl-act-studycircles">Studienkreise</span>
                 </div>
                 <div class="apple-stepper">
                   <button class="stepper-btn" id="btn-dec-act-studycircles">-</button>
-                  <input type="number" class="stepper-val" id="drawer-act-studycircles" value="0" min="0" />
+                  <input type="number" class="stepper-val" id="drawer-act-studycircles" aria-labelledby="lbl-act-studycircles" value="0" min="0" />
                   <button class="stepper-btn" id="btn-inc-act-studycircles">+</button>
                 </div>
               </div>
               <div class="activity-row">
                 <div class="act-name-col">
                   <span class="activity-icon-badge children">K</span>
-                  <span class="act-title">Kinderklassen</span>
+                  <span class="act-title" id="lbl-act-children">Kinderklassen</span>
                 </div>
                 <div class="apple-stepper">
                   <button class="stepper-btn" id="btn-dec-act-children">-</button>
-                  <input type="number" class="stepper-val" id="drawer-act-children" value="0" min="0" />
+                  <input type="number" class="stepper-val" id="drawer-act-children" aria-labelledby="lbl-act-children" value="0" min="0" />
                   <button class="stepper-btn" id="btn-inc-act-children">+</button>
                 </div>
               </div>
               <div class="activity-row">
                 <div class="act-name-col">
                   <span class="activity-icon-badge junior">J</span>
-                  <span class="act-title">Juniorengruppen</span>
+                  <span class="act-title" id="lbl-act-junioryouth">Juniorengruppen</span>
                 </div>
                 <div class="apple-stepper">
                   <button class="stepper-btn" id="btn-dec-act-junioryouth">-</button>
-                  <input type="number" class="stepper-val" id="drawer-act-junioryouth" value="0" min="0" />
+                  <input type="number" class="stepper-val" id="drawer-act-junioryouth" aria-labelledby="lbl-act-junioryouth" value="0" min="0" />
                   <button class="stepper-btn" id="btn-inc-act-junioryouth">+</button>
                 </div>
               </div>

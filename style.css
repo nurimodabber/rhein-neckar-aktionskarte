@@ -1797,7 +1797,6 @@ input:checked + .slider:before {
   font-weight: 600;
   border: none;
   background: transparent;
-  outline: none;
   color: var(--text-primary);
 }
 
@@ -1867,7 +1866,6 @@ input:checked + .slider:before {
   min-height: 80px;
   padding: 10px 12px;
   border: none;
-  outline: none;
   font-family: inherit;
   font-size: 12px;
   color: var(--text-primary);
@@ -3610,3 +3608,7 @@ button.live-sync-capsule { border: 0; font: inherit; color: inherit; }
   .modal-backdrop .btn { min-height: 44px; }
   .modal-backdrop .inspector-close-btn { min-width: 44px; min-height: 44px; }
 }
+
+/* Fokus in Zahlenfeldern und Notizen: globaler Ring nach innen, sonst schneidet die Gruppe ihn ab */
+.stepper-val:focus-visible,
+.apple-textarea:focus-visible { outline-offset: -3px; }

@@ -12,6 +12,8 @@
   /* Apple System Colors */
   --system-blue: #007aff;
   --system-blue-hover: #0062cc;
+  /* Blau als Schrift: #007aff erreicht auf Hellgrau nur 3,6:1, dieses 5,2:1 */
+  --system-blue-text: #0062cc;
   --system-blue-subtle: rgba(0, 122, 255, 0.1);
   --system-green: #34c759;
   --system-green-subtle: rgba(52, 199, 89, 0.12);
@@ -39,7 +41,7 @@
   /* Text Colors */
   --text-primary: #1d1d1f;
   --text-secondary: #6e6e73;
-  --text-tertiary: #707075; /* 4.5:1 auch auf #f5f5f7 */
+  --text-tertiary: #6e6e73; /* 4,5:1 auch auf der grauen Kennzahlen-Pille (#f3f3f4) */
   --text-quaternary: #aeaeb2;
 
   /* Borders & Dividers */
@@ -287,15 +289,16 @@ body {
 }
 
 .vchip-center strong {
-  color: var(--system-orange);
+  /* Orange und Grün als Ziffern zu hell (2:1); dunklere Töne derselben Farbe, 4,5:1 */
+  color: #b45309;
 }
 
 .vchip-arrows strong {
-  color: var(--system-blue);
+  color: var(--system-blue-text);
 }
 
 .vchip-nuclei strong {
-  color: var(--system-green);
+  color: #166534;
 }
 
 /* Standard Buttons */
@@ -643,7 +646,7 @@ path.leaflet-interactive:focus-visible {
 
 .hud-pill-btn:hover {
   background: rgba(0, 0, 0, 0.06);
-  color: var(--system-blue);
+  color: var(--system-blue-text);
 }
 
 .hud-pill-btn svg {
@@ -654,7 +657,7 @@ path.leaflet-interactive:focus-visible {
 }
 
 .hud-pill-btn:hover svg {
-  color: var(--system-blue);
+  color: var(--system-blue-text);
   transform: translateX(-1px);
 }
 
@@ -674,7 +677,7 @@ path.leaflet-interactive:focus-visible {
   gap: 6px;
   padding: 3px 8px;
   background: var(--system-blue-subtle);
-  color: var(--system-blue);
+  color: var(--system-blue-text);
   border-radius: 12px;
   font-size: 12px;
   font-weight: 600;
@@ -684,7 +687,7 @@ path.leaflet-interactive:focus-visible {
 .focus-dismiss {
   border: none;
   background: transparent;
-  color: var(--system-blue);
+  color: var(--system-blue-text);
   cursor: pointer;
   font-size: 13px;
   line-height: 1;
@@ -742,7 +745,7 @@ path.leaflet-interactive:focus-visible {
 
 .leaflet-control-zoom a:hover {
   background: rgba(0, 0, 0, 0.06) !important;
-  color: var(--system-blue) !important;
+  color: var(--system-blue-text) !important;
 }
 
 /* ==========================================================================
@@ -898,7 +901,7 @@ path.leaflet-interactive:focus-visible {
   gap: 10px;
   font-size: 12px;
   font-weight: 500;
-  color: var(--system-blue);
+  color: var(--system-blue-text);
   background: rgba(255, 255, 255, 0.94);
   border: 0.5px solid rgba(0, 122, 255, 0.3);
   border-radius: 18px;
@@ -978,13 +981,13 @@ path.leaflet-interactive:focus-visible {
 }
 
 .spotlight-search-capsule input::placeholder {
-  color: var(--text-quaternary);
+  color: var(--text-tertiary);
 }
 
 .search-shortcut-badge {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  color: var(--text-quaternary);
+  color: #636366; /* auf dem grauen Kästchen reicht #6e6e73 nicht (4,4:1) */
   background: rgba(118, 118, 128, 0.12);
   padding: 2px 5px;
   border-radius: 4px;
@@ -1037,7 +1040,7 @@ path.leaflet-interactive:focus-visible {
 
 .search-result-row:hover {
   background: rgba(0, 122, 255, 0.08);
-  color: var(--system-blue);
+  color: var(--system-blue-text);
 }
 
 .search-item {
@@ -1062,7 +1065,7 @@ path.leaflet-interactive:focus-visible {
 .search-item:hover,
 .search-item.keyboard-selected {
   background: rgba(0, 122, 255, 0.10);
-  color: var(--system-blue);
+  color: var(--system-blue-text);
 }
 
 
@@ -1684,7 +1687,7 @@ path.leaflet-interactive:focus-visible {
 .milestone-option.active {
   background: #ffffff;
   border-color: var(--system-blue);
-  color: var(--system-blue);
+  color: var(--system-blue-text);
   font-weight: 600;
   box-shadow: var(--shadow-sm);
 }
@@ -1850,7 +1853,7 @@ input:checked + .slider:before {
 
 .dep-status-pill.active {
   background: var(--system-blue-subtle);
-  color: var(--system-blue);
+  color: var(--system-blue-text);
 }
 
 .dep-status-pill.established {
@@ -1873,7 +1876,7 @@ input:checked + .slider:before {
 }
 
 .apple-textarea::placeholder {
-  color: var(--text-quaternary);
+  color: var(--text-tertiary);
 }
 
 /* ==========================================================================
@@ -2029,7 +2032,7 @@ input:checked + .slider:before {
   align-items: center;
   gap: 3px;
   background: rgba(0, 122, 255, 0.1);
-  color: var(--system-blue);
+  color: var(--system-blue-text);
   border: none;
   border-radius: 4px;
   padding: 2px 7px;
@@ -2149,14 +2152,14 @@ input:checked + .slider:before {
   padding: 1px 4px;
   border-radius: 3px;
   background: rgba(0, 122, 255, 0.08);
-  color: var(--system-blue);
+  color: var(--system-blue-text);
   margin-left: 4px;
 }
 
 .town-expand-btn {
   background: none;
   border: none;
-  color: var(--system-blue);
+  color: var(--system-blue-text);
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
@@ -2330,7 +2333,7 @@ input:checked + .slider:before {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.6px;
-  color: #007aff;
+  color: var(--system-blue-text);
   line-height: 1;
   text-shadow: 0 0 2px #ffffff, 0 0 4px #ffffff, 0 0 6px #ffffff;
   opacity: 0.85;
@@ -2621,7 +2624,7 @@ input:checked + .slider:before {
 .arrow-quick-count {
   font-size: 11px;
   font-weight: 600;
-  color: var(--system-blue);
+  color: var(--system-blue-text);
 }
 
 .arrow-quick-body {
@@ -2848,7 +2851,7 @@ input:checked + .slider:before {
   padding: 2px 4px;
   font: inherit;
   font-weight: 600;
-  color: var(--system-blue);
+  color: var(--system-blue-text);
   cursor: pointer;
 }
 
@@ -3003,7 +3006,7 @@ input:checked + .slider:before {
 .qpop-section-label {
   font-size: 10px;
   font-weight: 700;
-  color: var(--text-quaternary);
+  color: var(--text-tertiary);
   margin-bottom: -4px;
 }
 
@@ -3445,9 +3448,9 @@ input:checked + .slider:before {
 .info-btn {
   width: 18px; height: 18px;
   border-radius: 50%;
-  border: 1px solid var(--system-blue);
+  border: 1px solid currentColor;
   background: transparent;
-  color: var(--system-blue);
+  color: var(--system-blue-text);
   font: italic 600 11px/1 Georgia, serif;
   cursor: pointer;
   padding: 0;
@@ -3483,7 +3486,7 @@ input:checked + .slider:before {
 .ms-info h4 { display: flex; align-items: center; gap: 8px; font-size: 14px; margin: 0 0 6px; }
 .ms-info blockquote { margin: 8px 0 4px; padding-left: 10px; border-left: 2px solid var(--separator); color: var(--text-secondary); font-style: italic; }
 .ms-info cite { font-size: 12px; font-style: normal; }
-.ms-info cite a { color: var(--system-blue); }
+.ms-info cite a { color: var(--system-blue-text); }
 
 /* Ortschaft mit Stadtteilen: Summen nur lesen */
 #drawer-counts.is-sum .stepper-btn { display: none; }

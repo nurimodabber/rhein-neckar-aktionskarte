@@ -3459,20 +3459,16 @@ function initUIEventListeners() {
     // On phone width, collapse legend by default on startup
     if (window.innerWidth <= 768) {
       const hud = document.getElementById('legend-hud');
-      const chevron = document.getElementById('legend-chevron');
       if (hud) hud.classList.add('collapsed');
-      if (chevron) chevron.textContent = '▴';
       legendToggle.setAttribute('aria-expanded', 'false');
     }
 
     legendToggle.addEventListener('click', () => {
       const hud = document.getElementById('legend-hud');
-      const chevron = document.getElementById('legend-chevron');
       if (hud) {
         hud.classList.toggle('collapsed');
         const isCollapsed = hud.classList.contains('collapsed');
         legendToggle.setAttribute('aria-expanded', String(!isCollapsed));
-        if (chevron) chevron.textContent = isCollapsed ? '▴' : '▾';
       }
     });
   }

@@ -565,8 +565,7 @@ path.leaflet-interactive:focus-visible {
   border-radius: 50%;
   background-color: #34c759;
   display: inline-block;
-  box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.7);
-  animation: sync-dot-pulse 2s infinite;
+  /* Ruhezustand ohne Puls; nur während des Speicherns pulsiert der Punkt */
   flex-shrink: 0;
 }
 
@@ -2404,15 +2403,15 @@ input:checked + .slider:before {
 
 .surrounding-region-label {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
-  font-size: 10.5px;
-  font-weight: 600;
+  /* 12px und 4,5:1, bleibt durch Versalien und Sperrung leiser als die Ortsnamen */
+  font-size: 12px;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 1.2px;
-  color: #8e8e93;
+  letter-spacing: 0.8px;
+  color: #636366;
   pointer-events: none;
   white-space: nowrap;
   text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 0 0 3px #fff;
-  opacity: 0.8;
 }
 
 .surrounding-city-label {
@@ -3618,3 +3617,24 @@ button.live-sync-capsule { border: 0; font: inherit; color: inherit; }
 
 /* Offenes Panel: Willkommenszeile würde Inhalt verdecken, der Hinweis ist dann erfüllt */
 body:has(.inspector-panel:not(.collapsed)) .welcome-banner { display: none; }
+
+/* Treffflächen mindestens 24px, ohne die Kapseln sichtbar zu vergrößern */
+.spotlight-search-capsule { padding-top: 1px; padding-bottom: 1px; }
+.spotlight-search-capsule input { padding: 5px 0; }
+@media (min-width: 769px) {
+  .legend-capsule-header { min-height: 24px; margin: -4px 0; }
+}
+.legend-checkbox-label { min-height: 24px; }
+#btn-open-legal-legend { min-height: 24px; }
+.welcome-banner .btn-link,
+.btn-banner-close { min-height: 28px; min-width: 28px; }
+#btn-recenter-selection { min-height: 24px; }
+.stepper-val { align-self: stretch; }
+.info-btn { position: relative; }
+.info-btn::after { content: ""; position: absolute; inset: -4px; }
+.legend-chevron { display: inline-flex; }
+.legend-chevron svg { width: 12px; height: 12px; }
+@media (hover: none) {
+  .welcome-banner .btn-link,
+  .btn-banner-close { min-height: 44px; min-width: 44px; }
+}

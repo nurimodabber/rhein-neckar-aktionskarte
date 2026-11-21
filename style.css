@@ -3489,7 +3489,7 @@ input:checked + .slider:before {
 /* Ortschaft mit Stadtteilen: Summen nur lesen */
 #drawer-counts.is-sum .stepper-btn { display: none; }
 #drawer-counts.is-sum .stepper-val { pointer-events: none; background: transparent; }
-#drawer-sum-hint { margin: 0 0 8px; padding: 0 4px; }
+#drawer-sum-hint { margin: 0 0 12px; padding: 0 4px; }
 .notes-details > summary { list-style: none; width: 100%; justify-content: center; margin-bottom: 8px; }
 .notes-details > summary::-webkit-details-marker { display: none; }
 .notes-details > summary[hidden] { display: none; }
@@ -3612,3 +3612,9 @@ button.live-sync-capsule { border: 0; font: inherit; color: inherit; }
 /* Fokus in Zahlenfeldern und Notizen: globaler Ring nach innen, sonst schneidet die Gruppe ihn ab */
 .stepper-val:focus-visible,
 .apple-textarea:focus-visible { outline-offset: -3px; }
+
+/* Leere Hinweiszeile erzeugt sonst eine doppelte Lücke im Panel */
+#drawer-rollup-hint:empty { display: none; }
+
+/* Offenes Panel: Willkommenszeile würde Inhalt verdecken, der Hinweis ist dann erfüllt */
+body:has(.inspector-panel:not(.collapsed)) .welcome-banner { display: none; }
